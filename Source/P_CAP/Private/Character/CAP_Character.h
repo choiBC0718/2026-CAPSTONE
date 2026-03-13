@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "GAS/CAP_AbilitySystemComponent.h"
 #include "CAP_Character.generated.h"
 
 UCLASS()
@@ -12,18 +13,16 @@ class ACAP_Character : public ACharacter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
 	ACAP_Character();
-
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
-	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	virtual UCAP_AbilitySystemComponent* GetAbilitySystemComponent() const {return ASC;}
+protected:
+	virtual void BeginPlay() override;
+
+
+private:
+	/**		컴포넌트		**/
+	UPROPERTY(VisibleDefaultsOnly, Category="Gameplay Ability")
+	class UCAP_AbilitySystemComponent* ASC;
 };
