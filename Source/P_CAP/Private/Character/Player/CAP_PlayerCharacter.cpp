@@ -6,15 +6,21 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 {
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>("Spring Arm Component");
 	SpringArm->SetupAttachment(GetRootComponent());
 	SpringArm->bUsePawnControlRotation = false;
+	SpringArm->bInheritYaw = false;
 
 	Camera = CreateDefaultSubobject<UCameraComponent>("Camera Component");
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
+
+	bUseControllerRotationYaw = false;
+
+	GetCharacterMovement()->bOrientRotationToMovement = true;
 }
 
 void ACAP_PlayerCharacter::PawnClientRestart()
@@ -43,6 +49,8 @@ void ACAP_PlayerCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 		EnhancedInputComp->BindAction(MoveInputAction, ETriggerEvent::Triggered, this, &ACAP_PlayerCharacter::MoveInputHandle);
 		EnhancedInputComp->BindAction(MoveInputAction, ETriggerEvent::Completed, this, &ACAP_PlayerCharacter::MoveInputHandle);
 		EnhancedInputComp->BindAction(MoveInputAction, ETriggerEvent::Canceled, this, &ACAP_PlayerCharacter::MoveInputHandle);
+		
+		EnhancedInputComp->BindAction(DirFixInputAction, ETriggerEvent::Started, this, &ACAP_PlayerCharacter::ToggleDirFixHandle);
 
 		for (const TPair<EAbilityInputType, UInputAction*> InputActionPair : GameplayAbilityIAMap)
 		{
@@ -58,10 +66,15 @@ void ACAP_PlayerCharacter::MoveInputHandle(const FInputActionValue& InputActionV
 	FVector2D InputVal = InputActionValue.Get<FVector2D>();
 	if (InputVal.IsNearlyZero())
 		return;
-
-	InputVal.Normalize();
+	if (InputVal.Length() > 1.f)
+		InputVal.Normalize();
 	
-	AddMovementInput(FVector::ForwardVector	* InputVal.Y + FVector::RightVector * InputVal.X);
+	AddMovementInput(GetMoveForwardVector()	* InputVal.Y + GetMoveRightVector() * InputVal.X);
+}
+
+void ACAP_PlayerCharacter::ToggleDirFixHandle()
+{
+	GetCharacterMovement()->bOrientRotationToMovement = GetCharacterMovement()->bOrientRotationToMovement ? false : true;
 }
 
 void ACAP_PlayerCharacter::AbilityInputHandle(const FInputActionValue& InputActionValue, EAbilityInputType AbilityInput)
@@ -75,4 +88,20 @@ void ACAP_PlayerCharacter::AbilityInputHandle(const FInputActionValue& InputActi
 	{
 		GetAbilitySystemComponent()->AbilityLocalInputReleased((int32)AbilityInput);
 	}
+}
+
+FVector ACAP_PlayerCharacter::GetMoveForwardVector() const
+{
+	FVector Forward = Camera->GetForwardVector();
+	Forward.Z = 0.f;
+	Forward.Normalize();
+	return Forward;
+}
+
+FVector ACAP_PlayerCharacter::GetMoveRightVector() const
+{
+	FVector Forward = Camera->GetRightVector();
+	Forward.Z = 0.f;
+	Forward.Normalize();
+	return Forward;
 }

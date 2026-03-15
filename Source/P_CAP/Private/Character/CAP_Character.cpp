@@ -2,13 +2,14 @@
 
 
 #include "CAP_Character.h"
+#include "Components/SkeletalMeshComponent.h"
 
-// Sets default values
 ACAP_Character::ACAP_Character()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
 	GetMesh()->SetupAttachment(GetRootComponent());
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 	ASC = CreateDefaultSubobject<UCAP_AbilitySystemComponent>("AbilitySystemComponent");
 }

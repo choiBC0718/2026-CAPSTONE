@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Character/CAP_Character.h"
 #include "InputAction.h"
+#include "InputActionValue.h"
 #include "CAP_PlayerCharacter.generated.h"
 
 enum class EAbilityInputType : uint8;
@@ -34,8 +35,14 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	UInputAction* MoveInputAction;
 	UPROPERTY(EditDefaultsOnly, Category="Input")
+	UInputAction* DirFixInputAction;
+	UPROPERTY(EditDefaultsOnly, Category="Input")
 	TMap<EAbilityInputType, class UInputAction*> GameplayAbilityIAMap;
 
 	void MoveInputHandle(const FInputActionValue& InputActionValue);
+	void ToggleDirFixHandle();
 	void AbilityInputHandle(const FInputActionValue& InputActionValue, EAbilityInputType AbilityInput);
+
+	FVector GetMoveForwardVector() const;
+	FVector GetMoveRightVector() const;
 };

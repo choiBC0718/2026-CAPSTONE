@@ -26,7 +26,8 @@ public:
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxHealth);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, PhysicalDamage);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MagicalDamage);
-	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, Armor);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, PhysicalDefense);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MagicalDefense);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MoveSpeed);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CriticalChance);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CriticalDamage);
@@ -37,7 +38,8 @@ private:
 	UPROPERTY()	FGameplayAttributeData MaxHealth;
 	UPROPERTY()	FGameplayAttributeData PhysicalDamage;
 	UPROPERTY()	FGameplayAttributeData MagicalDamage;
-	UPROPERTY()	FGameplayAttributeData Armor;
+	UPROPERTY()	FGameplayAttributeData PhysicalDefense;
+	UPROPERTY()	FGameplayAttributeData MagicalDefense;
 	UPROPERTY()	FGameplayAttributeData MoveSpeed;
 	UPROPERTY()	FGameplayAttributeData CriticalChance;
 	UPROPERTY()	FGameplayAttributeData CriticalDamage;
