@@ -19,6 +19,7 @@ class ACAP_PlayerCharacter : public ACAP_Character
 public:
 	ACAP_PlayerCharacter();
 	virtual void PawnClientRestart() override;
+	virtual void PossessedBy(AController* NewController) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
 
