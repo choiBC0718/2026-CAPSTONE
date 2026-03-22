@@ -49,9 +49,22 @@ void ACAP_PlayerCharacter::PawnClientRestart()
 	}
 }
 
+void ACAP_PlayerCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	
+	UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent());
+	if (ASC)
+	{
+		ASC->InitAbilityActorInfo(this,this);
+		ASC->InitComponent();
+	}
+}
+
 void ACAP_PlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
 	UEnhancedInputComponent* EnhancedInputComp = Cast<UEnhancedInputComponent>(PlayerInputComponent);
 	if (EnhancedInputComp)
 	{
