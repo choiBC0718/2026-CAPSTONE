@@ -36,6 +36,8 @@ public:
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CriticalChance);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CriticalDamage);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MoveSpeed);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CurrentDodgeCount);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxDodgeCount);
 
 private:
 	UPROPERTY()	FGameplayAttributeData Health;
@@ -49,4 +51,6 @@ private:
 	UPROPERTY()	FGameplayAttributeData CriticalChance;
 	UPROPERTY()	FGameplayAttributeData CriticalDamage;
 	UPROPERTY()	FGameplayAttributeData MoveSpeed;
+	UPROPERTY()	FGameplayAttributeData CurrentDodgeCount;
+	UPROPERTY()	FGameplayAttributeData MaxDodgeCount;
 };

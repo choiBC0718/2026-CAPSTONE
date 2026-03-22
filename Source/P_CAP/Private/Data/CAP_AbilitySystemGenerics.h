@@ -22,6 +22,7 @@ public:
 	FORCEINLINE TArray<TSubclassOf<UGameplayAbility>> GetPassiveAbilities() const {return PassiveAbilities;}
 
 	FORCEINLINE const UDataTable* GetBaseStatDataTable() const {return BaseStatDataTable;}
+	FORCEINLINE const UDataTable* GetWeaponStatDataTable() const {return WeaponStatDataTable;}
 	
 private:
 	/**플레이어 & 몬스터 최초 스폰 시 HP 가득 채우는 Effect*/
@@ -39,4 +40,6 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category="Base Stats")
 	UDataTable* BaseStatDataTable;
+	UPROPERTY(EditDefaultsOnly, Category="Weapon Stats")
+	UDataTable* WeaponStatDataTable;	
 };

@@ -6,6 +6,8 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
 #include "GameplayEffectExtension.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
+#include "Setting/CAP_AbilitySystemStatics.h"
 #include "Setting/CAP_AttributeSet.h"
 #include "Setting/CAP_GameplayAbilityTypes.h"
 
@@ -16,28 +18,65 @@ UCAP_AbilitySystemComponent::UCAP_AbilitySystemComponent()
 
 void UCAP_AbilitySystemComponent::InitComponent()
 {
+	if (!AbilitySystemGenerics)
+		return;
+	InitializeBaseAttribute();
 	ApplyInitialEffects();
-	InitialBaseAttribute();
 	GiveInitialAbilities();
+}
+
+void UCAP_AbilitySystemComponent::ApplyFullStatEffect()
+{
+	if (!AbilitySystemGenerics)
+		return;
+	ApplyGameplayEffect(AbilitySystemGenerics->GetFullStatEffect());
 }
 
 void UCAP_AbilitySystemComponent::ApplyInitialEffects()
 {
 	if (!AbilitySystemGenerics || !GetOwner())
 		return;
-
+	
 	for (const TSubclassOf<UGameplayEffect>& Effect : AbilitySystemGenerics->GetInitialEffects())
 	{
-		FGameplayEffectSpecHandle EffectSpec = MakeOutgoingSpec(Effect, 1, MakeEffectContext());
-		ApplyGameplayEffectSpecToSelf(*EffectSpec.Data.Get());
+		ApplyGameplayEffect(Effect);
 	}
 }
 
-void UCAP_AbilitySystemComponent::InitialBaseAttribute()
+void UCAP_AbilitySystemComponent::InitializeBaseAttribute()
 {
 	if (!GetOwner())
 		return;
-	const FBaseStatRow* BastStats = nullptr;
+
+	const UDataTable* TableToUse = nullptr;
+
+	if (!AbilitySystemGenerics->GetBaseStatDataTable())
+		return;
+	
+	TableToUse = AbilitySystemGenerics->GetBaseStatDataTable();	
+	const FBaseStatRow* BaseStats = nullptr;
+	for (const TPair<FName, uint8*>& DataPair : TableToUse->GetRowMap())
+	{
+		BaseStats = TableToUse->FindRow<FBaseStatRow>(DataPair.Key,"");
+		if (BaseStats)
+		{
+			break;
+		}
+	}
+	if (BaseStats)
+	{
+		SetNumericAttributeBase(UCAP_AttributeSet::GetMaxHealthAttribute(), BaseStats->BaseMaxHealth);
+		SetNumericAttributeBase(UCAP_AttributeSet::GetHealthAttribute(), BaseStats->BaseMaxHealth);
+		SetNumericAttributeBase(UCAP_AttributeSet::GetPhysicalDamageAttribute(), BaseStats->BasePhysicalDamage);
+		SetNumericAttributeBase(UCAP_AttributeSet::GetPhysicalPenetrationAttribute(), BaseStats->BasePhysicalPenetration);
+		SetNumericAttributeBase(UCAP_AttributeSet::GetMagicalDamageAttribute(), BaseStats->BaseMagicalDamage);
+		SetNumericAttributeBase(UCAP_AttributeSet::GetMagicalPenetrationAttribute(), BaseStats->BaseMagicalPenetration);
+		SetNumericAttributeBase(UCAP_AttributeSet::GetPhysicalArmorAttribute(), BaseStats->BasePhysicalArmor);
+		SetNumericAttributeBase(UCAP_AttributeSet::GetMagicalArmorAttribute(), BaseStats->BaseMagicalArmor);
+		SetNumericAttributeBase(UCAP_AttributeSet::GetCriticalChanceAttribute(), BaseStats->BaseCriticalChance);
+		SetNumericAttributeBase(UCAP_AttributeSet::GetCriticalDamageAttribute(), BaseStats->BaseCriticalDamage);
+		SetNumericAttributeBase(UCAP_AttributeSet::GetMoveSpeedAttribute(), BaseStats->BaseMoveSpeed);
+	}
 }
 
 void UCAP_AbilitySystemComponent::GiveInitialAbilities()
@@ -67,6 +106,7 @@ void UCAP_AbilitySystemComponent::ApplyGameplayEffect(TSubclassOf<UGameplayEffec
 	if (GetOwner())
 	{
 		FGameplayEffectSpecHandle EffectSpecHandle = MakeOutgoingSpec(GameplayEffect, Level, MakeEffectContext());
+		ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
 	}
 }
 
@@ -77,28 +117,24 @@ void UCAP_AbilitySystemComponent::HealthUpdated(const FOnAttributeChangeData& Ch
 
 	bool bFound = false;
 	float MaxHealth = GetGameplayAttributeValue(UCAP_AttributeSet::GetMaxHealthAttribute(), bFound);
-	//변경된 HP값이 최대 체력보다 높을 경우
+
 	if (bFound && ChangeData.NewValue >= MaxHealth)
 	{
-		// 풀피 태그가 없었던 경우라면 풀피 태그 부여
-		if (!HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(/*체력 만땅 상태 태그*/"")))
+		if (!HasMatchingGameplayTag(UCAP_AbilitySystemStatics::GetHealthFullStatTag()))
 		{
-			AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(/*체력 만땅 상태 태그*/""));
+			AddLooseGameplayTag(UCAP_AbilitySystemStatics::GetHealthFullStatTag());
 		}
 	}
-	//변경된 HP값이 최대 체력보다 낮은 경우 풀피 태그 제거
 	else
 	{
-		RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(/*체력 만땅 상태 태그*/""));
+		RemoveLooseGameplayTag(UCAP_AbilitySystemStatics::GetHealthFullStatTag());
 	}
 
-	// 변경되는 HP값이 0보다 낮아지는 경우
 	if (ChangeData.NewValue <= 0.f)
 	{
-		// 죽었다는 태그가 없으면 죽음 태그 부여
-		if (!HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag(/*체력 빈 상태 태그*/"")))
+		if (!HasMatchingGameplayTag(UCAP_AbilitySystemStatics::GetHealthEmptyStatTag()))
 		{
-			AddLooseGameplayTag(FGameplayTag::RequestGameplayTag(/*체력 빈 상태 태그*/""));
+			AddLooseGameplayTag(UCAP_AbilitySystemStatics::GetHealthEmptyStatTag());
 		}
 		
 		if (AbilitySystemGenerics && AbilitySystemGenerics->GetDeathEffect())
@@ -108,10 +144,10 @@ void UCAP_AbilitySystemComponent::HealthUpdated(const FOnAttributeChangeData& Ch
 		FGameplayEventData DeadAbilityEventData;
 		if (ChangeData.GEModData)
 			DeadAbilityEventData.ContextHandle = ChangeData.GEModData->EffectSpec.GetContext();
-		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetOwner(), FGameplayTag::RequestGameplayTag(/*죽음태그*/""), DeadAbilityEventData);
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetOwner(), UCAP_AbilitySystemStatics::GetDeadStateTag(), DeadAbilityEventData);
 	}
 	else
 	{
-		RemoveLooseGameplayTag(FGameplayTag::RequestGameplayTag(""));
+		RemoveLooseGameplayTag(UCAP_AbilitySystemStatics::GetHealthEmptyStatTag());
 	}
 }

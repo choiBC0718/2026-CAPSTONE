@@ -3,3 +3,17 @@
 
 #include "GAS/Setting//CAP_AbilitySystemStatics.h"
 
+FGameplayTag UCAP_AbilitySystemStatics::GetHealthFullStatTag()
+{
+	return FGameplayTag::RequestGameplayTag("Stats.Health.Full");
+}
+
+FGameplayTag UCAP_AbilitySystemStatics::GetHealthEmptyStatTag()
+{
+	return FGameplayTag::RequestGameplayTag("Stats.Health.Empty");
+}
+
+FGameplayTag UCAP_AbilitySystemStatics::GetDeadStateTag()
+{
+	return FGameplayTag::RequestGameplayTag("State.Dead");
+}

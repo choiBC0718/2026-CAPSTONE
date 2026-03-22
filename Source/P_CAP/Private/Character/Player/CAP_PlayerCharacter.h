@@ -21,8 +21,13 @@ public:
 	virtual void PawnClientRestart() override;
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+	virtual void BeginPlay() override;
 
-
+	UFUNCTION()
+	void PickupWeapon(class UCAP_WeaponDataAsset* NewWeaponDA);
+	void SwapWeapon();
+	
+	void SetNearbyInteractable(AActor* NewInteractable) {InteractableActor = NewInteractable;}
 private:
 	/**		Components		**/
 	UPROPERTY(VisibleAnywhere, Category="View")
@@ -36,6 +41,10 @@ private:
 	class UInputMappingContext* GameplayIMC;
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	class UInputAction* MoveIA;
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	class UInputAction* SwapIA;
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	class UInputAction* InteractIA;
 
 	UPROPERTY(EditDefaultsOnly, Category="Input|Ability")
 	TMap<EAbilityInputID, class UInputAction*> AbilityInputActions;
@@ -45,4 +54,16 @@ private:
 	FVector GetMoveRightDir();
 	void MoveInputHandle(const FInputActionValue& InputActionValue);
 	void AbilityInputHandle(const FInputActionValue& InputActionValue, EAbilityInputID AbilityInputID);
+	void InteractInputHandle(const FInputActionValue& InputActionValue);
+
+protected:
+	UPROPERTY(EditDefaultsOnly, Category="Weapon")
+	class UCAP_WeaponDataAsset* DefaultBasicWeapon;
+	UPROPERTY(EditDefaultsOnly, Category="Weapon")
+	TArray<class UCAP_WeaponDataAsset*> EquippedWeapons;
+	UPROPERTY()
+	int32 CurrentWeaponIndex = 0;
+
+	UPROPERTY()
+	AActor* InteractableActor;
 };

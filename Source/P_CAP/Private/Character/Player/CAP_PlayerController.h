@@ -20,4 +20,11 @@ public:
 private:
 	UPROPERTY()
 	class ACAP_PlayerCharacter* PlayerCharacter;
+	
+	UPROPERTY(EditDefaultsOnly, Category="UI")
+	TSubclassOf<class UCAP_GameplayWidget> GameplayWidgetClass;
+	UPROPERTY()
+	class UCAP_GameplayWidget* GameplayWidget;
+	
+	void SpawnGameplayWidget();
 };

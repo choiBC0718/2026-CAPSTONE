@@ -4,23 +4,28 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Interface/CAP_InteractInterface.h"
 #include "CAP_WeaponBase.generated.h"
 
 UCLASS()
-class ACAP_WeaponBase : public AActor
+class ACAP_WeaponBase : public AActor, public ICAP_InteractInterface
 {
 	GENERATED_BODY()
 	
 public:	
-	// Sets default values for this actor's properties
 	ACAP_WeaponBase();
-
-protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	virtual void Interact(class ACAP_PlayerCharacter* PlayerCharacter) override;
 
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
+	UPROPERTY(EditDefaultsOnly, Category="Weapon Data")
+	class UCAP_WeaponDataAsset* WeaponDA;
+	
+protected:
+	UPROPERTY(VisibleAnywhere, Category="Interaction")
+	class USphereComponent* InteractionSphere;
+	
+	UFUNCTION()
+	void OnInteractSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,const FHitResult& SweepResult);
+	UFUNCTION()
+	void OnInteractSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 };
