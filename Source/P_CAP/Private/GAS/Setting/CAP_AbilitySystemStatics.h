@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "CAP_AbilitySystemStatics.generated.h"
 
@@ -13,5 +14,9 @@ UCLASS()
 class UCAP_AbilitySystemStatics : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
-	
+
+public:
+	static FGameplayTag GetHealthFullStatTag();
+	static FGameplayTag GetHealthEmptyStatTag();
+	static FGameplayTag GetDeadStateTag();
 };

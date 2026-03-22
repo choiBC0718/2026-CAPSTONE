@@ -3,25 +3,54 @@
 
 #include "Weapon/CAP_WeaponBase.h"
 
-// Sets default values
+#include "Character/Player/CAP_PlayerCharacter.h"
+#include "Components/SphereComponent.h"
+
 ACAP_WeaponBase::ACAP_WeaponBase()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
+	InteractionSphere = CreateDefaultSubobject<USphereComponent>("Interaction Collision Component");
+	SetRootComponent(InteractionSphere);
 }
 
-// Called when the game starts or when spawned
+
 void ACAP_WeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &ACAP_WeaponBase::OnInteractSphereOverlap);
+	InteractionSphere->OnComponentEndOverlap.AddDynamic(this, &ACAP_WeaponBase::OnInteractSphereEndOverlap);
 }
 
-// Called every frame
-void ACAP_WeaponBase::Tick(float DeltaTime)
+void ACAP_WeaponBase::Interact(class ACAP_PlayerCharacter* PlayerCharacter)
 {
-	Super::Tick(DeltaTime);
+	if (PlayerCharacter && WeaponDA)
+	{
+		PlayerCharacter->PickupWeapon(WeaponDA);
+		Destroy();
+	}
+}
 
+void ACAP_WeaponBase::OnInteractSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+                                              UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	ACAP_PlayerCharacter* PlayerCharacter = Cast<ACAP_PlayerCharacter>(OtherActor);
+	if (PlayerCharacter)
+	{
+		PlayerCharacter->SetNearbyInteractable(this);
+		ShowInterfaceWidget();
+	}
+}
+
+void ACAP_WeaponBase::OnInteractSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	ACAP_PlayerCharacter* PlayerCharacter = Cast<ACAP_PlayerCharacter>(OtherActor);
+	if (PlayerCharacter)
+	{
+		PlayerCharacter->SetNearbyInteractable(nullptr);
+		HideInterfaceWidget();
+	}
 }
 
