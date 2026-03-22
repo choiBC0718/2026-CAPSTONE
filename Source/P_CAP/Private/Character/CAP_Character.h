@@ -3,17 +3,17 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AbilitySystemInterface.h"
 #include "GameFramework/Character.h"
 #include "CAP_Character.generated.h"
 
 UCLASS()
-class ACAP_Character : public ACharacter
+class ACAP_Character : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
 	ACAP_Character();
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 private:
 	/**		Components		**/
@@ -23,5 +23,5 @@ private:
 	class UCAP_AttributeSet* CAPAttributeSet;
 
 protected:
-	UCAP_AbilitySystemComponent* GetAbilitySystemComponent() const;
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 };

@@ -13,5 +13,18 @@ UCLASS()
 class ACAP_PlayerController : public APlayerController
 {
 	GENERATED_BODY()
+
+public:
+	virtual void OnPossess(APawn* InPawn) override;
+
+private:
+	UPROPERTY()
+	class ACAP_PlayerCharacter* PlayerCharacter;
 	
+	UPROPERTY(EditDefaultsOnly, Category="UI")
+	TSubclassOf<class UCAP_GameplayWidget> GameplayWidgetClass;
+	UPROPERTY()
+	class UCAP_GameplayWidget* GameplayWidget;
+	
+	void SpawnGameplayWidget();
 };
