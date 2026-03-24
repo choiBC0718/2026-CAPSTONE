@@ -3,6 +3,7 @@
 
 #include "Character/Player/CAP_PlayerCharacter.h"
 
+#include "CAP_PlayerController.h"
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
@@ -74,7 +75,11 @@ void ACAP_PlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		EnhancedInputComp->BindAction(MoveIA, ETriggerEvent::Completed, this, &ACAP_PlayerCharacter::MoveInputHandle);
 		EnhancedInputComp->BindAction(MoveIA, ETriggerEvent::Canceled, this, &ACAP_PlayerCharacter::MoveInputHandle);
 		EnhancedInputComp->BindAction(SwapIA, ETriggerEvent::Started, this, &ACAP_PlayerCharacter::SwapWeapon);
-		EnhancedInputComp->BindAction(InteractIA, ETriggerEvent::Started, this, &ACAP_PlayerCharacter::InteractInputHandle);
+		
+		EnhancedInputComp->BindAction(InteractIA, ETriggerEvent::Ongoing, this, &ACAP_PlayerCharacter::InteractInputHandle);
+		EnhancedInputComp->BindAction(InteractIA, ETriggerEvent::Triggered, this, &ACAP_PlayerCharacter::InteractInputHandle);
+		EnhancedInputComp->BindAction(InteractIA, ETriggerEvent::Completed, this, &ACAP_PlayerCharacter::InteractInputHandle);
+		EnhancedInputComp->BindAction(InteractIA, ETriggerEvent::Canceled, this, &ACAP_PlayerCharacter::InteractInputHandle);
 		
 		for (const TPair<EAbilityInputID, UInputAction*> InputActionPair : AbilityInputActions)
 		{
@@ -120,15 +125,19 @@ void ACAP_PlayerCharacter::PickupWeapon(class UCAP_WeaponDataAsset* NewWeaponDA)
 		EquippedWeapons[EmptySlotIndex] = NewWeaponDA;
 		CurrentWeaponIndex = EmptySlotIndex;
 		//새로 장착한 무기 스킬 부여 & 메쉬 변경
+
+		UE_LOG(LogTemp, Warning, TEXT("빈자리에 무기 바로 장착"));
 	}
 	else
 	{//빈 슬롯이 없는 상태에서 무기를 주웠다면
 		UCAP_WeaponDataAsset* WeaponToDrop = EquippedWeapons[CurrentWeaponIndex];
 		if (WeaponToDrop)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("빈자리없어서 무기 드랍"));
 			//무기 액터 월드에 스폰 (떨어뜨리는 로직)
 			//해당 무기 스킬 제거
 		}
+		UE_LOG(LogTemp, Warning, TEXT("버린 무기 자리에 무기 장착"));
 		EquippedWeapons[CurrentWeaponIndex] = NewWeaponDA;
 
 		//주운 새로운 무기 스킬 부여
@@ -144,6 +153,39 @@ void ACAP_PlayerCharacter::SwapWeapon()
 	CurrentWeaponIndex = NextIndex;
 	// 제거된 무기의 스킬 제거
 	// 변경된 무기의 스킬 부여
+}
+
+void ACAP_PlayerCharacter::UpdateInteractUI(bool bVisible)
+{
+	ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(GetController());
+	if (!PC)
+		return;
+
+	FString CurrentKeyName = "F";
+	if (bVisible && InteractIA)
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		{
+			// 해당 입력 액션(InteractIA)에 맵핑된 키들을 쿼리합니다.
+			TArray<FKey> MappedKeys = Subsystem->QueryKeysMappedToAction(InteractIA);
+			if (MappedKeys.Num() > 0)
+			{
+				// 첫 번째로 맵핑된 키의 화면 표시 이름(예: "E", "Space Bar", "Left Mouse Button")을 가져옵니다.
+				CurrentKeyName = MappedKeys[0].GetDisplayName().ToString();
+			}
+		}
+	}
+	PC->SetInteractUIVisibility(bVisible, CurrentKeyName);
+	
+}
+
+void ACAP_PlayerCharacter::UpdateInteractProgress(float Progress)
+{
+	ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(GetController());
+	if (PC)
+	{
+		PC->UpdateInteractProgressUI(Progress);
+	}
 }
 
 FVector ACAP_PlayerCharacter::GetMoveForwardDir()
@@ -185,14 +227,39 @@ void ACAP_PlayerCharacter::AbilityInputHandle(const FInputActionValue& InputActi
 	}
 }
 
-void ACAP_PlayerCharacter::InteractInputHandle(const FInputActionValue& InputActionValue)
+void ACAP_PlayerCharacter::InteractInputHandle(const FInputActionInstance& Instance)
 {
-	if (InteractableActor)
+	ETriggerEvent TriggerEvent = Instance.GetTriggerEvent();
+	float ElapsedTime = Instance.GetElapsedTime();
+	float HoldDuration = 1.f;
+	
+	if (TriggerEvent == ETriggerEvent::Ongoing)
 	{
-		ICAP_InteractInterface* InteractableObj = Cast<ICAP_InteractInterface>(InteractableActor);
-		if (InteractableObj)
+		float Progress = FMath::Clamp(ElapsedTime / HoldDuration, 0.0f, 1.0f);
+		UpdateInteractProgress(Progress);
+	}
+	else if (TriggerEvent == ETriggerEvent::Triggered)
+	{
+		if (InteractableActor)
 		{
-			InteractableObj->Interact(this);
+			ICAP_InteractInterface* InteractableObj = Cast<ICAP_InteractInterface>(InteractableActor);
+			if (InteractableObj)
+			{
+				InteractableObj->InteractDisassemble(this);
+			}
+			UpdateInteractProgress(0.f);
 		}
+	}
+	else if (TriggerEvent == ETriggerEvent::Completed || TriggerEvent == ETriggerEvent::Canceled)
+	{
+		if (ElapsedTime < 0.5f && InteractableActor)
+		{
+			ICAP_InteractInterface* InteractableObj = Cast<ICAP_InteractInterface>(InteractableActor);
+			if (InteractableObj)
+			{
+				InteractableObj->InteractEquip(this);
+			}
+		}
+		UpdateInteractProgress(0.f);
 	}
 }

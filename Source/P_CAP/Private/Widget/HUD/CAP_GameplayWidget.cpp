@@ -17,4 +17,8 @@ void UCAP_GameplayWidget::NativeConstruct()
 	{
 		HealthBar->SetAndBoundToGameplayAttribute(OwnerASC, UCAP_AttributeSet::GetHealthAttribute(), UCAP_AttributeSet::GetMaxHealthAttribute());
 	}
+	if (InteractionWidget)
+	{
+		InteractionWidget->SetVisibility(ESlateVisibility::Hidden);
+	}
 }

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Widget/Common/CAP_ItemInteraction.h"
 #include "CAP_GameplayWidget.generated.h"
 
 /**
@@ -17,8 +18,11 @@ class UCAP_GameplayWidget : public UUserWidget
 public:
 	virtual void NativeConstruct() override;
 
-
+	FORCEINLINE UCAP_ItemInteraction* GetInteractionWidget() const {return InteractionWidget;}
+	
 protected:
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_ValueGauge* HealthBar;
+	UPROPERTY(meta = (BindWidget))
+	class UCAP_ItemInteraction* InteractionWidget;
 };

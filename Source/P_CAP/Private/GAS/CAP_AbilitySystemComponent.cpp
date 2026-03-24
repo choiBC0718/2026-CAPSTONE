@@ -66,7 +66,6 @@ void UCAP_AbilitySystemComponent::InitializeBaseAttribute()
 	if (BaseStats)
 	{
 		SetNumericAttributeBase(UCAP_AttributeSet::GetMaxHealthAttribute(), BaseStats->BaseMaxHealth);
-		SetNumericAttributeBase(UCAP_AttributeSet::GetHealthAttribute(), BaseStats->BaseMaxHealth);
 		SetNumericAttributeBase(UCAP_AttributeSet::GetPhysicalDamageAttribute(), BaseStats->BasePhysicalDamage);
 		SetNumericAttributeBase(UCAP_AttributeSet::GetPhysicalPenetrationAttribute(), BaseStats->BasePhysicalPenetration);
 		SetNumericAttributeBase(UCAP_AttributeSet::GetMagicalDamageAttribute(), BaseStats->BaseMagicalDamage);

@@ -21,7 +21,6 @@ class ICAP_InteractInterface
 	GENERATED_BODY()
 
 public:
-	virtual void Interact(class ACAP_PlayerCharacter* PlayerCharacter) =0;
-	virtual void ShowInterfaceWidget() {};
-	virtual void HideInterfaceWidget() {};
+	virtual void InteractEquip(class ACAP_PlayerCharacter* PlayerCharacter) =0;
+	virtual void InteractDisassemble(class ACAP_PlayerCharacter* PlayerCharacter) =0;
 };

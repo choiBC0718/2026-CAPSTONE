@@ -17,6 +17,9 @@ class ACAP_PlayerController : public APlayerController
 public:
 	virtual void OnPossess(APawn* InPawn) override;
 
+	void SetInteractUIVisibility(bool bVisible, const FString& KeyName);
+	void UpdateInteractProgressUI(float Progress);
+	
 private:
 	UPROPERTY()
 	class ACAP_PlayerCharacter* PlayerCharacter;

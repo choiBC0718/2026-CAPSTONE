@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InputAction.h"
 #include "InputActionValue.h"
 #include "Character/CAP_Character.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
@@ -28,6 +29,9 @@ public:
 	void SwapWeapon();
 	
 	void SetNearbyInteractable(AActor* NewInteractable) {InteractableActor = NewInteractable;}
+	void UpdateInteractUI(bool bVisible);
+	void UpdateInteractProgress(float Progress);
+	
 private:
 	/**		Components		**/
 	UPROPERTY(VisibleAnywhere, Category="View")
@@ -54,7 +58,7 @@ private:
 	FVector GetMoveRightDir();
 	void MoveInputHandle(const FInputActionValue& InputActionValue);
 	void AbilityInputHandle(const FInputActionValue& InputActionValue, EAbilityInputID AbilityInputID);
-	void InteractInputHandle(const FInputActionValue& InputActionValue);
+	void InteractInputHandle(const FInputActionInstance& Instance);
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category="Weapon")

@@ -23,13 +23,20 @@ void ACAP_WeaponBase::BeginPlay()
 	InteractionSphere->OnComponentEndOverlap.AddDynamic(this, &ACAP_WeaponBase::OnInteractSphereEndOverlap);
 }
 
-void ACAP_WeaponBase::Interact(class ACAP_PlayerCharacter* PlayerCharacter)
+void ACAP_WeaponBase::InteractEquip(class ACAP_PlayerCharacter* PlayerCharacter)
 {
 	if (PlayerCharacter && WeaponDA)
 	{
 		PlayerCharacter->PickupWeapon(WeaponDA);
+		UE_LOG(LogTemp, Warning, TEXT("아이템 장착"));
 		Destroy();
 	}
+}
+
+void ACAP_WeaponBase::InteractDisassemble(class ACAP_PlayerCharacter* PlayerCharacter)
+{
+	UE_LOG(LogTemp, Warning, TEXT("아이템 분해"));
+	Destroy();
 }
 
 void ACAP_WeaponBase::OnInteractSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
@@ -39,7 +46,7 @@ void ACAP_WeaponBase::OnInteractSphereOverlap(UPrimitiveComponent* OverlappedCom
 	if (PlayerCharacter)
 	{
 		PlayerCharacter->SetNearbyInteractable(this);
-		ShowInterfaceWidget();
+		PlayerCharacter->UpdateInteractUI(true);
 	}
 }
 
@@ -50,7 +57,7 @@ void ACAP_WeaponBase::OnInteractSphereEndOverlap(UPrimitiveComponent* Overlapped
 	if (PlayerCharacter)
 	{
 		PlayerCharacter->SetNearbyInteractable(nullptr);
-		HideInterfaceWidget();
+		PlayerCharacter->UpdateInteractUI(false);
 	}
 }
 

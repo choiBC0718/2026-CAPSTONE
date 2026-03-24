@@ -15,7 +15,9 @@ class ACAP_WeaponBase : public AActor, public ICAP_InteractInterface
 public:	
 	ACAP_WeaponBase();
 	virtual void BeginPlay() override;
-	virtual void Interact(class ACAP_PlayerCharacter* PlayerCharacter) override;
+	
+	virtual void InteractEquip(class ACAP_PlayerCharacter* PlayerCharacter) override;
+	virtual void InteractDisassemble(class ACAP_PlayerCharacter* PlayerCharacter) override;
 
 	UPROPERTY(EditDefaultsOnly, Category="Weapon Data")
 	class UCAP_WeaponDataAsset* WeaponDA;
