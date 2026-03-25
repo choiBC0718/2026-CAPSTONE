@@ -6,6 +6,15 @@
 #include "Blueprint/UserWidget.h"
 #include "CAP_ItemInteraction.generated.h"
 
+USTRUCT(BlueprintType)
+struct FKeyIconRow : public FTableRowBase
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UTexture2D* Icon = nullptr;
+};
+
 /**
  * 
  */
@@ -21,14 +30,23 @@ public:
 	void SetInteractKeyText(const FString& KeyName);
 	
 private:
-
+	UPROPERTY(meta = (BindWidget))
+	class UImage* EquipIconImg;
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* EquipText;
+	
+	UPROPERTY(meta = (BindWidget))
+	class UImage* DisassembleIconImg;
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* DisassembleText;
+	UPROPERTY(meta = (BindWidget))
+	class UProgressBar* ProgressBar;
 	UPROPERTY(meta = (BindWidget))
 	class UImage* InteractProgressImage;
-	UPROPERTY(meta = (BindWidget))
-	class UTextBlock* InteractText;
-	UPROPERTY(meta = (BindWidget))
-	class UTextBlock* KeyText;
 
 	UPROPERTY()
 	class UMaterialInstanceDynamic* ProgressMID;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Data")
+	class UDataTable* KeyIconDataTable;
 };

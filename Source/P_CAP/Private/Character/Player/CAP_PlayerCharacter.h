@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayAbilitySpecHandle.h"
 #include "InputAction.h"
 #include "InputActionValue.h"
 #include "Character/CAP_Character.h"
@@ -34,6 +35,10 @@ public:
 	
 private:
 	/**		Components		**/
+	UPROPERTY(VisibleAnywhere, Category="Weapon")
+	class UStaticMeshComponent* WeaponMesh_R;
+	UPROPERTY(VisibleAnywhere, Category="Weapon")
+	class UStaticMeshComponent* WeaponMesh_L;
 	UPROPERTY(VisibleAnywhere, Category="View")
 	class USpringArmComponent* SpringArm;
 	UPROPERTY(VisibleAnywhere, Category="View")
@@ -70,4 +75,10 @@ protected:
 
 	UPROPERTY()
 	AActor* InteractableActor;
+
+	UPROPERTY()
+	TArray<FGameplayAbilitySpecHandle> CurrentWeaponAbilityHandles;
+
+	void ApplyWeaponData(class UCAP_WeaponDataAsset* WeaponDA);
+	void ClearCurrentWeaponData();
 };

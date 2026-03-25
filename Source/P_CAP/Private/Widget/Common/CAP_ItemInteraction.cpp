@@ -4,7 +4,8 @@
 #include "Widget/Common/CAP_ItemInteraction.h"
 
 #include "Components/Image.h"
-#include "Components/TextBlock.h"
+#include "Components/ProgressBar.h"
+#include "Components/WidgetComponent.h"
 
 
 void UCAP_ItemInteraction::NativeConstruct()
@@ -28,16 +29,36 @@ void UCAP_ItemInteraction::SetInteractionUIVisibility(bool bVisible)
 
 void UCAP_ItemInteraction::UpdateInteractProgress(float Progress)
 {
+	/*
 	if (ProgressMID)
 	{
 		ProgressMID->SetScalarParameterValue(FName("Percent"), Progress);
+	}
+	*/
+	if (ProgressBar)
+	{
+		ProgressBar->SetPercent(Progress);
 	}
 }
 
 void UCAP_ItemInteraction::SetInteractKeyText(const FString& KeyName)
 {
-	if (KeyText)
+	if (KeyIconDataTable)
 	{
-		KeyText->SetText(FText::FromString(KeyName));
+		FName RowName = FName(*KeyName);
+		FKeyIconRow* Row = KeyIconDataTable->FindRow<FKeyIconRow>(RowName,"");
+		if (Row && Row->Icon)
+		{
+			if (EquipIconImg)
+			{
+				EquipIconImg->SetBrushFromTexture(Row->Icon);
+				EquipIconImg->SetVisibility(ESlateVisibility::Visible);
+			}
+			if (DisassembleIconImg)
+			{
+				DisassembleIconImg->SetBrushFromTexture(Row->Icon);
+				DisassembleIconImg->SetVisibility(ESlateVisibility::Visible);
+			}
+		}
 	}
 }

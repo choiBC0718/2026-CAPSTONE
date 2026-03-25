@@ -16,6 +16,12 @@ enum class EWeaponAnimType : uint8
 	Shield			UMETA(DisplayName = "방패"),
 };
 UENUM(BlueprintType)
+enum class EEquipHand : uint8
+{
+	Right			UMETA(DisplayName = "오른손"),
+	Left			UMETA(DisplayName = "왼손")
+};
+UENUM(BlueprintType)
 enum class EWeaponGrade : uint8
 {
 	Normal			UMETA(DisplayName = "일반"),
@@ -24,6 +30,23 @@ enum class EWeaponGrade : uint8
 	Legendary		UMETA(DisplayName = "레전더리")
 };
 
+USTRUCT(BlueprintType)
+struct FWeaponVisualInfo
+{
+	GENERATED_BODY()
+
+	/**캐릭터에 부착시킬 메시*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UStaticMesh* WeaponMesh = nullptr;
+	/**어느 소켓에 부착시킬 지*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName EquipSocketName = NAME_None;
+	/**부착 Transform*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FTransform EquipTransform = FTransform();
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EEquipHand EquipHand = EEquipHand::Right;
+};
 
 /**
  * 
@@ -49,13 +72,8 @@ public:
 	/** 장착 할 무기 액터 클래스 */
 	UPROPERTY(EditDefaultsOnly, Category="Visual")
 	TSubclassOf<class ACAP_WeaponBase> WeaponClass;
-	/** 장착 할 소켓 이름 */
 	UPROPERTY(EditDefaultsOnly, Category="Visual")
-	FName EquipSocketName = NAME_None;
-	/** 소켓에서의 오프셋 */
-	UPROPERTY(EditDefaultsOnly, Category="Visual")
-	FTransform EquipTransform;
-	
+	TArray<FWeaponVisualInfo> WeaponVisualInfos;
 
 	/** 무기의 기본 공격 */
 	UPROPERTY(EditDefaultsOnly, Category="Ability")

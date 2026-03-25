@@ -11,7 +11,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
+#include "GAS/Ability/CAP_GameplayAbility.h"
 #include "Interface/CAP_InteractInterface.h"
+#include "Weapon/CAP_WeaponBase.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 {
@@ -24,6 +26,14 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 	Camera = CreateDefaultSubobject<UCameraComponent>("Camera Comp");
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 
+	WeaponMesh_R = CreateDefaultSubobject<UStaticMeshComponent>("WeaponMesh_R");
+	WeaponMesh_R->SetupAttachment(GetMesh());
+	WeaponMesh_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	WeaponMesh_L = CreateDefaultSubobject<UStaticMeshComponent>("WeaponMesh_L");
+	WeaponMesh_L->SetupAttachment(GetMesh());
+	WeaponMesh_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 }
@@ -98,11 +108,10 @@ void ACAP_PlayerCharacter::BeginPlay()
 	if (DefaultBasicWeapon)
 	{
 		EquippedWeapons[0] = DefaultBasicWeapon;
+		ApplyWeaponData(DefaultBasicWeapon);
 	}
 	EquippedWeapons[1] = nullptr;
 	CurrentWeaponIndex = 0;
-
-	// EquipedWeapons[0]의 스킬 부여
 }
 
 void ACAP_PlayerCharacter::PickupWeapon(class UCAP_WeaponDataAsset* NewWeaponDA)
@@ -124,23 +133,29 @@ void ACAP_PlayerCharacter::PickupWeapon(class UCAP_WeaponDataAsset* NewWeaponDA)
 	{	//빈 슬롯에 무기 착용 후 바로 장착
 		EquippedWeapons[EmptySlotIndex] = NewWeaponDA;
 		CurrentWeaponIndex = EmptySlotIndex;
-		//새로 장착한 무기 스킬 부여 & 메쉬 변경
 
-		UE_LOG(LogTemp, Warning, TEXT("빈자리에 무기 바로 장착"));
+		ApplyWeaponData(NewWeaponDA);
 	}
 	else
 	{//빈 슬롯이 없는 상태에서 무기를 주웠다면
 		UCAP_WeaponDataAsset* WeaponToDrop = EquippedWeapons[CurrentWeaponIndex];
 		if (WeaponToDrop)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("빈자리없어서 무기 드랍"));
-			//무기 액터 월드에 스폰 (떨어뜨리는 로직)
-			//해당 무기 스킬 제거
-		}
-		UE_LOG(LogTemp, Warning, TEXT("버린 무기 자리에 무기 장착"));
-		EquippedWeapons[CurrentWeaponIndex] = NewWeaponDA;
+			FVector DropLocation = GetActorLocation() + (GetActorForwardVector() * 100.f);
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+			
 
-		//주운 새로운 무기 스킬 부여
+			ACAP_WeaponBase* DroppedWeapon = GetWorld()->SpawnActor<ACAP_WeaponBase>(WeaponToDrop->WeaponClass, DropLocation, FRotator::ZeroRotator, SpawnParams);
+			if (DroppedWeapon)
+			{
+				DroppedWeapon->WeaponDA = WeaponToDrop;
+				DroppedWeapon->OnConstruction(DroppedWeapon->GetTransform());
+			}
+		}
+
+		EquippedWeapons[CurrentWeaponIndex] = NewWeaponDA;
+		ApplyWeaponData(NewWeaponDA);
 	}
 }
 
@@ -151,8 +166,7 @@ void ACAP_PlayerCharacter::SwapWeapon()
 		return;
 
 	CurrentWeaponIndex = NextIndex;
-	// 제거된 무기의 스킬 제거
-	// 변경된 무기의 스킬 부여
+	ApplyWeaponData(EquippedWeapons[CurrentWeaponIndex]);
 }
 
 void ACAP_PlayerCharacter::UpdateInteractUI(bool bVisible)
@@ -166,11 +180,9 @@ void ACAP_PlayerCharacter::UpdateInteractUI(bool bVisible)
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
 		{
-			// 해당 입력 액션(InteractIA)에 맵핑된 키들을 쿼리합니다.
 			TArray<FKey> MappedKeys = Subsystem->QueryKeysMappedToAction(InteractIA);
 			if (MappedKeys.Num() > 0)
 			{
-				// 첫 번째로 맵핑된 키의 화면 표시 이름(예: "E", "Space Bar", "Left Mouse Button")을 가져옵니다.
 				CurrentKeyName = MappedKeys[0].GetDisplayName().ToString();
 			}
 		}
@@ -262,4 +274,63 @@ void ACAP_PlayerCharacter::InteractInputHandle(const FInputActionInstance& Insta
 		}
 		UpdateInteractProgress(0.f);
 	}
+}
+
+void ACAP_PlayerCharacter::ApplyWeaponData(class UCAP_WeaponDataAsset* WeaponDA)
+{
+	ClearCurrentWeaponData();
+	if (!WeaponDA)
+		return;
+
+	for (const FWeaponVisualInfo& VisualInfo : WeaponDA->WeaponVisualInfos)
+	{
+		if (VisualInfo.EquipHand == EEquipHand::Left)
+		{
+			WeaponMesh_L->SetStaticMesh(VisualInfo.WeaponMesh);
+			WeaponMesh_L->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, VisualInfo.EquipSocketName);
+			WeaponMesh_L->SetRelativeTransform(VisualInfo.EquipTransform);
+		}
+		else
+		{
+			WeaponMesh_R->SetStaticMesh(VisualInfo.WeaponMesh);
+			WeaponMesh_R->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, VisualInfo.EquipSocketName);
+			WeaponMesh_R->SetRelativeTransform(VisualInfo.EquipTransform);
+		}
+	}
+
+	UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent());
+	if (ASC)
+	{
+		if (WeaponDA->BasicAttack.LoadSynchronous())
+		{
+			FGameplayAbilitySpec Spec(WeaponDA->BasicAttack.Get(), 1, static_cast<int32>(EAbilityInputID::BasicAttack));
+			CurrentWeaponAbilityHandles.Add(ASC->GiveAbility(Spec));
+		}
+		// 액티브 스킬 배열 부여 (스킬 슬롯 규칙에 맞춰 InputID 맵핑 필요)
+		int32 SkillInputIndex = static_cast<int32>(EAbilityInputID::Skill1);
+		for (auto& SkillClass : WeaponDA->ActiveSkillArray)
+		{
+			if (SkillClass.LoadSynchronous())
+			{
+				FGameplayAbilitySpec Spec(SkillClass.Get(), 1, SkillInputIndex++, this);
+				CurrentWeaponAbilityHandles.Add(ASC->GiveAbility(Spec));
+			}
+		}
+	}
+}
+
+void ACAP_PlayerCharacter::ClearCurrentWeaponData()
+{
+	WeaponMesh_R->SetStaticMesh(nullptr);
+	WeaponMesh_L->SetStaticMesh(nullptr);
+	
+	UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent());
+	if (ASC)
+	{
+		for (const FGameplayAbilitySpecHandle& Handle : CurrentWeaponAbilityHandles)
+		{
+			ASC->ClearAbility(Handle);
+		}
+	}
+	CurrentWeaponAbilityHandles.Empty();
 }
