@@ -24,4 +24,7 @@ private:
 
 protected:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	UPROPERTY(EditDefaultsOnly, Category="Stat")
+	FName CharacterStatRowName = "Player";
 };

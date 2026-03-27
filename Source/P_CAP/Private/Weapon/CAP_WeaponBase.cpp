@@ -3,6 +3,7 @@
 
 #include "Weapon/CAP_WeaponBase.h"
 
+#include "CAP_WeaponInstance.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Data/CAP_WeaponDataAsset.h"
@@ -39,21 +40,37 @@ ACAP_WeaponBase::ACAP_WeaponBase()
 void ACAP_WeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
-
 	InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &ACAP_WeaponBase::OnInteractSphereOverlap);
 	InteractionSphere->OnComponentEndOverlap.AddDynamic(this, &ACAP_WeaponBase::OnInteractSphereEndOverlap);
+
+	// 데이터 에셋(설계도)를 가지고 Instance(같은 무기더라도 다른 데이터를 가진) 생성
+	if (!WeaponInstance && WeaponDA)
+	{
+		WeaponInstance = NewObject<UCAP_WeaponInstance>(this);
+		WeaponInstance->InitializeWeapon(WeaponDA);
+	}
 }
 
 void ACAP_WeaponBase::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-	
+
 	WeaponMesh_R->SetStaticMesh(nullptr);
 	WeaponMesh_L->SetStaticMesh(nullptr);
-	
-	if (WeaponDA)
+
+	UCAP_WeaponDataAsset* DAToUse = nullptr;
+	// 생성된 Instance가 있다면 그 Instance를 만들 때 사용한 DA 이용
+	if (WeaponInstance && WeaponInstance->GetWeaponDA())
 	{
-		for (const FWeaponVisualInfo& VisualInfo : WeaponDA->WeaponVisualInfos)
+		DAToUse = WeaponInstance->GetWeaponDA();
+	}// Instance없다면 그냥 설정한 DA 이용
+	else if (WeaponDA){
+		DAToUse = WeaponDA;
+	}
+
+	if (DAToUse)
+	{
+		for (const FWeaponVisualInfo& VisualInfo : DAToUse->WeaponVisualInfos)
 		{
 			if (VisualInfo.EquipHand == EEquipHand::Left)
 			{
@@ -80,9 +97,9 @@ void ACAP_WeaponBase::Tick(float DeltaTime)
 
 void ACAP_WeaponBase::InteractEquip(class ACAP_PlayerCharacter* PlayerCharacter)
 {
-	if (PlayerCharacter && WeaponDA)
+	if (PlayerCharacter && WeaponInstance)
 	{
-		PlayerCharacter->PickupWeapon(WeaponDA);
+		PlayerCharacter->PickupWeapon(WeaponInstance);
 		Destroy();
 	}
 }

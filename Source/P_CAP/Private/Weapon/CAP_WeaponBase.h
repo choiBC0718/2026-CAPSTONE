@@ -24,6 +24,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="Weapon Data")
 	class UCAP_WeaponDataAsset* WeaponDA;
 	
+	UPROPERTY(BlueprintReadWrite,Category="Weapon Data", meta=(ExposeOnSpawn="true"))
+	class UCAP_WeaponInstance* WeaponInstance;
+	
 protected:
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class USceneComponent* RootComp;

@@ -14,6 +14,7 @@
 #include "GAS/Ability/CAP_GameplayAbility.h"
 #include "Interface/CAP_InteractInterface.h"
 #include "Weapon/CAP_WeaponBase.h"
+#include "Weapon/CAP_WeaponInstance.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 {
@@ -29,10 +30,12 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 	WeaponMesh_R = CreateDefaultSubobject<UStaticMeshComponent>("WeaponMesh_R");
 	WeaponMesh_R->SetupAttachment(GetMesh());
 	WeaponMesh_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	WeaponMesh_R->ComponentTags.Add("RightHand");
 
 	WeaponMesh_L = CreateDefaultSubobject<UStaticMeshComponent>("WeaponMesh_L");
 	WeaponMesh_L->SetupAttachment(GetMesh());
 	WeaponMesh_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	WeaponMesh_L->ComponentTags.Add("LeftHand");
 	
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
@@ -70,7 +73,7 @@ void ACAP_PlayerCharacter::PossessedBy(AController* NewController)
 	if (ASC)
 	{
 		ASC->InitAbilityActorInfo(this,this);
-		ASC->InitComponent();
+		ASC->InitComponent(CharacterStatRowName);
 	}
 }
 
@@ -105,23 +108,27 @@ void ACAP_PlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 	EquippedWeapons.SetNum(2);
 
+	//TODO 스테이지 넘어갈 때 기본무기 장착하는 로직 제외
 	if (DefaultBasicWeapon)
 	{
-		EquippedWeapons[0] = DefaultBasicWeapon;
-		ApplyWeaponData(DefaultBasicWeapon);
+		UCAP_WeaponInstance* BasicWeapon = NewObject<UCAP_WeaponInstance>(this);
+		BasicWeapon->InitializeWeapon(DefaultBasicWeapon);
+
+		EquippedWeapons[0] = BasicWeapon;
+		ApplyWeaponData(BasicWeapon);
 	}
 	EquippedWeapons[1] = nullptr;
 	CurrentWeaponIndex = 0;
 }
 
-void ACAP_PlayerCharacter::PickupWeapon(class UCAP_WeaponDataAsset* NewWeaponDA)
+void ACAP_PlayerCharacter::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInstance)
 {
-	if (!NewWeaponDA)
+	if (!NewWeaponInstance)
 		return;
 
 	int32 EmptySlotIndex = INDEX_NONE;
 	for (int32 i=0; i<EquippedWeapons.Num() ; ++i)
-	{	//빈 무기 슬롯 체크
+	{	//빈 무기 슬롯이 있다면 그 슬롯의 인덱스 가져와 
 		if (EquippedWeapons[i]==nullptr)
 		{
 			EmptySlotIndex = i;
@@ -129,44 +136,38 @@ void ACAP_PlayerCharacter::PickupWeapon(class UCAP_WeaponDataAsset* NewWeaponDA)
 		}
 	}
 
+	// 빈 슬롯이 있다면 (현재 무기 하나 사용 중인 경우)
 	if (EmptySlotIndex != INDEX_NONE)
-	{	//빈 슬롯에 무기 착용 후 바로 장착
-		EquippedWeapons[EmptySlotIndex] = NewWeaponDA;
+	{
+		// 슬롯에 바로 장착 및 데이터 적용
+		EquippedWeapons[EmptySlotIndex] = NewWeaponInstance;
 		CurrentWeaponIndex = EmptySlotIndex;
-
-		ApplyWeaponData(NewWeaponDA);
+		ApplyWeaponData(NewWeaponInstance);
 	}
+	// 빈 슬롯이 없다면 (현재 무기 두개 사용 중인 경우)
 	else
-	{//빈 슬롯이 없는 상태에서 무기를 주웠다면
-		UCAP_WeaponDataAsset* WeaponToDrop = EquippedWeapons[CurrentWeaponIndex];
+	{
+		// 현재 들고있는 무기 땅에 드랍
+		UCAP_WeaponInstance* WeaponToDrop = EquippedWeapons[CurrentWeaponIndex];
 		if (WeaponToDrop)
 		{
-			FVector DropLocation = GetActorLocation() + (GetActorForwardVector() * 100.f);
+			FVector DropLocation = GetActorLocation() + (GetActorForwardVector() * 50.f);
 			FActorSpawnParameters SpawnParams;
 			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 			
-
-			ACAP_WeaponBase* DroppedWeapon = GetWorld()->SpawnActor<ACAP_WeaponBase>(WeaponToDrop->WeaponClass, DropLocation, FRotator::ZeroRotator, SpawnParams);
+			ACAP_WeaponBase* DroppedWeapon = GetWorld()->SpawnActor<ACAP_WeaponBase>(WeaponToDrop->GetWeaponDA()->WeaponClass, DropLocation, FRotator::ZeroRotator, SpawnParams);
 			if (DroppedWeapon)
 			{
-				DroppedWeapon->WeaponDA = WeaponToDrop;
+				// 버린 무기의 Instance 주입 및 스태틱 메시 설정(OnConstruction) 
+				DroppedWeapon->WeaponInstance = WeaponToDrop;
 				DroppedWeapon->OnConstruction(DroppedWeapon->GetTransform());
 			}
 		}
 
-		EquippedWeapons[CurrentWeaponIndex] = NewWeaponDA;
-		ApplyWeaponData(NewWeaponDA);
+		// 무기 슬롯에 상호작용한 무기 장착 및 데이터 적용
+		EquippedWeapons[CurrentWeaponIndex] = NewWeaponInstance;
+		ApplyWeaponData(NewWeaponInstance);
 	}
-}
-
-void ACAP_PlayerCharacter::SwapWeapon()
-{
-	int32 NextIndex = (CurrentWeaponIndex ==0) ? 1:0;
-	if (EquippedWeapons[NextIndex] == nullptr)
-		return;
-
-	CurrentWeaponIndex = NextIndex;
-	ApplyWeaponData(EquippedWeapons[CurrentWeaponIndex]);
 }
 
 void ACAP_PlayerCharacter::UpdateInteractUI(bool bVisible)
@@ -183,12 +184,12 @@ void ACAP_PlayerCharacter::UpdateInteractUI(bool bVisible)
 			TArray<FKey> MappedKeys = Subsystem->QueryKeysMappedToAction(InteractIA);
 			if (MappedKeys.Num() > 0)
 			{
+				// IMC에서 설정한 키 텍스트 가져오기
 				CurrentKeyName = MappedKeys[0].GetDisplayName().ToString();
 			}
 		}
 	}
 	PC->SetInteractUIVisibility(bVisible, CurrentKeyName);
-	
 }
 
 void ACAP_PlayerCharacter::UpdateInteractProgress(float Progress)
@@ -276,13 +277,25 @@ void ACAP_PlayerCharacter::InteractInputHandle(const FInputActionInstance& Insta
 	}
 }
 
-void ACAP_PlayerCharacter::ApplyWeaponData(class UCAP_WeaponDataAsset* WeaponDA)
+void ACAP_PlayerCharacter::SwapWeapon()
 {
-	ClearCurrentWeaponData();
-	if (!WeaponDA)
+	int32 NextIndex = (CurrentWeaponIndex ==0) ? 1:0;
+	if (EquippedWeapons[NextIndex] == nullptr)
 		return;
 
-	for (const FWeaponVisualInfo& VisualInfo : WeaponDA->WeaponVisualInfos)
+	CurrentWeaponIndex = NextIndex;
+	ApplyWeaponData(EquippedWeapons[CurrentWeaponIndex]);
+}
+
+void ACAP_PlayerCharacter::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInstance)
+{
+	ClearCurrentWeaponData();
+	if (!WeaponInstance || !WeaponInstance->GetWeaponDA())
+		return;
+
+	UCAP_WeaponDataAsset* WeaponDA = WeaponInstance->GetWeaponDA();
+	// DA에 설정한 메시, 위치로 설정
+	for (const FWeaponVisualInfo& VisualInfo :WeaponDA->WeaponVisualInfos)
 	{
 		if (VisualInfo.EquipHand == EEquipHand::Left)
 		{
@@ -306,11 +319,11 @@ void ACAP_PlayerCharacter::ApplyWeaponData(class UCAP_WeaponDataAsset* WeaponDA)
 			FGameplayAbilitySpec Spec(WeaponDA->BasicAttack.Get(), 1, static_cast<int32>(EAbilityInputID::BasicAttack));
 			CurrentWeaponAbilityHandles.Add(ASC->GiveAbility(Spec));
 		}
-		// 액티브 스킬 배열 부여 (스킬 슬롯 규칙에 맞춰 InputID 맵핑 필요)
+		
 		int32 SkillInputIndex = static_cast<int32>(EAbilityInputID::Skill1);
-		for (auto& SkillClass : WeaponDA->ActiveSkillArray)
+		for (TSubclassOf<UCAP_GameplayAbility>& SkillClass : WeaponInstance->GetGrantedSkills())
 		{
-			if (SkillClass.LoadSynchronous())
+			if (SkillClass)
 			{
 				FGameplayAbilitySpec Spec(SkillClass.Get(), 1, SkillInputIndex++, this);
 				CurrentWeaponAbilityHandles.Add(ASC->GiveAbility(Spec));

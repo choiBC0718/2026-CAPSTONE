@@ -16,11 +16,11 @@ UCAP_AbilitySystemComponent::UCAP_AbilitySystemComponent()
 	GetGameplayAttributeValueChangeDelegate(UCAP_AttributeSet::GetHealthAttribute()).AddUObject(this, &UCAP_AbilitySystemComponent::HealthUpdated);
 }
 
-void UCAP_AbilitySystemComponent::InitComponent()
+void UCAP_AbilitySystemComponent::InitComponent(FName StatRowName)
 {
 	if (!AbilitySystemGenerics)
 		return;
-	InitializeBaseAttribute();
+	InitializeBaseAttribute(StatRowName);
 	ApplyInitialEffects();
 	GiveInitialAbilities();
 }
@@ -43,26 +43,16 @@ void UCAP_AbilitySystemComponent::ApplyInitialEffects()
 	}
 }
 
-void UCAP_AbilitySystemComponent::InitializeBaseAttribute()
+void UCAP_AbilitySystemComponent::InitializeBaseAttribute(FName StatRowName)
 {
 	if (!GetOwner())
 		return;
-
-	const UDataTable* TableToUse = nullptr;
-
+	
 	if (!AbilitySystemGenerics->GetBaseStatDataTable())
 		return;
 	
-	TableToUse = AbilitySystemGenerics->GetBaseStatDataTable();	
-	const FBaseStatRow* BaseStats = nullptr;
-	for (const TPair<FName, uint8*>& DataPair : TableToUse->GetRowMap())
-	{
-		BaseStats = TableToUse->FindRow<FBaseStatRow>(DataPair.Key,"");
-		if (BaseStats)
-		{
-			break;
-		}
-	}
+	const UDataTable* TableToUse =TableToUse = AbilitySystemGenerics->GetBaseStatDataTable();	
+	const FBaseStatRow* BaseStats = TableToUse->FindRow<FBaseStatRow>(StatRowName,"");
 	if (BaseStats)
 	{
 		SetNumericAttributeBase(UCAP_AttributeSet::GetMaxHealthAttribute(), BaseStats->BaseMaxHealth);

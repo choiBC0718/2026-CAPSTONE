@@ -17,12 +17,12 @@ class UCAP_AbilitySystemComponent : public UAbilitySystemComponent
 
 public:
 	UCAP_AbilitySystemComponent();
-	void InitComponent();
+	void InitComponent(FName StatRowName);
 	void ApplyFullStatEffect();
 	
 private:
 	void ApplyInitialEffects();
-	void InitializeBaseAttribute();
+	void InitializeBaseAttribute(FName StatRowName);
 	void GiveInitialAbilities();
 	
 	void ApplyGameplayEffect(TSubclassOf<UGameplayEffect> GameplayEffect, int32 Level=1);

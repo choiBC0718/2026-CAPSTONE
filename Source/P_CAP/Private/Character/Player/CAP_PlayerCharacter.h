@@ -26,8 +26,7 @@ public:
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
-	void PickupWeapon(class UCAP_WeaponDataAsset* NewWeaponDA);
-	void SwapWeapon();
+	void PickupWeapon(class UCAP_WeaponInstance* NewWeaponInstance);
 	
 	void SetNearbyInteractable(AActor* NewInteractable) {InteractableActor = NewInteractable;}
 	void UpdateInteractUI(bool bVisible);
@@ -64,21 +63,23 @@ private:
 	void MoveInputHandle(const FInputActionValue& InputActionValue);
 	void AbilityInputHandle(const FInputActionValue& InputActionValue, EAbilityInputID AbilityInputID);
 	void InteractInputHandle(const FInputActionInstance& Instance);
+	void SwapWeapon();
 
 protected:
+	/** 게임 시작 시 기본 무기 (주먹 무기로 설정) */
 	UPROPERTY(EditDefaultsOnly, Category="Weapon")
 	class UCAP_WeaponDataAsset* DefaultBasicWeapon;
 	UPROPERTY(EditDefaultsOnly, Category="Weapon")
-	TArray<class UCAP_WeaponDataAsset*> EquippedWeapons;
+	TArray<class UCAP_WeaponInstance*> EquippedWeapons;
+
 	UPROPERTY()
 	int32 CurrentWeaponIndex = 0;
-
 	UPROPERTY()
 	AActor* InteractableActor;
 
 	UPROPERTY()
 	TArray<FGameplayAbilitySpecHandle> CurrentWeaponAbilityHandles;
-
-	void ApplyWeaponData(class UCAP_WeaponDataAsset* WeaponDA);
+	
+	void ApplyWeaponData(class UCAP_WeaponInstance* WeaponInstance);
 	void ClearCurrentWeaponData();
 };
