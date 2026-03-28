@@ -18,16 +18,34 @@ void UANS_MeleeHitCheck::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequ
 {
 	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
 	if (!MeshComp) return;
-	
+
+	// 공격자 캐릭터 Mesh 저장 (적중 대상은 빈칸)
 	HitActorsMap.Add(MeshComp, TSet<AActor*>());
 	TArray<FVector>& PrevLocs = PrevSocketLocationMap.Add(MeshComp, TArray<FVector>());
 
-	UStaticMeshComponent* WeaponMesh = GetWeaponMesh(MeshComp);
-	if (WeaponMesh)
+	USceneComponent* TargetMesh = nullptr;
+	if (bUseCharacterBones)
+		TargetMesh = MeshComp;
+	else
+		TargetMesh = GetWeaponMesh(MeshComp);
+	
+	if (TargetMesh)
 	{
 		for (const FName& SocketName : TargetSocketNames)
 		{
-			PrevLocs.Add(WeaponMesh->GetSocketLocation(SocketName));
+			// 메쉬의 소켓의 위치를 PrevSocketLocationMap의 Value에 추가
+			PrevLocs.Add(TargetMesh->GetSocketLocation(SocketName));
+		}
+	}
+
+	// 테스트 용 코드
+	if (AActor* OwnerActor = MeshComp->GetOwner())
+	{
+		if (UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OwnerActor))
+		{
+			FGameplayEventData TestPayload;
+			TestPayload.Instigator = OwnerActor;
+			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(OwnerActor, EventTag, TestPayload);
 		}
 	}
 }
@@ -40,10 +58,16 @@ void UANS_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSeque
 	if (!MeshComp || TargetSocketNames.Num() < 2)
 		return;
 
-	UStaticMeshComponent* WeaponMesh = GetWeaponMesh(MeshComp);
-	if (!WeaponMesh)
+	USceneComponent* TargetMesh = nullptr;
+	if (bUseCharacterBones)
+		TargetMesh = MeshComp;
+	else
+		TargetMesh = GetWeaponMesh(MeshComp);
+	
+	if (!TargetMesh)
 		return;
 
+	FGameplayEventData Payload;
 	TSet<AActor*>* HitActors = HitActorsMap.Find(MeshComp);
 	TArray<FVector>* PrevLocs = PrevSocketLocationMap.Find(MeshComp);
 
@@ -61,39 +85,45 @@ void UANS_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSeque
 
 	for (int32 i = 1; i < TargetSocketNames.Num(); ++i)
 	{
-		FVector CurrentStartLoc = WeaponMesh->GetSocketLocation(TargetSocketNames[i - 1]);
-		FVector CurrentEndLoc = WeaponMesh->GetSocketLocation(TargetSocketNames[i]);
+		// 현재 프레임의 시작-끝 위치
+		FVector CurrentStartLoc = TargetMesh->GetSocketLocation(TargetSocketNames[i - 1]);
+		FVector CurrentEndLoc = TargetMesh->GetSocketLocation(TargetSocketNames[i]);
+		//이전 프레임의 시작-끝 위치
 		FVector PrevStartLoc = (*PrevLocs)[i - 1];
 		FVector PrevEndLoc = (*PrevLocs)[i];
 
+		// 1프레임 동안 맞은 적들을 모아두는 배열
 		TArray<FHitResult> CombinedHitResults;
-		
+
+		// 이전 프레임의 칼 끝 ~ 현재 프레임의 칼 끝 사이의 거리
 		float MoveDistance = FVector::Distance(PrevEndLoc, CurrentEndLoc);
 		
+		// 프레임 드랍 시 트레이스 간 벌어지는 공간을 몇번 메울지
 		int32 TraceCount = FMath::RoundToInt(MoveDistance / (SphereSweepRadius * 1.5f));
 		TraceCount = FMath::Clamp(TraceCount, 1, 10);
-		
+		// 프레임 사이에 빈 곳을 채움
 		for (int32 Step = 1; Step <= TraceCount; ++Step)
 		{
 			float Alpha = (float)Step / TraceCount;
 
-			// 프레임 드랍 시 트레이스 끊기는 문제 방지용 Lerp
 			FVector LerpStart = FMath::Lerp(PrevStartLoc, CurrentStartLoc, Alpha);
 			FVector LerpEnd = FMath::Lerp(PrevEndLoc, CurrentEndLoc, Alpha);
-
+			// 하나의 트레이스에 적중된 대상 임시 저장소
 			TArray<FHitResult> TempHits;
 			UKismetSystemLibrary::SphereTraceMultiForObjects(MeshComp, LerpStart, LerpEnd, SphereSweepRadius, ObjectTypes, false, IgnoreActors, DrawDebugType, TempHits, true);
+			// 임시 저장소의 대상들을 전체 배열에 담아
 			CombinedHitResults.Append(TempHits);
 		}
-		
+
+		// 전체 적중 대상에 대해 반복
 		for (const FHitResult& Hit : CombinedHitResults)
 		{
 			AActor* HitActor = Hit.GetActor();
+			// 적중 대상 배열에 아직 추가를 하지 않았으면 데미지 이벤트 보내
 			if (HitActor && !HitActors->Contains(HitActor))
 			{
 				HitActors->Add(HitActor); 
 
-				FGameplayEventData Payload;
 				Payload.Instigator = OwnerActor;
 				Payload.Target = HitActor;
 

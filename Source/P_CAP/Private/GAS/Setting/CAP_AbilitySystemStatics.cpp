@@ -17,3 +17,8 @@ FGameplayTag UCAP_AbilitySystemStatics::GetDeadStateTag()
 {
 	return FGameplayTag::RequestGameplayTag("State.Dead");
 }
+
+FGameplayTag UCAP_AbilitySystemStatics::GetDamageTag()
+{
+	return FGameplayTag::RequestGameplayTag("Ability.Damage");
+}

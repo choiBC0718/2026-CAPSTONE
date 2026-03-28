@@ -19,4 +19,6 @@ public:
 	static FGameplayTag GetHealthFullStatTag();
 	static FGameplayTag GetHealthEmptyStatTag();
 	static FGameplayTag GetDeadStateTag();
+
+	static FGameplayTag GetDamageTag();
 };
