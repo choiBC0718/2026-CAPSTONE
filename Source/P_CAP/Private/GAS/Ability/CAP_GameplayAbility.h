@@ -19,8 +19,13 @@ public:
 	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags = nullptr, const FGameplayTagContainer* TargetTags = nullptr, FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
 
 protected:
+	UPROPERTY(EditDefaultsOnly, Category="Animation")
+	class UAnimMontage* AbilityMontage;
+	
 	void ApplyGameplayEffectToHitResult(const FHitResult& HitResult, TSubclassOf<UGameplayEffect> GameplayEffect, int Level=1);
 
+	UAnimInstance* GetOwnerAnimInstance() const;
+	
 	UPROPERTY();
 	FGameplayTag DamageTag;
 };

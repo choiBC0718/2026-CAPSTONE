@@ -16,6 +16,8 @@ UANS_MeleeHitCheck::UANS_MeleeHitCheck()
 void UANS_MeleeHitCheck::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
 	float TotalDuration, const FAnimNotifyEventReference& EventReference)
 {
+	if (MeshComp->GetWorld()->IsPreviewWorld())
+		return;
 	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
 	if (!MeshComp) return;
 
@@ -53,6 +55,8 @@ void UANS_MeleeHitCheck::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequ
 void UANS_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
 	float FrameDeltaTime, const FAnimNotifyEventReference& EventReference)
 {
+	if (MeshComp->GetWorld()->IsPreviewWorld())
+		return;
 	Super::NotifyTick(MeshComp, Animation, FrameDeltaTime, EventReference);
 	
 	if (!MeshComp || TargetSocketNames.Num() < 2)
@@ -146,6 +150,8 @@ void UANS_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSeque
 void UANS_MeleeHitCheck::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
 	const FAnimNotifyEventReference& EventReference)
 {
+	if (MeshComp->GetWorld()->IsPreviewWorld())
+		return;
 	Super::NotifyEnd(MeshComp, Animation, EventReference);
 	
 	if (MeshComp)

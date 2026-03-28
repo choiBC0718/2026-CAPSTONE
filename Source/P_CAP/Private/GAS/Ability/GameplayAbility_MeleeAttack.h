@@ -20,9 +20,6 @@ public:
 
 
 protected:
-	UPROPERTY(EditDefaultsOnly, Category="Animation")
-	class UAnimMontage* AbilityMontage;
-	
 	UFUNCTION()
 	void OnDamageTagReceived(FGameplayEventData Payload);
 

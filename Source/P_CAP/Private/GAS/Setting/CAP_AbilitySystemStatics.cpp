@@ -18,6 +18,21 @@ FGameplayTag UCAP_AbilitySystemStatics::GetDeadStateTag()
 	return FGameplayTag::RequestGameplayTag("State.Dead");
 }
 
+FGameplayTag UCAP_AbilitySystemStatics::GetBasicAttackTag()
+{
+	return FGameplayTag::RequestGameplayTag("Ability.Attack.Basic");
+}
+
+FGameplayTag UCAP_AbilitySystemStatics::GetSkillAttackTag()
+{
+	return FGameplayTag::RequestGameplayTag("Ability.Attack.Skill");
+}
+
+FGameplayTag UCAP_AbilitySystemStatics::GetTargetClearTag()
+{
+	return FGameplayTag::RequestGameplayTag("Ability.Attack.TargetClear");
+}
+
 FGameplayTag UCAP_AbilitySystemStatics::GetDamageTag()
 {
 	return FGameplayTag::RequestGameplayTag("Ability.Damage");

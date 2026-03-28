@@ -31,3 +31,13 @@ void UCAP_GameplayAbility::ApplyGameplayEffectToHitResult(const FHitResult& HitR
 	
 	ApplyGameplayEffectSpecToTarget(GetCurrentAbilitySpecHandle(), CurrentActorInfo, CurrentActivationInfo, EffectSpecHandle, UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(HitResult.GetActor()));
 }
+
+UAnimInstance* UCAP_GameplayAbility::GetOwnerAnimInstance() const
+{
+	USkeletalMeshComponent* OwnerSkeletalMeshComp = GetOwningComponentFromActorInfo();
+	if (OwnerSkeletalMeshComp)
+	{
+		return OwnerSkeletalMeshComp->GetAnimInstance();
+	}
+	return nullptr;
+}
