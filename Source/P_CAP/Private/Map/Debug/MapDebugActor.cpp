@@ -1,13 +1,85 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
 #include "MapDebugActor.h"
+#include "Map/MapLayout.h"
+#include "Map/RoomData.h"
+#include "Map/RoomActor/DoorDirection.h"
+#include "Map/RoomActor/RoomActor.h"
 #include "DrawDebugHelpers.h"
 #include "Map/MapGenerator.h"
 #include "Engine/Engine.h"
 #include "GameFramework/PlayerController.h"
 #include "Components/InputComponent.h"
+#include "GameFramework/Character.h"
 
 AMapDebugActor::AMapDebugActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
+}
+
+ARoomActor* AMapDebugActor::FindSpawnedRoomByGridPos(const FIntPoint& InGridPos) const
+{
+	for (ARoomActor* Room : SpawnedRooms)
+	{
+		if (!IsValid(Room))
+		{
+			continue;
+		}
+
+		const FVector RoomLocation = Room->GetActorLocation();
+		const FIntPoint RoomGridPos(
+			FMath::RoundToInt(RoomLocation.X / RoomSpacing),
+			FMath::RoundToInt(RoomLocation.Y / RoomSpacing)
+		);
+
+		if (RoomGridPos == InGridPos)
+		{
+			return Room;
+		}
+	}
+
+	return nullptr;
+}
+
+void AMapDebugActor::RequestMovePlayer(class ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
+{
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+
+	ARoomActor* TargetRoom = FindSpawnedRoomByGridPos(TargetRoomPos);
+	if (!TargetRoom)
+	{
+		return;
+	}
+
+	EDoorDirection EntryDirection = EDoorDirection::Up;
+
+	switch (ExitDirection)
+	{
+	case EDoorDirection::Up:
+		EntryDirection = EDoorDirection::Down;
+		break;
+
+	case EDoorDirection::Down:
+		EntryDirection = EDoorDirection::Up;
+		break;
+
+	case EDoorDirection::Left:
+		EntryDirection = EDoorDirection::Right;
+		break;
+
+	case EDoorDirection::Right:
+		EntryDirection = EDoorDirection::Left;
+		break;
+
+	default:
+		break;
+	}
+
+	const FVector TargetLocation = TargetRoom->GetEntrancePoint(EntryDirection);
+	PlayerCharacter->SetActorLocation(TargetLocation);
 }
 
 void AMapDebugActor::BeginPlay()
@@ -53,6 +125,60 @@ void AMapDebugActor::RegenerateWithCurrentSeed()
 	GenerateAndDebug();
 }
 
+void AMapDebugActor::SpawnRooms(const FMapLayout& Layout)
+{
+	if (!RoomActorClass)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	for (const TPair<FIntPoint, FRoomData>& Pair : Layout.Rooms)
+	{
+		const FRoomData& RoomData = Pair.Value;
+
+		const FVector SpawnLocation(
+			RoomData.GridPos.X * RoomSpacing,
+			RoomData.GridPos.Y * RoomSpacing,
+			0.f
+		);
+
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+
+		ARoomActor* SpawnedRoom = World->SpawnActor<ARoomActor>(
+			RoomActorClass,
+			SpawnLocation,
+			FRotator::ZeroRotator,
+			SpawnParams
+		);
+
+		if (SpawnedRoom)
+		{
+			SpawnedRoom->InitializeRoom(RoomData);
+			SpawnedRooms.Add(SpawnedRoom);
+		}
+	}
+}
+
+void AMapDebugActor::ClearSpawnedRooms()
+{
+	for (ARoomActor* Room : SpawnedRooms)
+	{
+		if (IsValid(Room))
+		{
+			Room->Destroy();
+		}
+	}
+
+	SpawnedRooms.Empty();
+}
+
 void AMapDebugActor::GenerateAndDebug()
 {
 	if (!MapGenerator) return;
@@ -64,6 +190,9 @@ void AMapDebugActor::GenerateAndDebug()
 	Config.Seed = CurrentSeed;
 
 	FMapLayout Layout = MapGenerator->GenerateMap(Config);
+
+	ClearSpawnedRooms();
+	SpawnRooms(Layout);
 
 	DebugDrawMap(Layout);
 
