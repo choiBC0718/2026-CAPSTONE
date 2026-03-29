@@ -8,6 +8,7 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_WaitInputPress.h"
+#include "Data/CAP_WeaponDataAsset.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 
 UGameplayAbility_ComboAttack::UGameplayAbility_ComboAttack()
@@ -23,12 +24,16 @@ UGameplayAbility_ComboAttack::UGameplayAbility_ComboAttack()
 void UGameplayAbility_ComboAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
                                                    const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,const FGameplayEventData* TriggerEventData)
 {
+	const FWeaponSkillData* SkillData = GetCurrentSkillData();
+	if (!SkillData || !SkillData->AbilityMontage)
+		return;
+	
 	if (!K2_CommitAbility())
 	{
 		K2_EndAbility();
 		return;
 	}
-
+	AbilityMontage = SkillData->AbilityMontage;
 	IgnoreTargets.Empty();
 	
 	UAbilityTask_PlayMontageAndWait* PlayMontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, AbilityMontage);
@@ -76,12 +81,16 @@ void UGameplayAbility_ComboAttack::OnNextComboTagReceived(FGameplayEventData Pay
 
 void UGameplayAbility_ComboAttack::OnDamageTagReceived(FGameplayEventData Payload)
 {
+	const FWeaponSkillData* SkillData = GetCurrentSkillData();
+	if (!SkillData || !SkillData->SkillDamageTypeEffect)
+		return;
+	
 	int HitResultCount = UAbilitySystemBlueprintLibrary::GetDataCountFromTargetData(Payload.TargetData);
 	for (int i =0; i<HitResultCount; i++)
 	{
 		FHitResult HitResult = UAbilitySystemBlueprintLibrary::GetHitResultFromTargetData(Payload.TargetData, i);
 		
-		FGameplayEffectSpecHandle EffectSpecHandle = MakeOutgoingGameplayEffectSpec(DamageEffect, GetAbilityLevel(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo()));
+		FGameplayEffectSpecHandle EffectSpecHandle = MakeOutgoingGameplayEffectSpec(SkillData->SkillDamageTypeEffect, GetAbilityLevel(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo()));
 		FGameplayEffectContextHandle EffectContext = MakeEffectContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
 		EffectContext.AddHitResult(HitResult);
 		EffectSpecHandle.Data -> SetContext(EffectContext);

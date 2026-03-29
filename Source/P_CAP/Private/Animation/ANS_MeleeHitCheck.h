@@ -35,7 +35,9 @@ protected:
 	TArray<FName> TargetSocketNames;
 	/** 트레이스 두께 */
 	UPROPERTY(EditAnywhere, Category="Hit Check")
-	float SphereSweepRadius = 30.f;
+	float SweepRadius = 30.f;
+	UPROPERTY(EditAnywhere, Category="Hit Check")
+	float SweepHalfHeight = 60.f;
 	/** 이벤트 태그 */
 	UPROPERTY(EditAnywhere, Category="Hit Check")
 	FGameplayTag EventTag;

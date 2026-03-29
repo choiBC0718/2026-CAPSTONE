@@ -21,13 +21,13 @@ public:
 	UFUNCTION()
 	UCAP_WeaponDataAsset* GetWeaponDA() const {return WeaponDA;}
 
-	TArray<TSubclassOf<class UCAP_GameplayAbility>> GetGrantedSkills() const {return GrantedActiveSkills;}
+	const TArray<FWeaponSkillData>& GetGrantedSkills() const {return GrantedActiveSkills;}
 
 private:
 	UPROPERTY(VisibleAnywhere)
 	UCAP_WeaponDataAsset* WeaponDA;
 	UPROPERTY(VisibleAnywhere)
-	TArray<TSubclassOf<class UCAP_GameplayAbility>> GrantedActiveSkills;
+	TArray<FWeaponSkillData> GrantedActiveSkills;
 	UPROPERTY(VisibleAnywhere)
 	int32 UpgradeLevel =0;
 };

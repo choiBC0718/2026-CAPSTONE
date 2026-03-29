@@ -103,7 +103,7 @@ void UANS_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSeque
 		float MoveDistance = FVector::Distance(PrevEndLoc, CurrentEndLoc);
 		
 		// 프레임 드랍 시 트레이스 간 벌어지는 공간을 몇번 메울지
-		int32 TraceCount = FMath::RoundToInt(MoveDistance / (SphereSweepRadius * 1.5f));
+		int32 TraceCount = FMath::RoundToInt(MoveDistance / (SweepRadius * 1.5f));
 		TraceCount = FMath::Clamp(TraceCount, 1, 10);
 		// 프레임 사이에 빈 곳을 채움
 		for (int32 Step = 1; Step <= TraceCount; ++Step)
@@ -114,7 +114,11 @@ void UANS_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSeque
 			FVector LerpEnd = FMath::Lerp(PrevEndLoc, CurrentEndLoc, Alpha);
 			// 하나의 트레이스에 적중된 대상 임시 저장소
 			TArray<FHitResult> TempHits;
-			UKismetSystemLibrary::SphereTraceMultiForObjects(MeshComp, LerpStart, LerpEnd, SphereSweepRadius, ObjectTypes, false, IgnoreActors, DrawDebugType, TempHits, true);
+			UKismetSystemLibrary::CapsuleTraceMultiForObjects(
+				MeshComp, 
+				LerpStart, LerpEnd, SweepRadius, SweepHalfHeight,
+				ObjectTypes, false, IgnoreActors, DrawDebugType, TempHits, true
+			);
 			// 임시 저장소의 대상들을 전체 배열에 담아
 			CombinedHitResults.Append(TempHits);
 		}
@@ -148,7 +152,7 @@ void UANS_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSeque
 }
 
 void UANS_MeleeHitCheck::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
-	const FAnimNotifyEventReference& EventReference)
+                                   const FAnimNotifyEventReference& EventReference)
 {
 	if (MeshComp->GetWorld()->IsPreviewWorld())
 		return;

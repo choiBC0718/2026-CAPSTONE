@@ -27,6 +27,8 @@ public:
 
 	UFUNCTION()
 	void PickupWeapon(class UCAP_WeaponInstance* NewWeaponInstance);
+	UFUNCTION()
+	class UCAP_WeaponInstance* GetCurrentWeaponInstance() const;
 	
 	void SetNearbyInteractable(AActor* NewInteractable) {InteractableActor = NewInteractable;}
 	void UpdateInteractUI(bool bVisible);

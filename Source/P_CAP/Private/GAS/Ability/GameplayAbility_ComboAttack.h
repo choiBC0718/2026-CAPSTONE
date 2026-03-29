@@ -37,10 +37,9 @@ private:
 	FGameplayTag ComboEndTag;
 
 	FName NextComboSectionName;
-
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UGameplayEffect> DamageEffect;
 	
+	UPROPERTY()
+	class UAnimMontage* AbilityMontage;
 	UPROPERTY()
 	TArray<AActor*> IgnoreTargets;
 };

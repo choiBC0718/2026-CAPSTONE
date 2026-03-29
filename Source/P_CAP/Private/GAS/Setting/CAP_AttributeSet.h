@@ -24,6 +24,7 @@ class UCAP_AttributeSet : public UAttributeSet
 
 public:
 	virtual void PreAttributeBaseChange(const FGameplayAttribute& Attribute, float& NewValue) const override;
+	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
 
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, Health);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxHealth);

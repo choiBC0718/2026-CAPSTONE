@@ -22,8 +22,4 @@ public:
 protected:
 	UFUNCTION()
 	void OnDamageTagReceived(FGameplayEventData Payload);
-
-	
-	UPROPERTY(EditDefaultsOnly, Category="Gameplay Effect")
-	TSubclassOf<UGameplayEffect> DamageEffect;
 };

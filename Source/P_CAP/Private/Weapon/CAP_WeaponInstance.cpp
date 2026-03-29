@@ -23,17 +23,15 @@ void UCAP_WeaponInstance::InitializeWeapon(UCAP_WeaponDataAsset* InWeaponDA)
 	}
 
 	// DA에 설정한 스킬을 랜덤으로 가져오기
-	TArray<TSoftClassPtr<UCAP_GameplayAbility>> AvailableSkills = WeaponDA->ActiveSkillArray;
+	TArray<FWeaponSkillData> AvailableSkills = WeaponDA->ActiveAbilityArray;
 	for (int32 i = 0; i < SkillsToGrant; ++i)
 	{
 		if (AvailableSkills.Num() == 0)
 			break;
 
 		int32 RandomIdx = FMath::RandRange(0, AvailableSkills.Num() - 1);
-		if (AvailableSkills[RandomIdx].LoadSynchronous())
-		{
-			GrantedActiveSkills.Add(AvailableSkills[RandomIdx].Get());
-		}
+
+		GrantedActiveSkills.Add(AvailableSkills[RandomIdx]);
 		// 중복 스킬 부여하지 않도록
 		AvailableSkills.RemoveAt(RandomIdx);
 	}

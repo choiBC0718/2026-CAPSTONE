@@ -170,6 +170,15 @@ void ACAP_PlayerCharacter::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst
 	}
 }
 
+class UCAP_WeaponInstance* ACAP_PlayerCharacter::GetCurrentWeaponInstance() const
+{
+	if (EquippedWeapons.IsValidIndex(CurrentWeaponIndex))
+	{
+		return EquippedWeapons[CurrentWeaponIndex];
+	}
+	return nullptr;
+}
+
 void ACAP_PlayerCharacter::UpdateInteractUI(bool bVisible)
 {
 	ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(GetController());
@@ -314,18 +323,18 @@ void ACAP_PlayerCharacter::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 	UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent());
 	if (ASC)
 	{
-		if (WeaponDA->BasicAttack.LoadSynchronous())
+		if (WeaponDA->BasicAbility.AbilityClass)
 		{
-			FGameplayAbilitySpec Spec(WeaponDA->BasicAttack.Get(), 1, static_cast<int32>(EAbilityInputID::BasicAttack));
+			FGameplayAbilitySpec Spec(WeaponDA->BasicAbility.AbilityClass, 1, static_cast<int32>(EAbilityInputID::BasicAttack),this);
 			CurrentWeaponAbilityHandles.Add(ASC->GiveAbility(Spec));
 		}
 		
 		int32 SkillInputIndex = static_cast<int32>(EAbilityInputID::Skill1);
-		for (TSubclassOf<UCAP_GameplayAbility>& SkillClass : WeaponInstance->GetGrantedSkills())
+		for (const FWeaponSkillData& SkillData : WeaponInstance->GetGrantedSkills())
 		{
-			if (SkillClass)
+			if (SkillData.AbilityClass)
 			{
-				FGameplayAbilitySpec Spec(SkillClass.Get(), 1, SkillInputIndex++, this);
+				FGameplayAbilitySpec Spec(SkillData.AbilityClass, 1, SkillInputIndex++, this);
 				CurrentWeaponAbilityHandles.Add(ASC->GiveAbility(Spec));
 			}
 		}

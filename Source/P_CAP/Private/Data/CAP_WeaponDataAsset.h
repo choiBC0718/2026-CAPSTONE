@@ -6,6 +6,24 @@
 #include "Engine/DataAsset.h"
 #include "CAP_WeaponDataAsset.generated.h"
 
+/** 무기 데이터 에셋에서 무기마다 설정할 Ability 구조체 */
+USTRUCT(BlueprintType)
+struct FWeaponSkillData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TSubclassOf<class UCAP_GameplayAbility> AbilityClass = nullptr;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	class UAnimMontage* AbilityMontage = nullptr;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TSubclassOf<class UGameplayEffect> SkillDamageTypeEffect = nullptr;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	float BaseDamageMultiplier = 1.f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	float CooldownTime = 1.f;
+};
+
 UENUM(BlueprintType)
 enum class EWeaponAnimType : uint8
 {
@@ -18,8 +36,8 @@ enum class EWeaponAnimType : uint8
 UENUM(BlueprintType)
 enum class EEquipHand : uint8
 {
-	Right			UMETA(DisplayName = "오른손"),
-	Left			UMETA(DisplayName = "왼손")
+	Right			UMETA(DisplayName = "오른손 장착"),
+	Left			UMETA(DisplayName = "왼손 장착")
 };
 UENUM(BlueprintType)
 enum class EWeaponGrade : uint8
@@ -35,6 +53,9 @@ struct FWeaponVisualInfo
 {
 	GENERATED_BODY()
 
+	/** 어느 손에 장착시킬지*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EEquipHand EquipHand = EEquipHand::Right;
 	/**캐릭터에 부착시킬 메시*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	class UStaticMesh* WeaponMesh = nullptr;
@@ -44,8 +65,6 @@ struct FWeaponVisualInfo
 	/**부착 Transform*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FTransform EquipTransform = FTransform();
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	EEquipHand EquipHand = EEquipHand::Right;
 };
 
 /**
@@ -74,14 +93,14 @@ public:
 	TSubclassOf<class ACAP_WeaponBase> WeaponClass;
 	UPROPERTY(EditDefaultsOnly, Category="Visual")
 	TArray<FWeaponVisualInfo> WeaponVisualInfos;
-
+	
 	/** 무기의 기본 공격 */
 	UPROPERTY(EditDefaultsOnly, Category="Ability")
-	TSoftClassPtr<class UCAP_GameplayAbility> BasicAttack;
+	FWeaponSkillData BasicAbility;
 	/** 무기의 고유 스킬 배열 */
 	UPROPERTY(EditDefaultsOnly, Category="Ability")
-	TArray<TSoftClassPtr<class UCAP_GameplayAbility>> ActiveSkillArray;
-
+	TArray<FWeaponSkillData> ActiveAbilityArray;
+	
 	/** 해당 무기 장착 시 애니메이션 상태*/
 	UPROPERTY(EditDefaultsOnly, Category="Animation")
 	EWeaponAnimType WeaponAnimType = EWeaponAnimType::Unarmed;
