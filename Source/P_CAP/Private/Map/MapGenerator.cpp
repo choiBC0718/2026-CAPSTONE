@@ -56,20 +56,56 @@ void UMapGenerator::ExpandRooms(FMapLayout& OutLayout, FRandomStream& RandomStre
 			break;
 		}
 
-		/* 현재 존재하는 방들 중 하나를 랜덤으로 선택 */
-		const int32 RandomRoomIndex = RandomStream.RandRange(0, ExistingRoomPositions.Num() - 1);
-		const FIntPoint BaseRoomPos = ExistingRoomPositions[RandomRoomIndex];
+		TArray<FRoomCandidate> Candidates;
+		TSet<FIntPoint> AddedPositions;
 
-		/* 선택한 기준 방 주변의 비어 있는 상하좌우 좌표들을 구함 */
-		const TArray<FIntPoint> AvailablePositions = GetAvailableNeighborPositions(OutLayout, BaseRoomPos);
-		if (AvailablePositions.IsEmpty())
+		/* 현재 존재하는 방들 각각을 기준으로 */
+		for (const FIntPoint& BaseRoomPos : ExistingRoomPositions)
 		{
-			continue;
+			/* 선택한 기준 방 주변의 비어 있는 상하좌우 좌표들을 구함 */
+			const TArray<FIntPoint> AvailablePositions = GetAvailableNeighborPositions(OutLayout, BaseRoomPos);
+			if (AvailablePositions.IsEmpty())
+			{
+				continue;
+			}
+
+			/* 상하좌우 빈 칸 후보들을 하나씩 검사 */
+			for (const FIntPoint& CandidatePos : AvailablePositions)
+			{
+				if (AddedPositions.Contains(CandidatePos))
+				{
+					continue;
+				}
+				
+				const float Weight = CalculateCandidateWeight(OutLayout, BaseRoomPos, CandidatePos);
+				if (Weight <= 0.0f)
+				{
+					continue;
+				}
+				
+				FRoomCandidate Candidate;
+				Candidate.BaseRoomPos = BaseRoomPos;
+				Candidate.NewRoomPos = CandidatePos;
+				Candidate.Weight = Weight;
+
+				Candidates.Add(Candidate);
+				AddedPositions.Add(CandidatePos);
+			}
+		}
+
+		if (Candidates.IsEmpty())
+		{
+			break;
 		}
 		
-		/* 상하좌우 빈 칸 후보들 중 하나를 랜덤 선택해서 새 방 위치로 정함 */
-		const int32 RandomNeighborIndex = RandomStream.RandRange(0, AvailablePositions.Num() - 1);
-		const FIntPoint NewRoomPos = AvailablePositions[RandomNeighborIndex];
+		const int32 PickedIndex = PickWeightedCandidateIndex(Candidates, RandomStream);
+		if (PickedIndex == INDEX_NONE)
+		{
+			break;
+		}
+
+		/* 선택된 후보 위치를 새 방 위치로 정함 */
+		const FIntPoint NewRoomPos = Candidates[PickedIndex].NewRoomPos;
 
 		/* RoomData를 생성 및 등록 */
 		FRoomData NewRoom(NewRoomPos);
@@ -217,4 +253,139 @@ TArray<FIntPoint> UMapGenerator::GetAvailableNeighborPositions(const FMapLayout&
 	}
 
 	return Result;
+}
+
+int32 UMapGenerator::CountAdjacentRooms(const FMapLayout& InLayout, const FIntPoint& InPos) const
+{
+	int32 Count = 0;
+	const TArray<FIntPoint> NeighborPositions = GetNeighborPositions(InPos);
+
+	for (const FIntPoint& NeighborPos : NeighborPositions)
+	{
+		if (InLayout.HasRoom(NeighborPos))
+		{
+			Count++;
+		}
+	}
+
+	return Count;
+}
+
+bool UMapGenerator::WouldCreate2x2Block(const FMapLayout& InLayout, const FIntPoint& InPos) const
+{
+	auto HasRoomOrNew = [&](const FIntPoint& Pos) -> bool
+	{
+		return Pos == InPos || InLayout.HasRoom(Pos);
+	};
+
+	// InPos를 포함하는 2x2 네 방향 검사
+	if (HasRoomOrNew(InPos) &&
+		HasRoomOrNew(InPos + FIntPoint(-1, 0)) &&
+		HasRoomOrNew(InPos + FIntPoint(0, -1)) &&
+		HasRoomOrNew(InPos + FIntPoint(-1, -1)))
+	{
+		return true;
+	}
+
+	if (HasRoomOrNew(InPos) &&
+		HasRoomOrNew(InPos + FIntPoint(1, 0)) &&
+		HasRoomOrNew(InPos + FIntPoint(0, -1)) &&
+		HasRoomOrNew(InPos + FIntPoint(1, -1)))
+	{
+		return true;
+	}
+
+	if (HasRoomOrNew(InPos) &&
+		HasRoomOrNew(InPos + FIntPoint(-1, 0)) &&
+		HasRoomOrNew(InPos + FIntPoint(0, 1)) &&
+		HasRoomOrNew(InPos + FIntPoint(-1, 1)))
+	{
+		return true;
+	}
+
+	if (HasRoomOrNew(InPos) &&
+		HasRoomOrNew(InPos + FIntPoint(1, 0)) &&
+		HasRoomOrNew(InPos + FIntPoint(0, 1)) &&
+		HasRoomOrNew(InPos + FIntPoint(1, 1)))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+float UMapGenerator::CalculateCandidateWeight(const FMapLayout& InLayout, const FIntPoint& BaseRoomPos,
+	const FIntPoint& CandidatePos) const
+{
+	float Weight = 10.0f;
+
+	// 2x2 블록 억제
+	if (WouldCreate2x2Block(InLayout, CandidatePos))
+	{
+		return 0.0f;
+	}
+
+	// 후보 칸 주변의 방 개수에 따라 조정
+	const int32 AdjacentCount = CountAdjacentRooms(InLayout, CandidatePos);
+
+	if (AdjacentCount == 1)
+	{
+		Weight += 20.0f;
+	}
+	else if (AdjacentCount == 2)
+	{
+		Weight -= 10.0f;
+	}
+	else if (AdjacentCount >= 3)
+	{
+		Weight -= 50.0f;
+	}
+
+	// leaf 방에서 확장 보너스
+	const FRoomData* BaseRoom = InLayout.FindRoom(BaseRoomPos);
+	if (BaseRoom)
+	{
+		const int32 BaseAdjacentCount = CountAdjacentRooms(InLayout, BaseRoomPos);
+
+		if (BaseAdjacentCount == 1)
+		{
+			Weight += 18.0f;
+		}
+		else if (BaseAdjacentCount >= 3)
+		{
+			Weight -= 10.0f;
+		}
+	}
+
+	return FMath::Max(0.0f, Weight);
+}
+
+int32 UMapGenerator::PickWeightedCandidateIndex(const TArray<FRoomCandidate>& Candidates,
+	FRandomStream& RandomStream) const
+{
+	float TotalWeight = 0.0f;
+
+	for (const FRoomCandidate& Candidate : Candidates)
+	{
+		TotalWeight += Candidate.Weight;
+	}
+
+	if (TotalWeight <= 0.0f)
+	{
+		return INDEX_NONE;
+	}
+
+	const float RandomValue = RandomStream.FRandRange(0.0f, TotalWeight);
+
+	float Accumulated = 0.0f;
+	for (int32 Index = 0; Index < Candidates.Num(); ++Index)
+	{
+		Accumulated += Candidates[Index].Weight;
+		if (RandomValue <= Accumulated)
+		{
+			return Index;
+		}
+	}
+
+	return Candidates.Num() - 1;
 }

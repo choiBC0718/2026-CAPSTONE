@@ -45,4 +45,24 @@ private:
 
 	/* 현재 좌표 주변 상하좌우 중 방이 없는 빈 좌표만 반환 */
 	TArray<FIntPoint> GetAvailableNeighborPositions(const FMapLayout& InLayout, const FIntPoint& InPos) const;
+
+private:
+	struct FRoomCandidate
+	{
+		FIntPoint BaseRoomPos;
+		FIntPoint NewRoomPos;
+		float Weight = 1.0f;
+	};
+
+	/* 후보 위치 주변 상하좌우에 몇 개의 방이 붙어 있는지 계산 */
+	int32 CountAdjacentRooms(const FMapLayout& InLayout, const FIntPoint& InPos) const;
+
+	/* InPos에 방을 추가했을 때 2x2 블록이 생기는지 검사 */
+	bool WouldCreate2x2Block(const FMapLayout& InLayout, const FIntPoint& InPos) const;
+
+	/* 후보 위치의 가중치 계산 */
+	float CalculateCandidateWeight(const FMapLayout& InLayout, const FIntPoint& BaseRoomPos, const FIntPoint& CandidatePos) const;
+
+	/* 가중치 랜덤으로 후보 하나 선택 */
+	int32 PickWeightedCandidateIndex(const TArray<FRoomCandidate>& Candidates, FRandomStream& RandomStream) const;
 };
