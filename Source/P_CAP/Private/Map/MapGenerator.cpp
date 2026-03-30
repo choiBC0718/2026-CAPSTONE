@@ -4,22 +4,48 @@
 
 FMapLayout UMapGenerator::GenerateMap(const FMapGenerationConfig& InConfig)
 {
-	/* 새로 만든 맵 결과를 저장할 변수
-	   (거리 정보, 연결 정보, 시작방, 보스방, 방 개수, 시드 등) */
-	FMapLayout NewLayout;
-	NewLayout.UsedConfig = InConfig;
-	NewLayout.UsedSeed = InConfig.Seed;
+	/* 최대 몇 번까지 맵 구조 생성을 반복할지 저장하는 변수 */
+	const int32 MaxGenerateTries = 30;
 
-	/* 시드를 기반으로 랜덤 생성기를 만드는 부분 */
-	FRandomStream RandomStream(InConfig.Seed);
+	for (int32 TryIndex = 0; TryIndex < MaxGenerateTries; ++TryIndex)
+	{
+		/* 새로 만든 맵 결과를 저장할 변수
+		   (거리 정보, 연결 정보, 시작방, 보스방, 방 개수, 시드 등) */
+		FMapLayout NewLayout;
+		NewLayout.UsedConfig = InConfig;
+		NewLayout.UsedSeed = InConfig.Seed + TryIndex;
 
-	CreateStartRoom(NewLayout);
-	ExpandRooms(NewLayout, RandomStream);
-	UpdateRoomConnections(NewLayout);
-	CalculateDistanceFromStart(NewLayout);
-	AssignBossRoom(NewLayout);
+		/* 시드를 기반으로 랜덤 생성기를 만드는 부분 */
+		FRandomStream RandomStream(NewLayout.UsedSeed);
 
-	return NewLayout;
+		CreateStartRoom(NewLayout);
+		ExpandRooms(NewLayout, RandomStream);
+		UpdateRoomConnections(NewLayout);
+		CalculateDistanceFromStart(NewLayout);
+		AssignBossRoom(NewLayout);
+
+		/* 시작방, 보스방 제외 dead-end가 2개 이상일 때만 특수방 배정 */
+		if (CountAvailableDeadEnds(NewLayout) >= 2)
+		{
+			AssignSpecialRooms(NewLayout, RandomStream);
+			return NewLayout;
+		}
+	}
+
+	/* 여기까지 왔으면 조건을 만족하는 맵을 못 찾은 것 마지막으로 생성한 맵을 반환하되 특수방은 없을 수 있음 */
+	FMapLayout FallbackLayout;
+	FallbackLayout.UsedConfig = InConfig;
+	FallbackLayout.UsedSeed = InConfig.Seed;
+
+	FRandomStream FallbackRandomStream(InConfig.Seed);
+
+	CreateStartRoom(FallbackLayout);
+	ExpandRooms(FallbackLayout, FallbackRandomStream);
+	UpdateRoomConnections(FallbackLayout);
+	CalculateDistanceFromStart(FallbackLayout);
+	AssignBossRoom(FallbackLayout);
+
+	return FallbackLayout;
 }
 
 void UMapGenerator::CreateStartRoom(FMapLayout& OutLayout)
@@ -252,6 +278,114 @@ TArray<FIntPoint> UMapGenerator::GetAvailableNeighborPositions(const FMapLayout&
 	}
 
 	return Result;
+}
+
+void UMapGenerator::AssignSpecialRooms(FMapLayout& OutLayout, FRandomStream& RandomStream)
+{
+	/* Reward, Shop 후보는 dead-end만 사용 */
+	TArray<FIntPoint> DeadEndCandidates;
+
+	for (const TPair<FIntPoint, FRoomData>& Pair : OutLayout.Rooms)
+	{
+		const FRoomData& Room = Pair.Value;
+
+		if (!IsSpecialRoomCandidate(OutLayout, Room))
+		{
+			continue;
+		}
+
+		if (Room.IsDeadEnd())
+		{
+			DeadEndCandidates.Add(Room.GridPos);
+		}
+	}
+
+	/* dead-end 후보가 2개 미만이면 배정 불가 */
+	if (DeadEndCandidates.Num() < 2)
+	{
+		return;
+	}
+
+	/* Reward 방 선택 */
+	const int32 RewardIndex = PickRandomCandidateIndex(DeadEndCandidates, RandomStream);
+	if (RewardIndex == INDEX_NONE)
+	{
+		return;
+	}
+
+	const FIntPoint RewardPos = DeadEndCandidates[RewardIndex];
+	if (FRoomData* RewardRoom = OutLayout.FindRoom(RewardPos))
+	{
+		RewardRoom->RoomType = ERoomType::Reward;
+	}
+
+	/* Reward로 선택된 방은 후보에서 제거 */
+	DeadEndCandidates.RemoveAt(RewardIndex);
+
+	/* Shop 방 선택 */
+	const int32 ShopIndex = PickRandomCandidateIndex(DeadEndCandidates, RandomStream);
+	if (ShopIndex == INDEX_NONE)
+	{
+		return;
+	}
+
+	const FIntPoint ShopPos = DeadEndCandidates[ShopIndex];
+	if (FRoomData* ShopRoom = OutLayout.FindRoom(ShopPos))
+	{
+		ShopRoom->RoomType = ERoomType::Shop;
+	}
+}
+
+bool UMapGenerator::IsSpecialRoomCandidate(const FMapLayout& InLayout, const FRoomData& Room) const
+{
+	if (Room.GridPos == InLayout.StartRoomPos)
+	{
+		return false;
+	}
+
+	if (Room.GridPos == InLayout.BossRoomPos)
+	{
+		return false;
+	}
+
+	if (Room.RoomType != ERoomType::Normal)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+int32 UMapGenerator::PickRandomCandidateIndex(const TArray<FIntPoint>& Candidates, FRandomStream& RandomStream) const
+{
+	if (Candidates.IsEmpty())
+	{
+		return INDEX_NONE;
+	}
+
+	return RandomStream.RandRange(0, Candidates.Num() - 1);
+}
+
+int32 UMapGenerator::CountAvailableDeadEnds(const FMapLayout& InLayout) const
+{
+	int32 Count = 0;
+
+	for (const TPair<FIntPoint, FRoomData>& Pair : InLayout.Rooms)
+	{
+		const FRoomData& Room = Pair.Value;
+
+		if (!IsSpecialRoomCandidate(InLayout, Room))
+		{
+			continue;
+		}
+
+		if (Room.IsDeadEnd())
+		{
+			Count++;
+		}
+	}
+
+	return Count;
 }
 
 int32 UMapGenerator::CountAdjacentRooms(const FMapLayout& InLayout, const FIntPoint& InPos) const

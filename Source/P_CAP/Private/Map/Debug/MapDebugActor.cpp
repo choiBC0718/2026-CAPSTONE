@@ -218,19 +218,42 @@ void AMapDebugActor::DebugDrawMap(const FMapLayout& Layout)
 	{
 		const FRoomData& Room = Pair.Value;
 
-		FVector WorldPos = FVector(Room.GridPos.X * TileSize, Room.GridPos.Y * TileSize, 0.f);
+		const FVector WorldPos(
+			Room.GridPos.X * TileSize,
+			Room.GridPos.Y * TileSize,
+			0.f
+		);
 
 		FColor Color = FColor::White;
 
-		if (Room.RoomType == ERoomType::Start)
+		switch (Room.RoomType)
 		{
+		case ERoomType::Start:
 			Color = FColor::Green;
-		}
-		else if (Room.RoomType == ERoomType::Boss)
-		{
+			break;
+
+		case ERoomType::Boss:
 			Color = FColor::Red;
+			break;
+
+		case ERoomType::Reward:
+			Color = FColor::Yellow;
+			break;
+
+		case ERoomType::Shop:
+			Color = FColor::Blue;
+			break;
+
+		case ERoomType::Event:
+			Color = FColor::White;
+			break;
+
+		case ERoomType::Normal:
+		default:
+			Color = FColor::White;
+			break;
 		}
 
-		DrawDebugBox(GetWorld(), WorldPos, FVector(100, 100, 50), Color, true);
+		DrawDebugBox(GetWorld(), WorldPos, FVector(100.f, 100.f, 50.f), Color, true);
 	}
 }

@@ -30,15 +30,15 @@ private:
 	UPROPERTY()
 	UMapGenerator* MapGenerator;
 
-	// 에디터에서 직접 입력할 시드
+	/* 에디터에서 직접 입력할 시드 */
 	UPROPERTY(EditAnywhere, Category="Map Debug")
 	int32 CurrentSeed = 12345;
 
-	// 방 개수
+	/* 방 개수 */
 	UPROPERTY(EditAnywhere, Category="Map Debug")
 	int32 CurrentRoomCount = 10;
 
-	// 시작 시 랜덤 시드 사용할지
+	/* 시작 시 랜덤 시드 사용할지 체크 박스 */
 	UPROPERTY(EditAnywhere, Category="Map Debug")
 	bool bUseRandomSeedOnBeginPlay = false;
 	

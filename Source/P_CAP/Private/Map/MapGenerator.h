@@ -40,12 +40,23 @@ private:
 	/* 시작방을 제외한 방들 중 가장 먼 방을 찾아 보스방으로 지정 */
 	void AssignBossRoom(FMapLayout& OutLayout);
 
+	/* 시작방과 보스방을 제외한 방들 중 나머지 특수방 지정 */
+	void AssignSpecialRooms(FMapLayout& OutLayout, FRandomStream& RandomStream);
+
 	/* 현재 좌표를 기준으로 상하좌우 인접 좌표 4개를 반환 */
 	TArray<FIntPoint> GetNeighborPositions(const FIntPoint& InPos) const;
 
 	/* 현재 좌표 주변 상하좌우 중 방이 없는 빈 좌표만 반환 */
 	TArray<FIntPoint> GetAvailableNeighborPositions(const FMapLayout& InLayout, const FIntPoint& InPos) const;
 
+	/* 특수방 후보가 될 수 있는지 검사 하는 함수 */
+	bool IsSpecialRoomCandidate(const FMapLayout& InLayout, const FRoomData& Room) const;
+
+	/* 후보 배열 안에서 랜덤으로 하나를 뽑는 함수 */
+	int32 PickRandomCandidateIndex(const TArray<FIntPoint>& Candidates, FRandomStream& RandomStream) const;
+
+	/* 시작방, 보스방 제외 사용 가능한 막다른 방의 개수를 세는 함수 */
+	int32 CountAvailableDeadEnds(const FMapLayout& InLayout) const;
 private:
 	struct FRoomCandidate
 	{
