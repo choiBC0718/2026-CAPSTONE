@@ -5,7 +5,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Character.h"
-#include "Map/Debug/MapDebugActor.h"
+#include "Map/Debug/MapManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/BoxComponent.h"
 
@@ -61,13 +61,11 @@ void ADoorActor::OnTriggerBeginOverlap(UPrimitiveComponent* OverlappedComponent,
 
 	bIsProcessingMove = true;
 
-	AMapDebugActor* MapDebugActor = Cast<AMapDebugActor>(
-		UGameplayStatics::GetActorOfClass(GetWorld(), AMapDebugActor::StaticClass())
-	);
+	AMapManager* MapManager = Cast<AMapManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AMapManager::StaticClass()));
 
-	if (MapDebugActor)
+	if (MapManager)
 	{
-		MapDebugActor->RequestMovePlayer(PlayerCharacter, TargetRoomPos, Direction);
+		MapManager->RequestMovePlayer(PlayerCharacter, TargetRoomPos, Direction);
 	}
 
 	bIsProcessingMove = false;
