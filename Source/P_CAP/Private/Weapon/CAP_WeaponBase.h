@@ -33,9 +33,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class USceneComponent* MeshContainer;
 	UPROPERTY(VisibleAnywhere, Category="Component")
-	class UStaticMeshComponent* WeaponMesh_R;
+	class USkeletalMeshComponent* WeaponMesh_R;
 	UPROPERTY(VisibleAnywhere, Category="Component")
-	class UStaticMeshComponent* WeaponMesh_L;
+	class USkeletalMeshComponent* WeaponMesh_L;
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class URotatingMovementComponent* RotatingMovementComp;
 	

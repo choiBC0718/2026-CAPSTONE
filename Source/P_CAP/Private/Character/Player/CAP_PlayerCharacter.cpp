@@ -27,12 +27,12 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 	Camera = CreateDefaultSubobject<UCameraComponent>("Camera Comp");
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 
-	WeaponMesh_R = CreateDefaultSubobject<UStaticMeshComponent>("WeaponMesh_R");
+	WeaponMesh_R = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Skeletal Mesh_R");
 	WeaponMesh_R->SetupAttachment(GetMesh());
 	WeaponMesh_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	WeaponMesh_R->ComponentTags.Add("RightHand");
 
-	WeaponMesh_L = CreateDefaultSubobject<UStaticMeshComponent>("WeaponMesh_L");
+	WeaponMesh_L = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Skeletal Mesh_L");
 	WeaponMesh_L->SetupAttachment(GetMesh());
 	WeaponMesh_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	WeaponMesh_L->ComponentTags.Add("LeftHand");
@@ -155,7 +155,7 @@ void ACAP_PlayerCharacter::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst
 			FActorSpawnParameters SpawnParams;
 			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 			
-			ACAP_WeaponBase* DroppedWeapon = GetWorld()->SpawnActor<ACAP_WeaponBase>(WeaponToDrop->GetWeaponDA()->WeaponClass, DropLocation, FRotator::ZeroRotator, SpawnParams);
+			ACAP_WeaponBase* DroppedWeapon = GetWorld()->SpawnActor<ACAP_WeaponBase>(DropLocation, FRotator::ZeroRotator, SpawnParams);
 			if (DroppedWeapon)
 			{
 				// 버린 무기의 Instance 주입 및 스태틱 메시 설정(OnConstruction) 
@@ -299,24 +299,27 @@ void ACAP_PlayerCharacter::SwapWeapon()
 void ACAP_PlayerCharacter::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInstance)
 {
 	ClearCurrentWeaponData();
-	if (!WeaponInstance || !WeaponInstance->GetWeaponDA())
+	if (!WeaponInstance)
 		return;
 
 	UCAP_WeaponDataAsset* WeaponDA = WeaponInstance->GetWeaponDA();
+	if (!WeaponDA)
+		return;
+	
 	// DA에 설정한 메시, 위치로 설정
 	for (const FWeaponVisualInfo& VisualInfo :WeaponDA->WeaponVisualInfos)
 	{
-		if (VisualInfo.EquipHand == EEquipHand::Left)
+		USkeletalMeshComponent* TargetMesh = (VisualInfo.EquipHand == EEquipHand::Left) ? WeaponMesh_L : WeaponMesh_R;
+		if (TargetMesh)
 		{
-			WeaponMesh_L->SetStaticMesh(VisualInfo.WeaponMesh);
-			WeaponMesh_L->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, VisualInfo.EquipSocketName);
-			WeaponMesh_L->SetRelativeTransform(VisualInfo.EquipTransform);
-		}
-		else
-		{
-			WeaponMesh_R->SetStaticMesh(VisualInfo.WeaponMesh);
-			WeaponMesh_R->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, VisualInfo.EquipSocketName);
-			WeaponMesh_R->SetRelativeTransform(VisualInfo.EquipTransform);
+			TargetMesh->SetSkeletalMesh(VisualInfo.WeaponMesh);
+			TargetMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, VisualInfo.CharacterBoneName);
+			if (VisualInfo.WeaponAttachBoneName != NAME_None)
+			{
+				FTransform BoneTransform = TargetMesh->GetSocketTransform(VisualInfo.WeaponAttachBoneName, RTS_Component);
+				FTransform FinalTransform = BoneTransform.Inverse() * VisualInfo.EquipTransform;
+				TargetMesh->SetRelativeTransform(FinalTransform);
+			}
 		}
 	}
 
@@ -343,8 +346,10 @@ void ACAP_PlayerCharacter::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 
 void ACAP_PlayerCharacter::ClearCurrentWeaponData()
 {
-	WeaponMesh_R->SetStaticMesh(nullptr);
-	WeaponMesh_L->SetStaticMesh(nullptr);
+	if (WeaponMesh_R)
+		WeaponMesh_R->SetSkeletalMesh(nullptr);
+	if (WeaponMesh_L)
+		WeaponMesh_L->SetSkeletalMesh(nullptr);
 	
 	UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent());
 	if (ASC)

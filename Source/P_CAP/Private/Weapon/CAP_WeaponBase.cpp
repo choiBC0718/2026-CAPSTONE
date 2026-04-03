@@ -18,19 +18,24 @@ ACAP_WeaponBase::ACAP_WeaponBase()
 	
 	InteractionSphere = CreateDefaultSubobject<USphereComponent>("Interaction Collision Component");
 	InteractionSphere->SetupAttachment(RootComp);
+	InteractionSphere->SetSphereRadius(75.f);
 
 	MeshContainer = CreateDefaultSubobject<USceneComponent>("Mesh Container");
 	MeshContainer->SetupAttachment(RootComp);
 
-	WeaponMesh_R = CreateDefaultSubobject<UStaticMeshComponent>("Weapon Mesh R");
+	WeaponMesh_R = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Skeletal Mesh R");
 	WeaponMesh_R->SetupAttachment(MeshContainer);
 	WeaponMesh_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	WeaponMesh_R->SetGenerateOverlapEvents(false);
+	WeaponMesh_R->SetRelativeLocation(FVector(95.f, -25.f, -10.f));
+	WeaponMesh_R->SetRelativeRotation(FRotator(0.f, -90.f, -90.f));
 
-	WeaponMesh_L = CreateDefaultSubobject<UStaticMeshComponent>("Weapon Mesh L");
+	WeaponMesh_L = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Skeletal Mesh L");
 	WeaponMesh_L->SetupAttachment(MeshContainer);
 	WeaponMesh_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	WeaponMesh_L->SetGenerateOverlapEvents(false);
+	WeaponMesh_L->SetRelativeLocation(FVector(95.f, 25.f, -10.f));
+	WeaponMesh_L->SetRelativeRotation(FRotator(0.f, -90.f, -90.f));
 
 	RotatingMovementComp = CreateDefaultSubobject<URotatingMovementComponent>("Rotating Movement Component");
 	RotatingMovementComp->RotationRate = FRotator(0.f, 45.f,0.f);
@@ -55,8 +60,10 @@ void ACAP_WeaponBase::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
-	WeaponMesh_R->SetStaticMesh(nullptr);
-	WeaponMesh_L->SetStaticMesh(nullptr);
+	if (!WeaponMesh_L || !WeaponMesh_R)	return;
+
+	WeaponMesh_R->SetSkeletalMesh(nullptr);
+	WeaponMesh_L->SetSkeletalMesh(nullptr);
 
 	UCAP_WeaponDataAsset* DAToUse = nullptr;
 	// 생성된 Instance가 있다면 그 Instance를 만들 때 사용한 DA 이용
@@ -72,13 +79,16 @@ void ACAP_WeaponBase::OnConstruction(const FTransform& Transform)
 	{
 		for (const FWeaponVisualInfo& VisualInfo : DAToUse->WeaponVisualInfos)
 		{
+			if (!VisualInfo.WeaponMesh)
+				continue;
+			
 			if (VisualInfo.EquipHand == EEquipHand::Left)
 			{
-				WeaponMesh_L->SetStaticMesh(VisualInfo.WeaponMesh);
+				WeaponMesh_L->SetSkeletalMesh(VisualInfo.WeaponMesh);
 			}
 			else
 			{
-				WeaponMesh_R->SetStaticMesh(VisualInfo.WeaponMesh);
+				WeaponMesh_R->SetSkeletalMesh(VisualInfo.WeaponMesh);
 			}
 		}
 	}

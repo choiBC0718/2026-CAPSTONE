@@ -58,11 +58,14 @@ struct FWeaponVisualInfo
 	EEquipHand EquipHand = EEquipHand::Right;
 	/**캐릭터에 부착시킬 메시*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class UStaticMesh* WeaponMesh = nullptr;
-	/**어느 소켓에 부착시킬 지*/
+	class USkeletalMesh* WeaponMesh = nullptr;
+	/**무기 부착시킬 캐릭터의 본/소켓 이름*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName EquipSocketName = NAME_None;
-	/**부착 Transform*/
+	FName CharacterBoneName = FName("Socket_Weapon_R");
+	/**무기 손잡이 본 이름*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName WeaponAttachBoneName = FName("root");
+	/**부착 시 추가 최전 위치 조정 값*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FTransform EquipTransform = FTransform();
 };
@@ -87,10 +90,7 @@ public:
 	 */
 	UPROPERTY(EditDefaultsOnly, Category="Data")
 	TMap<EWeaponGrade, FName> GradeDataMap;
-
-	/** 장착 할 무기 액터 클래스 */
-	UPROPERTY(EditDefaultsOnly, Category="Visual")
-	TSubclassOf<class ACAP_WeaponBase> WeaponClass;
+	
 	UPROPERTY(EditDefaultsOnly, Category="Visual")
 	TArray<FWeaponVisualInfo> WeaponVisualInfos;
 	

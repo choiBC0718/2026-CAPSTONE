@@ -52,5 +52,5 @@ private:
 	TMap<USkeletalMeshComponent*, TArray<FVector>> PrevSocketLocationMap;
 
 	// 캐릭터에 설정된 무기 메쉬 Get
-	class UStaticMeshComponent* GetWeaponMesh(USkeletalMeshComponent* CharacterMesh) const;
+	class USkeletalMeshComponent* GetWeaponMesh(USkeletalMeshComponent* CharacterMesh) const;
 };

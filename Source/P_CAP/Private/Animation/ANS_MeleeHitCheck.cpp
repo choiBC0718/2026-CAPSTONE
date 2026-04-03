@@ -165,18 +165,18 @@ void UANS_MeleeHitCheck::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequen
 	}
 }
 
-class UStaticMeshComponent* UANS_MeleeHitCheck::GetWeaponMesh(USkeletalMeshComponent* CharacterMesh) const
+class USkeletalMeshComponent* UANS_MeleeHitCheck::GetWeaponMesh(USkeletalMeshComponent* CharacterMesh) const
 {
 	if (!CharacterMesh || !CharacterMesh->GetOwner())
 		return nullptr;
 
-	TArray<UStaticMeshComponent*> WeaponMeshes;
+	TArray<USkeletalMeshComponent*> WeaponMeshes;
 
 	// ANS호출한 캐릭터에서 특정 컴포넌트 태그 설정되어있는 StaticMeshComponent 가져오기
-	CharacterMesh->GetOwner()->GetComponents<UStaticMeshComponent>(WeaponMeshes);
+	CharacterMesh->GetOwner()->GetComponents<USkeletalMeshComponent>(WeaponMeshes);
 	// 설정한 변수에 따라 가져오는 메시 컴포넌트 다르게
 	FName TagToFind = (WeaponHand == EEquipHand::Right) ? "RightHand" : "LeftHand";
-	for (UStaticMeshComponent* Mesh : WeaponMeshes)
+	for (USkeletalMeshComponent* Mesh : WeaponMeshes)
 	{
 		if (Mesh->ComponentHasTag(TagToFind))
 		{
