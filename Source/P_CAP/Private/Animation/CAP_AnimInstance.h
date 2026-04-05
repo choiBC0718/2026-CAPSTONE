@@ -18,6 +18,7 @@ public:
 	virtual void NativeInitializeAnimation() override;
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 	virtual void NativeThreadSafeUpdateAnimation(float DeltaSeconds) override;
+	void UpdateWeaponAnimData(class UCAP_WeaponDataAsset* WeaponDA);
 
 	UFUNCTION(BlueprintCallable, meta=(BlueprintThreadSafe))
 	FORCEINLINE float GetSpeed() const {return Speed;}
@@ -29,6 +30,19 @@ public:
 	
 	UFUNCTION(BlueprintCallable, meta=(BlueprintThreadSafe))
 	FORCEINLINE float GetAimYaw() const {return AimYaw;}
+
+protected:
+	UPROPERTY(BlueprintReadOnly)
+	class UAnimSequence* CurrentIdleAnim;
+	UPROPERTY(BlueprintReadOnly)
+	class UAnimSequence* CurrentJogStartAnim;
+	UPROPERTY(BlueprintReadOnly)
+	class UAnimSequence* CurrentJoggingAnim;
+	UPROPERTY(BlueprintReadOnly)
+	class UAnimSequence* CurrentJogEndAnim;
+	
+	UPROPERTY(BlueprintReadOnly)
+	float CurrentJogEndStartTime = 0.f;
 	
 private:
 	UPROPERTY()

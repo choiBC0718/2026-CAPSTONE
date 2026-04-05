@@ -37,8 +37,12 @@ public:
 private:
 	/**		Components		**/
 	UPROPERTY(VisibleAnywhere, Category="Weapon")
+	class USceneComponent* WeaponAttachPoint_R;
+	UPROPERTY()
 	class USkeletalMeshComponent* WeaponMesh_R;
 	UPROPERTY(VisibleAnywhere, Category="Weapon")
+	class USceneComponent* WeaponAttachPoint_L;
+	UPROPERTY()
 	class USkeletalMeshComponent* WeaponMesh_L;
 	UPROPERTY(VisibleAnywhere, Category="View")
 	class USpringArmComponent* SpringArm;

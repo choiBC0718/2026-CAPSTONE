@@ -7,6 +7,7 @@
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
+#include "Animation/CAP_AnimInstance.h"
 #include "Data/CAP_WeaponDataAsset.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -27,13 +28,19 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 	Camera = CreateDefaultSubobject<UCameraComponent>("Camera Comp");
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 
+	WeaponAttachPoint_R = CreateDefaultSubobject<USceneComponent>("Weapon Attach Point R");
+	WeaponAttachPoint_R->SetupAttachment(GetMesh(), "hand_r");
+	
 	WeaponMesh_R = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Skeletal Mesh_R");
-	WeaponMesh_R->SetupAttachment(GetMesh());
+	WeaponMesh_R->SetupAttachment(WeaponAttachPoint_R);
 	WeaponMesh_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	WeaponMesh_R->ComponentTags.Add("RightHand");
 
+	WeaponAttachPoint_L = CreateDefaultSubobject<USceneComponent>("Weapon Attach Point L");
+	WeaponAttachPoint_L->SetupAttachment(GetMesh(), "hand_l");
+	
 	WeaponMesh_L = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Skeletal Mesh_L");
-	WeaponMesh_L->SetupAttachment(GetMesh());
+	WeaponMesh_L->SetupAttachment(WeaponAttachPoint_L);
 	WeaponMesh_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	WeaponMesh_L->ComponentTags.Add("LeftHand");
 	
@@ -310,17 +317,34 @@ void ACAP_PlayerCharacter::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 	for (const FWeaponVisualInfo& VisualInfo :WeaponDA->WeaponVisualInfos)
 	{
 		USkeletalMeshComponent* TargetMesh = (VisualInfo.EquipHand == EEquipHand::Left) ? WeaponMesh_L : WeaponMesh_R;
-		if (TargetMesh)
+		USceneComponent* AttachPoint = (VisualInfo.EquipHand == EEquipHand::Left) ? WeaponAttachPoint_L : WeaponAttachPoint_R;
+		if (TargetMesh && AttachPoint)
 		{
+			// 무기 스켈레탈 메시 설정
 			TargetMesh->SetSkeletalMesh(VisualInfo.WeaponMesh);
-			TargetMesh->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, VisualInfo.CharacterBoneName);
-			if (VisualInfo.WeaponAttachBoneName != NAME_None)
+
+			// DA에 설정한 무기를 부착시킬 본(소켓) 이름의 위치로 SceneComponent 위치 수정
+			FName TargetCharacterBone = (VisualInfo.CharacterBoneName != NAME_None) ? VisualInfo.CharacterBoneName : FName("hand_r");
+			AttachPoint->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TargetCharacterBone);
+			AttachPoint->SetRelativeTransform(VisualInfo.GripOffsetTransform);
+
+			// 무기 메시를 AttachPoint에 부착 후 위치 조정
+			TargetMesh->AttachToComponent(AttachPoint, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+			if (VisualInfo.AlignBoneName != NAME_None)
 			{
-				FTransform BoneTransform = TargetMesh->GetSocketTransform(VisualInfo.WeaponAttachBoneName, RTS_Component);
-				FTransform FinalTransform = BoneTransform.Inverse() * VisualInfo.EquipTransform;
-				TargetMesh->SetRelativeTransform(FinalTransform);
+				FTransform BoneTransform = TargetMesh->GetSocketTransform(VisualInfo.AlignBoneName, RTS_Component);
+				TargetMesh->SetRelativeTransform(BoneTransform.Inverse());
+			}
+			else
+			{
+				TargetMesh->SetRelativeTransform(FTransform::Identity);
 			}
 		}
+	}
+	
+	if (UCAP_AnimInstance* AnimInst = Cast<UCAP_AnimInstance>(GetMesh()->GetAnimInstance()))
+	{
+		AnimInst->UpdateWeaponAnimData(WeaponDA);
 	}
 
 	UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent());

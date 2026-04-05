@@ -3,7 +3,9 @@
 
 #include "Animation/CAP_AnimInstance.h"
 
+#include "Character/Player/CAP_PlayerCharacter.h"
 #include "GameFramework/Character.h"
+#include "Weapon/CAP_WeaponInstance.h"
 
 void UCAP_AnimInstance::NativeInitializeAnimation()
 {
@@ -58,4 +60,17 @@ void UCAP_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 void UCAP_AnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
 {
+}
+
+void UCAP_AnimInstance::UpdateWeaponAnimData(class UCAP_WeaponDataAsset* WeaponDA)
+{
+	if (WeaponDA)
+	{
+		CurrentIdleAnim = WeaponDA->IdleAnim;
+		CurrentJogStartAnim = WeaponDA->JogStartAnim;
+		CurrentJoggingAnim = WeaponDA->JoggingAnim;
+		CurrentJogEndAnim = WeaponDA->JogEndAnim;
+
+		CurrentJogEndStartTime = WeaponDA->JogEndStartTime;
+	}
 }

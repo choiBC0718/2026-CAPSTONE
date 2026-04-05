@@ -25,15 +25,6 @@ struct FWeaponSkillData
 };
 
 UENUM(BlueprintType)
-enum class EWeaponAnimType : uint8
-{
-	Unarmed			UMETA(DisplayName = "맨손"),
-	Melee_1H		UMETA(DisplayName = "한손 근접"),
-	Melee_2H		UMETA(DisplayName = "양손 근접"),
-	Ranged			UMETA(DisplayName = "원거리"),
-	Shield			UMETA(DisplayName = "방패"),
-};
-UENUM(BlueprintType)
 enum class EEquipHand : uint8
 {
 	Right			UMETA(DisplayName = "오른손 장착"),
@@ -56,18 +47,21 @@ struct FWeaponVisualInfo
 	/** 어느 손에 장착시킬지*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EEquipHand EquipHand = EEquipHand::Right;
-	/**캐릭터에 부착시킬 메시*/
+	/** 캐릭터에 부착시킬 무기 스켈레탈 메시*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	class USkeletalMesh* WeaponMesh = nullptr;
-	/**무기 부착시킬 캐릭터의 본/소켓 이름*/
+	/** 캐릭터 쪽 부착 지점 (본 이름 or 소켓 이름)
+	 * 기본적으로 hand_l / hand_r 사용
+	 * (특수 위치인 경우 전용 소켓 이름 입력)
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName CharacterBoneName = FName("Socket_Weapon_R");
-	/**무기 손잡이 본 이름*/
+	FName CharacterBoneName = FName("hand_r");
+	/** 무기 스켈레탈 메시의 뼈 이름 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName WeaponAttachBoneName = FName("root");
-	/**부착 시 추가 최전 위치 조정 값*/
+	FName AlignBoneName = FName("hand_r");
+	/** 최종 미세 보정값 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FTransform EquipTransform = FTransform();
+	FTransform GripOffsetTransform = FTransform();
 };
 
 /**
@@ -82,7 +76,7 @@ public:
 	/** 무기 이름 */
 	UPROPERTY(EditDefaultsOnly, Category="Data")
 	FText WeaponName;
-	/** 무기 기본 등급 */
+	/** 무기 태생 등급 */
 	UPROPERTY(EditDefaultsOnly, Category="Data")
 	EWeaponGrade DefaultGrade = EWeaponGrade::Normal;
 	/**무기 등급 - 조회할 테이블 행 이름 Map
@@ -101,7 +95,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="Ability")
 	TArray<FWeaponSkillData> ActiveAbilityArray;
 	
-	/** 해당 무기 장착 시 애니메이션 상태*/
-	UPROPERTY(EditDefaultsOnly, Category="Animation")
-	EWeaponAnimType WeaponAnimType = EWeaponAnimType::Unarmed;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Animtaion")
+	class UAnimSequence* IdleAnim = nullptr;
+	UPROPERTY(EditDefaultsOnly, Category="Animtaion")
+	class UAnimSequence* JogStartAnim = nullptr;
+	UPROPERTY(EditDefaultsOnly, Category="Animtaion")
+	class UAnimSequence* JoggingAnim = nullptr;
+	UPROPERTY(EditDefaultsOnly, Category="Animtaion")
+	class UAnimSequence* JogEndAnim = nullptr;
+	UPROPERTY(EditDefaultsOnly, Category="Animtaion")
+	float JogEndStartTime = 0.f;
 };
