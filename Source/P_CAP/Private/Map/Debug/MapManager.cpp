@@ -133,7 +133,7 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 			continue;
 		}
 
-		SpawnedRoom->InitializeRoom(RoomData);
+		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed);
 		SpawnedRooms.Add(SpawnedRoom);
 		SpawnedRoomMap.Add(RoomData.GridPos, SpawnedRoom);
 	}

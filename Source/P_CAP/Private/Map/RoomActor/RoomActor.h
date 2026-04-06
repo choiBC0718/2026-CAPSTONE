@@ -4,13 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Map/RoomActor/Interior/RoomInteriorGenerator.h"
 #include "Map/RoomData.h"
 #include "Map/RoomActor/DoorDirection.h"
+#include "Map/RoomActor/DoorActor.h"
 #include "RoomActor.generated.h"
-
-class USceneComponent;
-class UStaticMeshComponent;
-class ADoorActor;
 
 UCLASS()
 class ARoomActor : public AActor
@@ -20,7 +20,7 @@ class ARoomActor : public AActor
 public:
 	ARoomActor();
 
-	void InitializeRoom(const FRoomData& InRoomData);
+	void InitializeRoom(const FRoomData& InRoomData, int32 InMapSeed);
 	FVector GetEntrancePoint(EDoorDirection Direction) const;
 	virtual void Destroyed() override;
 	
@@ -46,17 +46,48 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Door")
 	float DoorInset = 0.f;
 
+	/* 내부 셀 한 칸 크기 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
+	float InteriorCellSize = 250.f;
+
+	/* 벽 쪽 여유 공간 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
+	float InteriorMargin = 200.f;
+
+	/* 장애물 메시 높이 보정 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
+	float ObstacleHeightOffset = 50.f;
+
+	/* 장애물 메시 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
+	UStaticMesh* ObstacleMesh = nullptr;
+	
 	UPROPERTY()
 	TArray<TObjectPtr<ADoorActor>> SpawnedDoors;
 
 	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> SpawnedInteriorMeshes;
+	
+	UPROPERTY()
 	FRoomData CachedRoomData;
 
+	/* 내부 생성 시 사용할 맵 시드 보관 */
+	UPROPERTY()
+	int32 CachedMapSeed = 0;
+
+	/* 내부 배치 생성기 */
+	UPROPERTY()
+	TObjectPtr<URoomInteriorGenerator> InteriorGenerator;
+	
 private:
 	void ClearSpawnedDoors();
 	void SpawnConnectedDoors();
 	void SpawnDoor(EDoorDirection Direction);
 
+	void ClearSpawnedInteriorMeshes();
+	void GenerateAndSpawnInterior();
+	void SpawnObstacleMeshAtLocalPosition(const FVector& LocalPosition);
+	
 	FTransform GetDoorTransform(EDoorDirection Direction) const;
 	FIntPoint GetNeighborGridPos(EDoorDirection Direction) const;
 };
