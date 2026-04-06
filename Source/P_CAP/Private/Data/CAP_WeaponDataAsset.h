@@ -13,7 +13,7 @@ struct FWeaponSkillData
 	GENERATED_BODY()
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	TSubclassOf<class UCAP_GameplayAbility> AbilityClass = nullptr;
+	TSoftClassPtr<class UCAP_GameplayAbility> AbilityClass = nullptr;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	class UAnimMontage* AbilityMontage = nullptr;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
@@ -49,7 +49,7 @@ struct FWeaponVisualInfo
 	EEquipHand EquipHand = EEquipHand::Right;
 	/** 캐릭터에 부착시킬 무기 스켈레탈 메시*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class USkeletalMesh* WeaponMesh = nullptr;
+	TSoftObjectPtr<class USkeletalMesh> WeaponMesh = nullptr;
 	/** 캐릭터 쪽 부착 지점 (본 이름 or 소켓 이름)
 	 * 기본적으로 hand_l / hand_r 사용
 	 * (특수 위치인 경우 전용 소켓 이름 입력)

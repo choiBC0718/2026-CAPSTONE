@@ -32,6 +32,11 @@ void UCAP_AbilitySystemComponent::ApplyFullStatEffect()
 	ApplyGameplayEffect(AbilitySystemGenerics->GetFullStatEffect());
 }
 
+const TMap<EAbilityInputID, TSubclassOf<UGameplayAbility>>& UCAP_AbilitySystemComponent::GetAbilities() const
+{
+	return Abilities;
+}
+
 void UCAP_AbilitySystemComponent::ApplyInitialEffects()
 {
 	if (!AbilitySystemGenerics || !GetOwner())

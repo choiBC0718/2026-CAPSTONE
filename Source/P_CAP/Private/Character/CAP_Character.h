@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
+#include "Abilities/GameplayAbility.h"
 #include "GameFramework/Character.h"
+#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "CAP_Character.generated.h"
 
 UCLASS()
@@ -15,6 +17,8 @@ class ACAP_Character : public ACharacter, public IAbilitySystemInterface
 public:
 	ACAP_Character();
 
+	const TMap<EAbilityInputID, TSubclassOf<UGameplayAbility>>& GetAbilities() const;
+	
 private:
 	/**		Components		**/
 	UPROPERTY(VisibleAnywhere, Category="Ability")

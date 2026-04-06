@@ -7,14 +7,11 @@
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
-#include "Animation/CAP_AnimInstance.h"
-#include "Data/CAP_WeaponDataAsset.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
-#include "GAS/Ability/CAP_GameplayAbility.h"
 #include "Interface/CAP_InteractInterface.h"
-#include "Weapon/CAP_WeaponBase.h"
+#include "Weapon/CAP_WeaponComponent.h"
 #include "Weapon/CAP_WeaponInstance.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
@@ -28,21 +25,7 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 	Camera = CreateDefaultSubobject<UCameraComponent>("Camera Comp");
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 
-	WeaponAttachPoint_R = CreateDefaultSubobject<USceneComponent>("Weapon Attach Point R");
-	WeaponAttachPoint_R->SetupAttachment(GetMesh(), "hand_r");
-	
-	WeaponMesh_R = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Skeletal Mesh_R");
-	WeaponMesh_R->SetupAttachment(WeaponAttachPoint_R);
-	WeaponMesh_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	WeaponMesh_R->ComponentTags.Add("RightHand");
-
-	WeaponAttachPoint_L = CreateDefaultSubobject<USceneComponent>("Weapon Attach Point L");
-	WeaponAttachPoint_L->SetupAttachment(GetMesh(), "hand_l");
-	
-	WeaponMesh_L = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Skeletal Mesh_L");
-	WeaponMesh_L->SetupAttachment(WeaponAttachPoint_L);
-	WeaponMesh_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	WeaponMesh_L->ComponentTags.Add("LeftHand");
+	WeaponComponent = CreateDefaultSubobject<UCAP_WeaponComponent>("Weapon Component");
 	
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
@@ -113,78 +96,8 @@ void ACAP_PlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 void ACAP_PlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	EquippedWeapons.SetNum(2);
-
-	//TODO 스테이지 넘어갈 때 기본무기 장착하는 로직 제외
-	if (DefaultBasicWeapon)
-	{
-		UCAP_WeaponInstance* BasicWeapon = NewObject<UCAP_WeaponInstance>(this);
-		BasicWeapon->InitializeWeapon(DefaultBasicWeapon);
-
-		EquippedWeapons[0] = BasicWeapon;
-		ApplyWeaponData(BasicWeapon);
-	}
-	EquippedWeapons[1] = nullptr;
-	CurrentWeaponIndex = 0;
 }
 
-void ACAP_PlayerCharacter::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInstance)
-{
-	if (!NewWeaponInstance)
-		return;
-
-	int32 EmptySlotIndex = INDEX_NONE;
-	for (int32 i=0; i<EquippedWeapons.Num() ; ++i)
-	{	//빈 무기 슬롯이 있다면 그 슬롯의 인덱스 가져와 
-		if (EquippedWeapons[i]==nullptr)
-		{
-			EmptySlotIndex = i;
-			break;
-		}
-	}
-
-	// 빈 슬롯이 있다면 (현재 무기 하나 사용 중인 경우)
-	if (EmptySlotIndex != INDEX_NONE)
-	{
-		// 슬롯에 바로 장착 및 데이터 적용
-		EquippedWeapons[EmptySlotIndex] = NewWeaponInstance;
-		CurrentWeaponIndex = EmptySlotIndex;
-		ApplyWeaponData(NewWeaponInstance);
-	}
-	// 빈 슬롯이 없다면 (현재 무기 두개 사용 중인 경우)
-	else
-	{
-		// 현재 들고있는 무기 땅에 드랍
-		UCAP_WeaponInstance* WeaponToDrop = EquippedWeapons[CurrentWeaponIndex];
-		if (WeaponToDrop)
-		{
-			FVector DropLocation = GetActorLocation() + (GetActorForwardVector() * 50.f);
-			FActorSpawnParameters SpawnParams;
-			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-			
-			ACAP_WeaponBase* DroppedWeapon = GetWorld()->SpawnActor<ACAP_WeaponBase>(DropLocation, FRotator::ZeroRotator, SpawnParams);
-			if (DroppedWeapon)
-			{
-				// 버린 무기의 Instance 주입 및 스태틱 메시 설정(OnConstruction) 
-				DroppedWeapon->WeaponInstance = WeaponToDrop;
-				DroppedWeapon->OnConstruction(DroppedWeapon->GetTransform());
-			}
-		}
-
-		// 무기 슬롯에 상호작용한 무기 장착 및 데이터 적용
-		EquippedWeapons[CurrentWeaponIndex] = NewWeaponInstance;
-		ApplyWeaponData(NewWeaponInstance);
-	}
-}
-
-class UCAP_WeaponInstance* ACAP_PlayerCharacter::GetCurrentWeaponInstance() const
-{
-	if (EquippedWeapons.IsValidIndex(CurrentWeaponIndex))
-	{
-		return EquippedWeapons[CurrentWeaponIndex];
-	}
-	return nullptr;
-}
 
 void ACAP_PlayerCharacter::UpdateInteractUI(bool bVisible)
 {
@@ -295,93 +208,17 @@ void ACAP_PlayerCharacter::InteractInputHandle(const FInputActionInstance& Insta
 
 void ACAP_PlayerCharacter::SwapWeapon()
 {
-	int32 NextIndex = (CurrentWeaponIndex ==0) ? 1:0;
-	if (EquippedWeapons[NextIndex] == nullptr)
-		return;
-
-	CurrentWeaponIndex = NextIndex;
-	ApplyWeaponData(EquippedWeapons[CurrentWeaponIndex]);
+	if (WeaponComponent)
+		WeaponComponent->SwapWeapon();
 }
 
-void ACAP_PlayerCharacter::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInstance)
+void ACAP_PlayerCharacter::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInstance)
 {
-	ClearCurrentWeaponData();
-	if (!WeaponInstance)
-		return;
-
-	UCAP_WeaponDataAsset* WeaponDA = WeaponInstance->GetWeaponDA();
-	if (!WeaponDA)
-		return;
-	
-	// DA에 설정한 메시, 위치로 설정
-	for (const FWeaponVisualInfo& VisualInfo :WeaponDA->WeaponVisualInfos)
-	{
-		USkeletalMeshComponent* TargetMesh = (VisualInfo.EquipHand == EEquipHand::Left) ? WeaponMesh_L : WeaponMesh_R;
-		USceneComponent* AttachPoint = (VisualInfo.EquipHand == EEquipHand::Left) ? WeaponAttachPoint_L : WeaponAttachPoint_R;
-		if (TargetMesh && AttachPoint)
-		{
-			// 무기 스켈레탈 메시 설정
-			TargetMesh->SetSkeletalMesh(VisualInfo.WeaponMesh);
-
-			// DA에 설정한 무기를 부착시킬 본(소켓) 이름의 위치로 SceneComponent 위치 수정
-			FName TargetCharacterBone = (VisualInfo.CharacterBoneName != NAME_None) ? VisualInfo.CharacterBoneName : FName("hand_r");
-			AttachPoint->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TargetCharacterBone);
-			AttachPoint->SetRelativeTransform(VisualInfo.GripOffsetTransform);
-
-			// 무기 메시를 AttachPoint에 부착 후 위치 조정
-			TargetMesh->AttachToComponent(AttachPoint, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-			if (VisualInfo.AlignBoneName != NAME_None)
-			{
-				FTransform BoneTransform = TargetMesh->GetSocketTransform(VisualInfo.AlignBoneName, RTS_Component);
-				TargetMesh->SetRelativeTransform(BoneTransform.Inverse());
-			}
-			else
-			{
-				TargetMesh->SetRelativeTransform(FTransform::Identity);
-			}
-		}
-	}
-	
-	if (UCAP_AnimInstance* AnimInst = Cast<UCAP_AnimInstance>(GetMesh()->GetAnimInstance()))
-	{
-		AnimInst->UpdateWeaponAnimData(WeaponDA);
-	}
-
-	UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent());
-	if (ASC)
-	{
-		if (WeaponDA->BasicAbility.AbilityClass)
-		{
-			FGameplayAbilitySpec Spec(WeaponDA->BasicAbility.AbilityClass, 1, static_cast<int32>(EAbilityInputID::BasicAttack),this);
-			CurrentWeaponAbilityHandles.Add(ASC->GiveAbility(Spec));
-		}
-		
-		int32 SkillInputIndex = static_cast<int32>(EAbilityInputID::Skill1);
-		for (const FWeaponSkillData& SkillData : WeaponInstance->GetGrantedSkills())
-		{
-			if (SkillData.AbilityClass)
-			{
-				FGameplayAbilitySpec Spec(SkillData.AbilityClass, 1, SkillInputIndex++, this);
-				CurrentWeaponAbilityHandles.Add(ASC->GiveAbility(Spec));
-			}
-		}
-	}
+	if (WeaponComponent)
+		WeaponComponent->PickupWeapon(NewWeaponInstance);
 }
 
-void ACAP_PlayerCharacter::ClearCurrentWeaponData()
+class UCAP_WeaponInstance* ACAP_PlayerCharacter::GetCurrentWeaponInstance() const
 {
-	if (WeaponMesh_R)
-		WeaponMesh_R->SetSkeletalMesh(nullptr);
-	if (WeaponMesh_L)
-		WeaponMesh_L->SetSkeletalMesh(nullptr);
-	
-	UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent());
-	if (ASC)
-	{
-		for (const FGameplayAbilitySpecHandle& Handle : CurrentWeaponAbilityHandles)
-		{
-			ASC->ClearAbility(Handle);
-		}
-	}
-	CurrentWeaponAbilityHandles.Empty();
+	return WeaponComponent ? WeaponComponent->GetCurrentWeaponInstance() : nullptr;
 }

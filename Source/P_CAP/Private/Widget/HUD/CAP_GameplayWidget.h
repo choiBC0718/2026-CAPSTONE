@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "Widget/Common/CAP_ItemInteraction.h"
 #include "CAP_GameplayWidget.generated.h"
 
@@ -17,6 +18,7 @@ class UCAP_GameplayWidget : public UUserWidget
 
 public:
 	virtual void NativeConstruct() override;
+	void ConfigureAbilities(const TMap<EAbilityInputID, TSubclassOf<class UGameplayAbility>>& Abilities);
 
 	FORCEINLINE UCAP_ItemInteraction* GetInteractionWidget() const {return InteractionWidget;}
 	
@@ -25,4 +27,10 @@ protected:
 	class UCAP_ValueGauge* HealthBar;
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_ItemInteraction* InteractionWidget;
+	UPROPERTY(meta = (BindWidget))
+	class UCAP_AbilityListView* AbilityListView;
+
+private:
+	UPROPERTY()
+	class UAbilitySystemComponent* OwnerASC;
 };

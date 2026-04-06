@@ -36,19 +36,12 @@ public:
 	
 private:
 	/**		Components		**/
-	UPROPERTY(VisibleAnywhere, Category="Weapon")
-	class USceneComponent* WeaponAttachPoint_R;
-	UPROPERTY()
-	class USkeletalMeshComponent* WeaponMesh_R;
-	UPROPERTY(VisibleAnywhere, Category="Weapon")
-	class USceneComponent* WeaponAttachPoint_L;
-	UPROPERTY()
-	class USkeletalMeshComponent* WeaponMesh_L;
 	UPROPERTY(VisibleAnywhere, Category="View")
 	class USpringArmComponent* SpringArm;
 	UPROPERTY(VisibleAnywhere, Category="View")
 	class UCameraComponent* Camera;
-
+	UPROPERTY(EditAnywhere, Category="Weapon")
+	class UCAP_WeaponComponent* WeaponComponent;
 
 	/**		Input			**/
 	UPROPERTY(EditDefaultsOnly, Category="Input")
@@ -62,8 +55,7 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category="Input|Ability")
 	TMap<EAbilityInputID, class UInputAction*> AbilityInputActions;
-
-
+	
 	FVector GetMoveForwardDir();
 	FVector GetMoveRightDir();
 	void MoveInputHandle(const FInputActionValue& InputActionValue);
@@ -72,20 +64,6 @@ private:
 	void SwapWeapon();
 
 protected:
-	/** 게임 시작 시 기본 무기 (주먹 무기로 설정) */
-	UPROPERTY(EditDefaultsOnly, Category="Weapon")
-	class UCAP_WeaponDataAsset* DefaultBasicWeapon;
-	UPROPERTY(EditDefaultsOnly, Category="Weapon")
-	TArray<class UCAP_WeaponInstance*> EquippedWeapons;
-
-	UPROPERTY()
-	int32 CurrentWeaponIndex = 0;
 	UPROPERTY()
 	AActor* InteractableActor;
-
-	UPROPERTY()
-	TArray<FGameplayAbilitySpecHandle> CurrentWeaponAbilityHandles;
-	
-	void ApplyWeaponData(class UCAP_WeaponInstance* WeaponInstance);
-	void ClearCurrentWeaponData();
 };
