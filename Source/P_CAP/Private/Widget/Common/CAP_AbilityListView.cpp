@@ -3,12 +3,26 @@
 
 #include "Widget/Common/CAP_AbilityListView.h"
 
-#include "Abilities/GameplayAbility.h"
+#include "Data/CAP_AbilitySlotData.h"
+#include "Data/CAP_WeaponDataAsset.h"
+#include "Weapon/CAP_WeaponInstance.h"
 
-void UCAP_AbilityListView::ConfigureAbilities(const TMap<EAbilityInputID, TSubclassOf<class UGameplayAbility>>& Abilities)
+
+void UCAP_AbilityListView::RefreshWeaponSkills(class UCAP_WeaponInstance* WeaponInstance)
 {
-	for (const TPair<EAbilityInputID, TSubclassOf<UGameplayAbility>>& AbilityPair : Abilities)
+	if (!WeaponInstance)
+		return;
+	ClearListItems();
+	
+	const TArray<FWeaponSkillData>& GrantedSkills = WeaponInstance->GetGrantedSkills();
+	for (const FWeaponSkillData& SkillData : GrantedSkills)
 	{
-		AddItem(AbilityPair.Value.GetDefaultObject());
+		UCAP_AbilitySlotData* SlotData = NewObject<UCAP_AbilitySlotData>(this);
+		
+		SlotData->SkillIcon			= SkillData.SkillIcon;
+		SlotData->SkillName			= SkillData.SkillName;
+		SlotData->SkillDescription	= SkillData.Description;
+
+		AddItem(SlotData);
 	}
 }

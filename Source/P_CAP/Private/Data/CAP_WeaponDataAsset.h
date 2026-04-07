@@ -12,16 +12,30 @@ struct FWeaponSkillData
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	/** 스킬이 사용할 GA 클래스*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Logic")
 	TSoftClassPtr<class UCAP_GameplayAbility> AbilityClass = nullptr;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	/** 스킬 애니메이션 몽타주*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Animation")
 	class UAnimMontage* AbilityMontage = nullptr;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	/** 해당 스킬에 사용할 데미지 (물리/마법/방어력) */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Skill Data")
 	TSubclassOf<class UGameplayEffect> SkillDamageTypeEffect = nullptr;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	/** 스킬 데미지 배수*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Skill Data")
 	float BaseDamageMultiplier = 1.f;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	/** 스킬 쿨타임*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Skill Data")
 	float CooldownTime = 1.f;
+	/** 스킬 이름*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Skill UI")
+	FName SkillName = NAME_None;
+	/** 스킬 설명*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Skill UI")
+	FText Description;
+	/** 스킬 아이콘*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Skill UI")
+	TSoftObjectPtr<class UTexture2D> SkillIcon = nullptr;
 };
 
 UENUM(BlueprintType)

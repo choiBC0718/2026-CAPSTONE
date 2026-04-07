@@ -44,6 +44,5 @@ void ACAP_PlayerController::SpawnGameplayWidget()
 	if (GameplayWidget)
 	{
 		GameplayWidget->AddToViewport();
-		GameplayWidget->ConfigureAbilities(PlayerCharacter->GetAbilities());
 	}
 }

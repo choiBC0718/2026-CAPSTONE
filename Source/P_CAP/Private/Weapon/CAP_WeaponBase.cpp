@@ -109,8 +109,6 @@ void ACAP_WeaponBase::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	if (DropCollision && DropCollision->IsSimulatingPhysics())
 	{
-		// bAccelChange를 true로 하면 무기의 질량(Mass)을 무시하고 가속도로 직접 적용됩니다.
-		// 언리얼 기본 중력(-980)에 추가로 -2000을 더해 약 3배 무겁고 빠르게 툭 떨어집니다!
 		DropCollision->AddForce(FVector(0.f, 0.f, -2000.f), NAME_None, true);
 	}
 	float DeltaZ = FMath::Sin(GetGameTimeSinceCreation() * BobbingSpeed) * BobbingHeight;

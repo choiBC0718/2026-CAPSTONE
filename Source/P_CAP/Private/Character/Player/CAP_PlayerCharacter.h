@@ -3,11 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayAbilitySpecHandle.h"
 #include "InputAction.h"
 #include "InputActionValue.h"
 #include "Character/CAP_Character.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
+#include "Weapon/CAP_WeaponComponent.h"
 #include "CAP_PlayerCharacter.generated.h"
 
 /**
@@ -33,6 +33,8 @@ public:
 	void SetNearbyInteractable(AActor* NewInteractable) {InteractableActor = NewInteractable;}
 	void UpdateInteractUI(bool bVisible);
 	void UpdateInteractProgress(float Progress);
+	
+	UCAP_WeaponComponent* GetWeaponComponent() const {return WeaponComponent;}
 	
 private:
 	/**		Components		**/

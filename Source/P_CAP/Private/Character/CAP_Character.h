@@ -17,8 +17,6 @@ class ACAP_Character : public ACharacter, public IAbilitySystemInterface
 public:
 	ACAP_Character();
 
-	const TMap<EAbilityInputID, TSubclassOf<UGameplayAbility>>& GetAbilities() const;
-	
 private:
 	/**		Components		**/
 	UPROPERTY(VisibleAnywhere, Category="Ability")

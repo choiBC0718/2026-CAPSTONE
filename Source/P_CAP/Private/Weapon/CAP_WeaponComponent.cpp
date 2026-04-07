@@ -167,6 +167,11 @@ void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 			}
 		}
 	}
+
+	if (OnWeaponChanged.IsBound())
+	{
+		OnWeaponChanged.Broadcast(GetCurrentWeaponInstance());
+	}
 }
 
 void UCAP_WeaponComponent::ClearCurrentWeaponData()

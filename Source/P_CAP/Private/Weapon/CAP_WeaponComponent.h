@@ -7,6 +7,7 @@
 #include "Components/ActorComponent.h"
 #include "CAP_WeaponComponent.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponChanged, class UCAP_WeaponInstance*, NewWeaponInstance);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class UCAP_WeaponComponent : public UActorComponent
@@ -21,6 +22,9 @@ public:
 	void SwapWeapon();
 	class UCAP_WeaponInstance* GetCurrentWeaponInstance() const;
 
+	UPROPERTY()
+	FOnWeaponChanged OnWeaponChanged;
+	
 private:
 	UPROPERTY()
 	class USkeletalMeshComponent* WeaponMesh_L;

@@ -17,11 +17,6 @@ ACAP_Character::ACAP_Character()
 	CAPAttributeSet = CreateDefaultSubobject<UCAP_AttributeSet>("Attribute Set");
 }
 
-const TMap<EAbilityInputID, TSubclassOf<UGameplayAbility>>& ACAP_Character::GetAbilities() const
-{
-	return CAPAbilitySystemComponent->GetAbilities();
-}
-
 
 UAbilitySystemComponent* ACAP_Character::GetAbilitySystemComponent() const
 {

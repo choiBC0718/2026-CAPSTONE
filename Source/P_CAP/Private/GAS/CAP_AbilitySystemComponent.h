@@ -19,7 +19,6 @@ public:
 	UCAP_AbilitySystemComponent();
 	void InitComponent(FName StatRowName);
 	void ApplyFullStatEffect();
-	const TMap<EAbilityInputID, TSubclassOf<UGameplayAbility>>& GetAbilities() const;
 	
 private:
 	void ApplyInitialEffects();
