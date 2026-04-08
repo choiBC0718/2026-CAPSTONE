@@ -1,9 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Weapon/CAP_WeaponInstance.h"
-
-#include "GAS/Ability/CAP_GameplayAbility.h"
+#include "Items/Weapon/CAP_WeaponInstance.h"
+#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 
 void UCAP_WeaponInstance::InitializeWeapon(UCAP_WeaponDataAsset* InWeaponDA)
 {
@@ -16,10 +15,10 @@ void UCAP_WeaponInstance::InitializeWeapon(UCAP_WeaponDataAsset* InWeaponDA)
 	int32 SkillsToGrant = 0;
 	switch (WeaponDA->DefaultGrade)
 	{
-		case EWeaponGrade::Normal:		SkillsToGrant = 1;	break;
-		case EWeaponGrade::Rare:		SkillsToGrant = 1;	break;
-		case EWeaponGrade::Epic:		SkillsToGrant = 2;	break;
-		case EWeaponGrade::Legendary:	SkillsToGrant = 2;	break;
+		case EItemGrade::Normal:		SkillsToGrant = 1;	break;
+		case EItemGrade::Rare:		SkillsToGrant = 1;	break;
+		case EItemGrade::Epic:		SkillsToGrant = 2;	break;
+		case EItemGrade::Legendary:	SkillsToGrant = 2;	break;
 	}
 
 	// DA에 설정한 스킬을 랜덤으로 가져오기

@@ -11,8 +11,9 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "Interface/CAP_InteractInterface.h"
-#include "Weapon/CAP_WeaponComponent.h"
-#include "Weapon/CAP_WeaponInstance.h"
+#include "Items/Item/CAP_InventoryComponent.h"
+#include "Items/Weapon/CAP_WeaponComponent.h"
+#include "Items/Weapon/CAP_WeaponInstance.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 {
@@ -26,6 +27,7 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 
 	WeaponComponent = CreateDefaultSubobject<UCAP_WeaponComponent>("Weapon Component");
+	InventoryComponent = CreateDefaultSubobject<UCAP_InventoryComponent>("Inventory Component");
 	
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
@@ -212,11 +214,6 @@ void ACAP_PlayerCharacter::SwapWeapon()
 		WeaponComponent->SwapWeapon();
 }
 
-void ACAP_PlayerCharacter::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInstance)
-{
-	if (WeaponComponent)
-		WeaponComponent->PickupWeapon(NewWeaponInstance);
-}
 
 class UCAP_WeaponInstance* ACAP_PlayerCharacter::GetCurrentWeaponInstance() const
 {

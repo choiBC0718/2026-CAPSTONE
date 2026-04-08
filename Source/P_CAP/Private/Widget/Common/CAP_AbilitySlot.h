@@ -8,7 +8,7 @@
 #include "CAP_AbilitySlot.generated.h"
 
 /**
- * 스킬의 아이콘, 쿨타임 나타내는 슬롯
+ * 스킬의 아이콘, 쿨타임 나타내는 슬롯 -> AbilityListView를 통해 리스트 형식으로 사용
  */
 UCLASS()
 class UCAP_AbilitySlot : public UUserWidget, public IUserObjectListEntry

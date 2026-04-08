@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Weapon/CAP_WeaponComponent.h"
+#include "Items/Weapon/CAP_WeaponComponent.h"
 #include "Animation/CAP_AnimInstance.h"
 #include "CAP_WeaponBase.h"
 #include "CAP_WeaponInstance.h"
@@ -34,7 +34,7 @@ void UCAP_WeaponComponent::BeginPlay()
 		WeaponMesh_L->ComponentTags.Add("LeftHand");
 		WeaponMesh_L->RegisterComponent();
 	}
-	EquippedWeapons.SetNum(2);
+	EquippedWeapons.SetNum(MaxWeaponCount);
 	
 	if (DefaultBasicWeapon)
 	{
@@ -85,7 +85,10 @@ void UCAP_WeaponComponent::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst
 			{
 				DroppedWeapon->WeaponInstance = WeaponToDrop;
 				DroppedWeapon->FinishSpawning(SpawnTransform);
-				DroppedWeapon->DropWeapon();
+				
+				ACAP_DropItemBase* DropItem = Cast<ACAP_DropItemBase>(DroppedWeapon);
+				if (DropItem)
+					DropItem->DropItem();
 			}
 		}
 
@@ -170,6 +173,7 @@ void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 
 	if (OnWeaponChanged.IsBound())
 	{
+		// 현재 변경된 무기 인스턴스를 방송
 		OnWeaponChanged.Broadcast(GetCurrentWeaponInstance());
 	}
 }

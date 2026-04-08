@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "CAP_WeaponDataAsset.generated.h"
 
 /** 무기 데이터 에셋에서 무기마다 설정할 Ability 구조체 */
@@ -44,14 +45,6 @@ enum class EEquipHand : uint8
 	Right			UMETA(DisplayName = "오른손 장착"),
 	Left			UMETA(DisplayName = "왼손 장착")
 };
-UENUM(BlueprintType)
-enum class EWeaponGrade : uint8
-{
-	Normal			UMETA(DisplayName = "일반"),
-	Rare			UMETA(DisplayName = "레어"),
-	Epic			UMETA(DisplayName = "에픽"),
-	Legendary		UMETA(DisplayName = "레전더리")
-};
 
 USTRUCT(BlueprintType)
 struct FWeaponVisualInfo
@@ -90,14 +83,17 @@ public:
 	/** 무기 이름 */
 	UPROPERTY(EditDefaultsOnly, Category="Data")
 	FText WeaponName;
+	/** 무기 아이콘 */
+	UPROPERTY(EditDefaultsOnly, Category="Data")
+	TSoftObjectPtr<class UTexture2D> WeaponIcon;
 	/** 무기 태생 등급 */
 	UPROPERTY(EditDefaultsOnly, Category="Data")
-	EWeaponGrade DefaultGrade = EWeaponGrade::Normal;
+	EItemGrade DefaultGrade = EItemGrade::Normal;
 	/**무기 등급 - 조회할 테이블 행 이름 Map
 	 * ex.(Normal - DualSword_Normal)
 	 */
 	UPROPERTY(EditDefaultsOnly, Category="Data")
-	TMap<EWeaponGrade, FName> GradeDataMap;
+	TMap<EItemGrade, FName> GradeDataMap;
 	
 	UPROPERTY(EditDefaultsOnly, Category="Visual")
 	TArray<FWeaponVisualInfo> WeaponVisualInfos;

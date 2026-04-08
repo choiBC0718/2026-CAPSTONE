@@ -16,7 +16,8 @@ class ACAP_PlayerController : public APlayerController
 
 public:
 	virtual void OnPossess(APawn* InPawn) override;
-
+	virtual void SetupInputComponent() override;
+	
 	void SetInteractUIVisibility(bool bVisible, const FString& KeyName);
 	void UpdateInteractProgressUI(float Progress);
 	
@@ -30,4 +31,16 @@ private:
 	class UCAP_GameplayWidget* GameplayWidget;
 	
 	void SpawnGameplayWidget();
+	
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	class UInputMappingContext* UIInputMapping;
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	class UInputAction* InventoryToggleIA;
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	class UInputAction* CloseInventoryIA;
+
+	UFUNCTION()
+	void ToggleCharacterMenu();
+	UFUNCTION()
+	void CloseCharacterMenu();
 };

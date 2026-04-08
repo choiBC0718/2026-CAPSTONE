@@ -16,7 +16,7 @@ enum class ESlotItemType : uint8
 	Item
 };
 /**
- * 
+ * InventoryTabWidget에 들어갈 패널(장착한 무기 / 아이템)의 요소
  */
 UCLASS()
 class UCAP_ItemSlotWidget : public UUserWidget
@@ -27,7 +27,7 @@ public:
 	virtual void NativeConstruct() override;
 
 	void InitSlot(ESlotItemType InSlotType, UTexture2D* InIcon, UObject* InItemData);
-
+	void SetSlotNumber(int NewSlotNumber);
 	FOnSlotFocused OnSlotFocused;
 
 	UPROPERTY(BlueprintReadOnly)
@@ -47,4 +47,6 @@ private:
 
 	// WASD로 포커스 들어왔을 때 처리
 	virtual void NativeOnAddedToFocusPath(const FFocusEvent& InFocusEvent) override;
+
+	int SlotNumber;
 };

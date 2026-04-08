@@ -5,7 +5,7 @@
 
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "GameFramework/Character.h"
-#include "Weapon/CAP_WeaponInstance.h"
+#include "Items/Weapon/CAP_WeaponInstance.h"
 
 void UCAP_AnimInstance::NativeInitializeAnimation()
 {

@@ -18,6 +18,15 @@ enum class EAbilityInputID : uint8
 	SwapWeapon			UMETA(DisplayName = "SwapWeapon")
 };
 
+UENUM(BlueprintType)
+enum class EItemGrade : uint8
+{
+	Normal			UMETA(DisplayName = "일반"),
+	Rare			UMETA(DisplayName = "레어"),
+	Epic			UMETA(DisplayName = "에픽"),
+	Legendary		UMETA(DisplayName = "레전더리")
+};
+
 USTRUCT(BlueprintType)
 struct FBaseStatRow : public FTableRowBase
 {

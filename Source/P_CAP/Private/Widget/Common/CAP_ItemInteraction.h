@@ -16,7 +16,7 @@ public:
 };
 
 /**
- * 
+ * 아이템과 상호작용 가능할 때 나타날 위젯
  */
 UCLASS()
 class UCAP_ItemInteraction : public UUserWidget

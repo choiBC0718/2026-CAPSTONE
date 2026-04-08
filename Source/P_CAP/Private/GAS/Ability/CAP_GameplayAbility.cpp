@@ -7,7 +7,7 @@
 #include "AbilitySystemComponent.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
-#include "Weapon/CAP_WeaponInstance.h"
+#include "Items/Weapon/CAP_WeaponInstance.h"
 
 
 UCAP_GameplayAbility::UCAP_GameplayAbility()

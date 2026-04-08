@@ -5,9 +5,10 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "CAP_CharacterMenuWidget.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
-#include "Weapon/CAP_WeaponComponent.h"
+#include "Items/Weapon/CAP_WeaponComponent.h"
 #include "Widget/Common/CAP_ValueGauge.h"
 #include "Widget/Common/CAP_AbilityListView.h"
 
@@ -19,6 +20,7 @@ void UCAP_GameplayWidget::NativeConstruct()
 	{
 		if (UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent())
 		{
+			// 무기 변경 델리게이트 연결
 			WeaponComp->OnWeaponChanged.AddDynamic(this, &UCAP_GameplayWidget::HandleWeaponChanged);
 		}
 		
@@ -34,6 +36,32 @@ void UCAP_GameplayWidget::NativeConstruct()
 		}
 	}
 	
+}
+
+bool UCAP_GameplayWidget::IsCharacterMenuOpen()
+{
+	return CharacterMenuWidget && CharacterMenuWidget->IsVisible();
+}
+
+void UCAP_GameplayWidget::OpenCharacterMenu()
+{
+	if (CharacterMenuWidget)
+	{
+		CharacterMenuWidget->SetVisibility(ESlateVisibility::Visible);
+		CharacterMenuWidget->RefreshMenu();
+	}
+}
+
+void UCAP_GameplayWidget::CloseCharacterMenu()
+{
+	if (CharacterMenuWidget)
+		CharacterMenuWidget->SetVisibility(ESlateVisibility::Hidden);
+}
+
+void UCAP_GameplayWidget::SwitchCharacterMenuTab()
+{
+	if (CharacterMenuWidget)
+		CharacterMenuWidget->SwitchNextTab();
 }
 
 void UCAP_GameplayWidget::HandleWeaponChanged(class UCAP_WeaponInstance* NewWeaponInstance)

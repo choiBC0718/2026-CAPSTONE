@@ -9,7 +9,7 @@
 #include "CAP_ValueGauge.generated.h"
 
 /**
- * 
+ * HP 나타낼 바 위젯
  */
 UCLASS()
 class UCAP_ValueGauge : public UUserWidget

@@ -8,7 +8,7 @@
 #include "CAP_SynergySlotWidget.generated.h"
 
 /**
- * 시너지 1개를 나타낼 슬롯 위젯 클래스
+ * InventoryTabWidget에 들어갈 패널 (소유한 아이템 시너지)의 요소
  */
 UCLASS()
 class UCAP_SynergySlotWidget : public UUserWidget

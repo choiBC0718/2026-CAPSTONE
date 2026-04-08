@@ -5,7 +5,7 @@
 
 #include "Data/CAP_AbilitySlotData.h"
 #include "Data/CAP_WeaponDataAsset.h"
-#include "Weapon/CAP_WeaponInstance.h"
+#include "Items/Weapon/CAP_WeaponInstance.h"
 
 
 void UCAP_AbilityListView::RefreshWeaponSkills(class UCAP_WeaponInstance* WeaponInstance)

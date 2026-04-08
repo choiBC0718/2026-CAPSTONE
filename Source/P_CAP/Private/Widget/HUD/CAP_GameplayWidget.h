@@ -20,18 +20,29 @@ public:
 
 	FORCEINLINE UCAP_ItemInteraction* GetInteractionWidget() const {return InteractionWidget;}
 	
+	bool IsCharacterMenuOpen();
+	void OpenCharacterMenu();
+	void CloseCharacterMenu();
+	void SwitchCharacterMenuTab();
+	
 protected:
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_ValueGauge* HealthBar;
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_ItemInteraction* InteractionWidget;
+	// 부여된 스킬 아이콘 List View
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_AbilityListView* AbilityListView;
 
+	// Tab 키로 띄울 위젯
+	UPROPERTY(meta = (BindWidget))
+	class UCAP_CharacterMenuWidget* CharacterMenuWidget;
+	
 private:
 	UPROPERTY()
 	class UAbilitySystemComponent* OwnerASC;
 
+	
 	UFUNCTION()
 	void HandleWeaponChanged(class UCAP_WeaponInstance* NewWeaponInstance);
 };

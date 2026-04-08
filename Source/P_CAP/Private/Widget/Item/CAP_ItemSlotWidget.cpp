@@ -27,6 +27,11 @@ void UCAP_ItemSlotWidget::InitSlot(ESlotItemType InSlotType, UTexture2D* InIcon,
 	}
 }
 
+void UCAP_ItemSlotWidget::SetSlotNumber(int NewSlotNumber)
+{
+	SlotNumber = NewSlotNumber;
+}
+
 
 void UCAP_ItemSlotWidget::HandleSlotClicked()
 {

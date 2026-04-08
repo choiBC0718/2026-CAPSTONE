@@ -7,7 +7,8 @@
 #include "InputActionValue.h"
 #include "Character/CAP_Character.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
-#include "Weapon/CAP_WeaponComponent.h"
+#include "Items/Item/CAP_InventoryComponent.h"
+#include "Items/Weapon/CAP_WeaponComponent.h"
 #include "CAP_PlayerCharacter.generated.h"
 
 /**
@@ -26,8 +27,6 @@ public:
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
-	void PickupWeapon(class UCAP_WeaponInstance* NewWeaponInstance);
-	UFUNCTION()
 	class UCAP_WeaponInstance* GetCurrentWeaponInstance() const;
 	
 	void SetNearbyInteractable(AActor* NewInteractable) {InteractableActor = NewInteractable;}
@@ -35,6 +34,7 @@ public:
 	void UpdateInteractProgress(float Progress);
 	
 	UCAP_WeaponComponent* GetWeaponComponent() const {return WeaponComponent;}
+	UCAP_InventoryComponent* GetInventoryComponent() const {return InventoryComponent;}
 	
 private:
 	/**		Components		**/
@@ -44,6 +44,8 @@ private:
 	class UCameraComponent* Camera;
 	UPROPERTY(EditAnywhere, Category="Weapon")
 	class UCAP_WeaponComponent* WeaponComponent;
+	UPROPERTY(EditAnywhere, Category="Inventory")
+	class UCAP_InventoryComponent* InventoryComponent;
 
 	/**		Input			**/
 	UPROPERTY(EditDefaultsOnly, Category="Input")

@@ -7,6 +7,7 @@
 #include "Components/ActorComponent.h"
 #include "CAP_WeaponComponent.generated.h"
 
+// 무기 변경 했다는 것을 알리는 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponChanged, class UCAP_WeaponInstance*, NewWeaponInstance);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -24,6 +25,8 @@ public:
 
 	UPROPERTY()
 	FOnWeaponChanged OnWeaponChanged;
+
+	TArray<class UCAP_WeaponInstance*> GetEquippedWeapons() const {return EquippedWeapons;}
 	
 private:
 	UPROPERTY()
@@ -43,4 +46,7 @@ private:
 	
 	void ApplyWeaponData(class UCAP_WeaponInstance* WeaponInstance);
 	void ClearCurrentWeaponData();
+	
+	UPROPERTY(EditDefaultsOnly, Category="Weapon")
+	int MaxWeaponCount = 2;
 };
