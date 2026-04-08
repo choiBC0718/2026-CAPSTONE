@@ -3,6 +3,7 @@
 
 #include "Character/Player/CAP_PlayerCharacter.h"
 
+#include "AI/PlayerTrackerComponent.h"
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
@@ -23,6 +24,8 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
+
+	PlayerTracker = CreateDefaultSubobject<UPlayerTrackerComponent>(TEXT("Player Tracker"));
 }
 
 void ACAP_PlayerCharacter::PawnClientRestart()

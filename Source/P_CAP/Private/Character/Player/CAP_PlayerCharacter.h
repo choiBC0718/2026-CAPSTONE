@@ -44,4 +44,7 @@ private:
 	FVector GetMoveRightDir();
 	void MoveInputHandle(const FInputActionValue& InputActionValue);
 	void AbilityInputHandle(const FInputActionValue& InputActionValue, EAbilityInputID AbilityInputID);
+
+	UPROPERTY(VisibleAnywhere, Category="AI|Tracker")
+	class UPlayerTrackerComponent* PlayerTracker;
 };
