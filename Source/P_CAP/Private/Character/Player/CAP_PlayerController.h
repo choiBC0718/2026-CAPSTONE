@@ -13,5 +13,21 @@ UCLASS()
 class ACAP_PlayerController : public APlayerController
 {
 	GENERATED_BODY()
+
+public:
+	virtual void OnPossess(APawn* InPawn) override;
+
+	void SetInteractUIVisibility(bool bVisible, const FString& KeyName);
+	void UpdateInteractProgressUI(float Progress);
 	
+private:
+	UPROPERTY()
+	class ACAP_PlayerCharacter* PlayerCharacter;
+	
+	UPROPERTY(EditDefaultsOnly, Category="UI")
+	TSubclassOf<class UCAP_GameplayWidget> GameplayWidgetClass;
+	UPROPERTY()
+	class UCAP_GameplayWidget* GameplayWidget;
+	
+	void SpawnGameplayWidget();
 };

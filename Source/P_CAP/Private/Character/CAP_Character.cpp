@@ -18,13 +18,7 @@ ACAP_Character::ACAP_Character()
 }
 
 
-
-void ACAP_Character::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-}
-
-UCAP_AbilitySystemComponent* ACAP_Character::GetAbilitySystemComponent() const
+UAbilitySystemComponent* ACAP_Character::GetAbilitySystemComponent() const
 {
 	return CAPAbilitySystemComponent;
 }
