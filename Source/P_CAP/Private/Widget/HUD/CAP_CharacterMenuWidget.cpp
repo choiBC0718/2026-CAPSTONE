@@ -12,6 +12,14 @@ void UCAP_CharacterMenuWidget::NativeConstruct()
 	Super::NativeConstruct();
 }
 
+void UCAP_CharacterMenuWidget::NavigationInput(FVector2D InputVal)
+{
+	if (InventoryTabWidget && InventoryTabWidget->IsVisible())
+	{
+		InventoryTabWidget->NavigationInput(InputVal);
+	}
+}
+
 void UCAP_CharacterMenuWidget::RefreshMenu()
 {
 	if (InventoryTabWidget)
@@ -30,4 +38,10 @@ void UCAP_CharacterMenuWidget::SwitchNextTab()
 		int32 NextIndex = (WidgetSwitcher->GetActiveWidgetIndex() +1 ) % WidgetSwitcher->GetNumWidgets();
 		WidgetSwitcher->SetActiveWidgetIndex(NextIndex);
 	}
+}
+
+FReply UCAP_CharacterMenuWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+	return FReply::Handled();
 }

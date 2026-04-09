@@ -20,7 +20,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="Data")
 	FText ItemName;
 	// 아이템 설명
-	UPROPERTY(EditDefaultsOnly, Category="Data")
+	UPROPERTY(EditDefaultsOnly, Category="Data", meta=(MultiLine="true"))
 	FText ItemDescription;
 	// 아이템 아이콘
 	UPROPERTY(EditDefaultsOnly, Category="Data")

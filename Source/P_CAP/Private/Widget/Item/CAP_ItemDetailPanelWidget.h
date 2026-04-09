@@ -34,4 +34,7 @@ private:
 	class UHorizontalBox* FeatureIconBox;
 
 	FText GetGradeText(EItemGrade Grade) const;
+
+	UPROPERTY(EditDefaultsOnly, Category="Setting")
+	FVector2D SkillSynergyIconSize = FVector2D(100.f);
 };

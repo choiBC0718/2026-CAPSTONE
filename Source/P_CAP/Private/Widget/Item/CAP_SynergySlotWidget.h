@@ -16,7 +16,5 @@ class UCAP_SynergySlotWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	void RefreshSynergy(const TMap<FGameplayTag, int32>& CurrentSynergies);
 
-protected:
 };

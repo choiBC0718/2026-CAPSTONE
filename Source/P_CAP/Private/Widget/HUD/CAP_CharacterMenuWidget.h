@@ -20,6 +20,7 @@ class UCAP_CharacterMenuWidget : public UUserWidget
 public:
 	virtual void NativeConstruct() override;
 
+	void NavigationInput(FVector2D InputVal);
 	void RefreshMenu();
 	void SwitchNextTab();
 private:
@@ -30,4 +31,6 @@ private:
 	class UCAP_InventoryTabWidget* InventoryTabWidget;
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_AttributeTabWidget* AttributeTabWidget;
+
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 };

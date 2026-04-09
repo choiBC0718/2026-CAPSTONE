@@ -36,6 +36,7 @@ void ACAP_PlayerController::SetupInputComponent()
 	{
 		EnhancedInputComp->BindAction(InventoryToggleIA, ETriggerEvent::Triggered, this, &ACAP_PlayerController::ToggleCharacterMenu);
 		EnhancedInputComp->BindAction(CloseInventoryIA, ETriggerEvent::Triggered, this, &ACAP_PlayerController::CloseCharacterMenu);
+		EnhancedInputComp->BindAction(UINavigation, ETriggerEvent::Started, this, &ACAP_PlayerController::UINavigationHandle);
 	}
 }
 
@@ -72,6 +73,7 @@ void ACAP_PlayerController::ToggleCharacterMenu()
 {
 	if (GameplayWidget)
 	{
+		bIsMenuOpen = true;
 		// tab 메뉴 열려있지 않으면 열고 게임 일시정지
 		if (!GameplayWidget->IsCharacterMenuOpen())
 		{
@@ -90,6 +92,15 @@ void ACAP_PlayerController::CloseCharacterMenu()
 {
 	if (!GameplayWidget || !GameplayWidget->IsCharacterMenuOpen()) return;
 	// tab 메뉴 닫기
+	bIsMenuOpen = false;
 	GameplayWidget->CloseCharacterMenu();
 	SetPause(false);
+}
+
+void ACAP_PlayerController::UINavigationHandle(const FInputActionValue& InputActionValue)
+{
+	if (!bIsMenuOpen || !GameplayWidget->GetCharacterMenuWidget()) return;
+	
+	FVector2D InputVal = InputActionValue.Get<FVector2D>();
+	GameplayWidget->GetCharacterMenuWidget()->NavigationInput(InputVal);
 }

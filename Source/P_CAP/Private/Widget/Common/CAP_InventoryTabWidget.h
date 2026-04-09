@@ -20,6 +20,7 @@ public:
 	virtual void NativeConstruct() override;
 	
 	void RefreshInventoryTab(ACAP_PlayerCharacter* PlayerCharacter);
+	void NavigationInput(FVector2D InputVal);
 	
 protected:
 	UPROPERTY(meta = (BindWidget))
@@ -30,8 +31,5 @@ protected:
 	class UCAP_ItemSynergyPanelWidget* ItemSynergyPanel;
 
 private:
-	UFUNCTION()
-	void OnSlotFocusedHandle(class UCAP_ItemSlotWidget* FocusedSlot);
-
 	void OnItemSlotClicked(class UCAP_ItemSlotWidget* ClickedSlot);
 };

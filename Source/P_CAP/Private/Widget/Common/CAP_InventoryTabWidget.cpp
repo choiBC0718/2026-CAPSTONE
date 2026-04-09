@@ -10,7 +10,10 @@ void UCAP_InventoryTabWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	if (ItemEquipPanel)
+	{
+		// 슬롯 클릭 됨
 		ItemEquipPanel->OnPanelSlotClicked.AddUObject(this, &UCAP_InventoryTabWidget::OnItemSlotClicked);
+	}
 }
 
 void UCAP_InventoryTabWidget::RefreshInventoryTab(ACAP_PlayerCharacter* PlayerCharacter)
@@ -21,13 +24,14 @@ void UCAP_InventoryTabWidget::RefreshInventoryTab(ACAP_PlayerCharacter* PlayerCh
 	}
 }
 
-void UCAP_InventoryTabWidget::OnSlotFocusedHandle(class UCAP_ItemSlotWidget* FocusedSlot)
+void UCAP_InventoryTabWidget::NavigationInput(FVector2D InputVal)
 {
-	if (ItemDetailPanel && FocusedSlot)
+	if (ItemEquipPanel)
 	{
-		ItemDetailPanel->UpdateDetailInfo(FocusedSlot->SlotItemData, FocusedSlot->SlotType);
+		ItemEquipPanel->MoveSelection(InputVal);
 	}
 }
+
 
 void UCAP_InventoryTabWidget::OnItemSlotClicked(class UCAP_ItemSlotWidget* ClickedSlot)
 {

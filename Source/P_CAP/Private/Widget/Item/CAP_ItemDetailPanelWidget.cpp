@@ -52,14 +52,18 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 					UImage* SkillIconImg = NewObject<UImage>(this);
 					if (UTexture2D* SkillIcon = SkillData.SkillIcon.LoadSynchronous())
 					{
-						SkillIconImg->SetBrushFromTexture(SkillIcon);
-						SkillIconImg->SetDesiredSizeOverride(FVector2D(100.f,100.f));
+						FSlateBrush IconBrush;
+						IconBrush.SetResourceObject(SkillIcon);
+						IconBrush.ImageSize = SkillSynergyIconSize;
+						SkillIconImg->SetBrush(IconBrush);
 					}
 
 					UHorizontalBoxSlot* HBoxSlot = FeatureIconBox->AddChildToHorizontalBox(SkillIconImg);
 					if (HBoxSlot)
 					{
-						HBoxSlot->SetPadding(FMargin(5.f));
+						HBoxSlot->SetPadding(FMargin(50.f, 0.f, 50.f, 0.f));
+						HBoxSlot->SetHorizontalAlignment(HAlign_Fill);
+						HBoxSlot->SetVerticalAlignment(VAlign_Fill);
 					}
 				}
 			}
@@ -90,10 +94,10 @@ FText UCAP_ItemDetailPanelWidget::GetGradeText(EItemGrade Grade) const
 {
 	switch (Grade)
 	{
-	case EItemGrade::Normal:		return FText::FromString(TEXT("일반"));		break;
-	case EItemGrade::Rare:			return FText::FromString(TEXT("레어"));		break;
-	case EItemGrade::Epic:			return FText::FromString(TEXT("에픽"));		break;
-	case EItemGrade::Legendary:		return FText::FromString(TEXT("레전더리"));	break;
-	default:						return FText::GetEmpty();			break;
+	case EItemGrade::Normal:		return FText::FromString(TEXT("일반"));
+	case EItemGrade::Rare:			return FText::FromString(TEXT("레어"));
+	case EItemGrade::Epic:			return FText::FromString(TEXT("에픽"));
+	case EItemGrade::Legendary:		return FText::FromString(TEXT("레전더리"));
+	default:						return FText::GetEmpty();
 	}
 }

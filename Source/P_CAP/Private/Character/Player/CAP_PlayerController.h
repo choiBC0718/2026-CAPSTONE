@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InputActionValue.h"
 #include "GameFramework/PlayerController.h"
 #include "CAP_PlayerController.generated.h"
 
@@ -38,9 +39,15 @@ private:
 	class UInputAction* InventoryToggleIA;
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	class UInputAction* CloseInventoryIA;
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	class UInputAction* UINavigation;
 
 	UFUNCTION()
 	void ToggleCharacterMenu();
 	UFUNCTION()
 	void CloseCharacterMenu();
+	UFUNCTION()
+	void UINavigationHandle(const FInputActionValue& InputActionValue);
+
+	bool bIsMenuOpen;
 };

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CAP_CharacterMenuWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "Widget/Common/CAP_ItemInteraction.h"
 #include "CAP_GameplayWidget.generated.h"
@@ -19,6 +20,7 @@ public:
 	virtual void NativeConstruct() override;
 
 	FORCEINLINE UCAP_ItemInteraction* GetInteractionWidget() const {return InteractionWidget;}
+	FORCEINLINE UCAP_CharacterMenuWidget* GetCharacterMenuWidget() const {return CharacterMenuWidget;}
 	
 	bool IsCharacterMenuOpen();
 	void OpenCharacterMenu();

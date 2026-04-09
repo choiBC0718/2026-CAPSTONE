@@ -30,20 +30,29 @@ public:
 	
 	void InitSlot(ESlotItemType InSlotType, UTexture2D* InIcon, UObject* InItemData);
 	void SetSlotNumber(int NewSlotNumber);
+	void SetSlotSelected(bool bIsSelected);
 
 	UPROPERTY(BlueprintReadOnly)
 	ESlotItemType SlotType;
 	UPROPERTY(BlueprintReadOnly)
 	UObject* SlotItemData = nullptr;
 
+	UPROPERTY()
+	class UCAP_ItemSlotWidget* UpSlot;
+	UPROPERTY()
+	class UCAP_ItemSlotWidget* DownSlot;
+	UPROPERTY()
+	class UCAP_ItemSlotWidget* LeftSlot;
+	UPROPERTY()
+	class UCAP_ItemSlotWidget* RightSlot;
+	
 protected:
 	UPROPERTY(meta = (BindWidget))
 	class UImage* ItemIcon;
+	UPROPERTY(meta = (BindWidget))
+	class UImage* FocusBorderImg;
 
 private:
-	// WASD로 포커스 들어왔을 때 처리
-	virtual void NativeOnAddedToFocusPath(const FFocusEvent& InFocusEvent) override;
-
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual void RightButtonClicked();
