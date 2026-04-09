@@ -50,22 +50,7 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 				}
 				for (const FWeaponSkillData SkillData : WeaponInst->GetGrantedSkills())
 				{
-					UImage* SkillIconImg = NewObject<UImage>(this);
-					if (UTexture2D* SkillIcon = SkillData.SkillIcon.LoadSynchronous())
-					{
-						FSlateBrush IconBrush;
-						IconBrush.SetResourceObject(SkillIcon);
-						IconBrush.ImageSize = SkillSynergyIconSize;
-						SkillIconImg->SetBrush(IconBrush);
-					}
-
-					UHorizontalBoxSlot* HBoxSlot = FeatureIconBox->AddChildToHorizontalBox(SkillIconImg);
-					if (HBoxSlot)
-					{
-						HBoxSlot->SetPadding(FMargin(50.f, 0.f, 50.f, 0.f));
-						HBoxSlot->SetHorizontalAlignment(HAlign_Fill);
-						HBoxSlot->SetVerticalAlignment(VAlign_Fill);
-					}
+					AddFeatureIconToBox(SkillData.SkillIcon);
 				}
 			}
 		}
@@ -97,22 +82,7 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 					{
 						if (Row && Row->SynergyTag == Tag)
 						{
-							UImage* SynergyIconImg = NewObject<UImage>(this);
-							if (UTexture2D* SynergyIcon = Row->SynergyIcon.LoadSynchronous())
-							{
-								FSlateBrush IconBrush;
-								IconBrush.SetResourceObject(SynergyIcon);
-								IconBrush.ImageSize = SkillSynergyIconSize;
-								SynergyIconImg->SetBrush(IconBrush);
-							}
-
-							UHorizontalBoxSlot* HBoxSlot = FeatureIconBox->AddChildToHorizontalBox(SynergyIconImg);
-							if (HBoxSlot)
-							{
-								HBoxSlot->SetPadding(FMargin(50.f, 0.f, 50.f, 0.f));
-								HBoxSlot->SetHorizontalAlignment(HAlign_Fill);
-								HBoxSlot->SetVerticalAlignment(VAlign_Fill);
-							}
+							AddFeatureIconToBox(Row->SynergyIcon);
 							break;
 						}
 					}
@@ -133,5 +103,26 @@ FText UCAP_ItemDetailPanelWidget::GetGradeText(EItemGrade Grade) const
 	case EItemGrade::Epic:			return FText::FromString(TEXT("에픽"));
 	case EItemGrade::Legendary:		return FText::FromString(TEXT("레전더리"));
 	default:						return FText::GetEmpty();
+	}
+}
+
+void UCAP_ItemDetailPanelWidget::AddFeatureIconToBox(TSoftObjectPtr<class UTexture2D> IconPtr)
+{
+	if (IconPtr.IsNull())
+		return;
+
+	UImage* FeatureIconImg = NewObject<UImage>(this);
+	if (UTexture2D* LoadedIcon = IconPtr.LoadSynchronous())
+	{
+		FSlateBrush IconBrush;
+		IconBrush.SetResourceObject(LoadedIcon);
+		IconBrush.ImageSize = SkillSynergyIconSize;
+		FeatureIconImg->SetBrush(IconBrush);
+	}
+	if (UHorizontalBoxSlot* HBoxSlot = FeatureIconBox->AddChildToHorizontalBox(FeatureIconImg))
+	{
+		HBoxSlot->SetPadding(FMargin(50.f, 0.f, 50.f, 0.f));
+		HBoxSlot->SetHorizontalAlignment(HAlign_Fill);
+		HBoxSlot->SetVerticalAlignment(VAlign_Fill);
 	}
 }

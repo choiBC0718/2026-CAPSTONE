@@ -39,4 +39,6 @@ private:
 	class UDataTable* SynergyDataTable;
 	UPROPERTY(EditDefaultsOnly, Category="Setting")
 	FVector2D SkillSynergyIconSize = FVector2D(100.f);
+
+	void AddFeatureIconToBox(TSoftObjectPtr<class UTexture2D> IconPtr);
 };

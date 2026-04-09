@@ -102,7 +102,7 @@ void UCAP_InventoryComponent::UpdateSynergyEffects()
 			{
 				ASC->RemoveActiveGameplayEffect(Handle);
 			}
-			AppliedSynergyHandles.Empty();
+			AppliedSynergyHandles[TargetTag].Empty();
 		}
 		else
 		{

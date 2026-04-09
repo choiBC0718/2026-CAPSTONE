@@ -26,33 +26,16 @@ void UCAP_ItemEquipPanelWidget::RefreshPanel(ACAP_PlayerCharacter* PlayerCharact
 	if (WeaponList)
 	{
 		WeaponList->ClearChildren();
+		WeaponSlots.Empty();
 		if (UCAP_WeaponComponent* WeaponComp = PlayerCharacter->GetWeaponComponent())
 		{
 			const TArray<UCAP_WeaponInstance*> EquippedWeapons = WeaponComp->GetEquippedWeapons();
-			int MaxWeaponSlots = EquippedWeapons.Num();
-			WeaponSlots.Empty();
-
-			for (int i=0 ; i<MaxWeaponSlots ; i++)
+			for (int i=0 ; i<EquippedWeapons.Num() ; i++)
 			{
-				UCAP_ItemSlotWidget* NewWeaponSlot = CreateWidget<UCAP_ItemSlotWidget>(GetOwningPlayer(), ItemSlotWidgetClass);
-				if (NewWeaponSlot)
-				{
-					NewWeaponSlot->SetSlotNumber(i);
+				UCAP_WeaponInstance* WeaponInst = EquippedWeapons[i];
+				UTexture2D* Icon = (WeaponInst && WeaponInst->GetWeaponDA()) ? WeaponInst->GetWeaponDA()->WeaponIcon.LoadSynchronous() : nullptr;
 
-					UTexture2D* LoadedIcon = nullptr;
-					UCAP_WeaponInstance* CurrentWeapon = EquippedWeapons[i];
-					if (CurrentWeapon && CurrentWeapon->GetWeaponDA())
-					{
-						LoadedIcon = CurrentWeapon->GetWeaponDA()->WeaponIcon.LoadSynchronous();
-					}
-					NewWeaponSlot->InitSlot(ESlotItemType::Weapon, LoadedIcon, CurrentWeapon);
-
-					UWrapBoxSlot* WrapSlot = WeaponList->AddChildToWrapBox(NewWeaponSlot);
-					WrapSlot->SetPadding(FMargin(15.f));
-					WeaponSlots.Add(NewWeaponSlot);
-
-					NewWeaponSlot->OnLeftMouseClick.AddUObject(this, &UCAP_ItemEquipPanelWidget::HandleSlotLeftClicked);
-				}
+				CreateAndAddSlot(WeaponList, WeaponSlots, ESlotItemType::Weapon, i, WeaponInst, Icon);
 			}
 		}
 	}
@@ -60,42 +43,18 @@ void UCAP_ItemEquipPanelWidget::RefreshPanel(ACAP_PlayerCharacter* PlayerCharact
 	// 패시브 아이템 슬롯 갱신
 	if (PassiveItemList)
 	{
-		InventoryComponent = PlayerCharacter->GetInventoryComponent();
-		if (InventoryComponent)
+		PassiveItemList->ClearChildren();
+		ItemSlots.Empty();
+		if (UCAP_InventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent())
 		{
-			int Capacity = InventoryComponent->GetCapacity();
-			PassiveItemList->ClearChildren();
-			ItemSlots.Empty();
-
 			const TArray<UCAP_ItemInstance*> InventoryItems = InventoryComponent->GetInventoryItems();
 			
-			for (int i=0; i<Capacity; i++)
+			for (int i=0; i<InventoryComponent->GetCapacity(); i++)
 			{
-				UCAP_ItemSlotWidget* NewItemSlot = CreateWidget<UCAP_ItemSlotWidget>(GetOwningPlayer(), ItemSlotWidgetClass);
-				if (NewItemSlot)
-				{
-					NewItemSlot->SetSlotNumber(i);
+				UCAP_ItemInstance* ItemInst = InventoryItems.IsValidIndex(i) ? InventoryItems[i] : nullptr;
+				UTexture2D* Icon = (ItemInst && ItemInst->GetItemDA()) ? ItemInst->GetItemDA()->ItemIcon.LoadSynchronous() : nullptr;
 
-					UTexture2D* LoadedIcon = nullptr;
-					UCAP_ItemInstance* CurrentItem = nullptr;
-					if (InventoryItems.IsValidIndex(i))
-					{
-						CurrentItem = InventoryItems[i];
-						if (CurrentItem && CurrentItem->GetItemDA())
-						{
-							LoadedIcon = CurrentItem->GetItemDA()->ItemIcon.LoadSynchronous();
-						}
-					}
-					// 아이템 아이콘 및 데이터 넘기기
-					NewItemSlot->InitSlot(ESlotItemType::Item, LoadedIcon, CurrentItem);
-					
-					UWrapBoxSlot* WrapSlot = PassiveItemList->AddChildToWrapBox(NewItemSlot);
-					WrapSlot->SetPadding(FMargin(15.f));
-					ItemSlots.Add(NewItemSlot);
-
-					NewItemSlot->OnRightMouseClick.AddUObject(this, &UCAP_ItemEquipPanelWidget::HandleSlotRightClicked);
-					NewItemSlot->OnLeftMouseClick.AddUObject(this, &UCAP_ItemEquipPanelWidget::HandleSlotLeftClicked);
-				}
+				CreateAndAddSlot(PassiveItemList, ItemSlots, ESlotItemType::Item, i, ItemInst, Icon);
 			}
 		}
 	}
@@ -142,6 +101,28 @@ void UCAP_ItemEquipPanelWidget::HandleSlotRightClicked(class UCAP_ItemSlotWidget
 		OnPanelSlotClicked.Broadcast(ClickedSlot);
 }
 
+void UCAP_ItemEquipPanelWidget::CreateAndAddSlot(UWrapBox* TargetBox, TArray<UCAP_ItemSlotWidget*>& TargetArray,
+	ESlotItemType SlotType, int32 Index, UObject* ItemData, UTexture2D* Icon)
+{
+	if (UCAP_ItemSlotWidget* NewSlot = CreateWidget<UCAP_ItemSlotWidget>(GetOwningPlayer(), ItemSlotWidgetClass))
+	{
+		NewSlot->SetSlotNumber(Index);
+		NewSlot->InitSlot(SlotType, Icon, ItemData);
+		
+		if (UWrapBoxSlot* WrapSlot = TargetBox->AddChildToWrapBox(NewSlot))
+		{
+			WrapSlot->SetPadding(FMargin(15.f));
+		}
+		
+		NewSlot->OnLeftMouseClick.AddUObject(this, &UCAP_ItemEquipPanelWidget::HandleSlotLeftClicked);
+		if (SlotType == ESlotItemType::Item)
+		{
+			NewSlot->OnRightMouseClick.AddUObject(this, &UCAP_ItemEquipPanelWidget::HandleSlotRightClicked);
+		}
+		TargetArray.Add(NewSlot);
+	}
+}
+
 void UCAP_ItemEquipPanelWidget::InitNearbySlot()
 {
 	int ItemColumns = 3; // 아이템 가로줄 개수
@@ -150,20 +131,17 @@ void UCAP_ItemEquipPanelWidget::InitNearbySlot()
 	for (int i = 0; i < WeaponSlots.Num(); i++)
 	{
 		// 슬롯의 왼쪽 슬롯 지정
-		if (i > 0) WeaponSlots[i]->LeftSlot = WeaponSlots[i - 1];
-		else WeaponSlots[i]->LeftSlot = WeaponSlots.Last();
+		WeaponSlots[i]->LeftSlot = (i>0) ? WeaponSlots[i-1] : WeaponSlots.Last();
 
 		// 슬롯의 오른쪽 슬롯 지정
-		if (i < WeaponSlots.Num() - 1) WeaponSlots[i]->RightSlot = WeaponSlots[i + 1];
-		else WeaponSlots[i]->RightSlot = ItemSlots.IsValidIndex(0) ? ItemSlots[0] : WeaponSlots[0];
-
+		WeaponSlots[i]->RightSlot = (i<WeaponSlots.Num()-1) ? WeaponSlots[i+1] : (ItemSlots.IsValidIndex(0)) ? ItemSlots[0] : WeaponSlots[0];
+		
 		// 아래 슬롯 지정 (아이템 첫 줄 슬롯)
-		if (ItemSlots.IsValidIndex(i)) WeaponSlots[i]->DownSlot = ItemSlots[i];
+		WeaponSlots[i]->DownSlot = (ItemSlots.IsValidIndex(i)) ? ItemSlots[i] : nullptr;
 
 		// 위 슬롯 지정 (아이템 마지막 줄 슬롯)
 		int BottomItemIdx = ItemSlots.Num() - ItemColumns + i; 
-		if (ItemSlots.IsValidIndex(BottomItemIdx)) WeaponSlots[i]->UpSlot = ItemSlots[BottomItemIdx];
-		else WeaponSlots[i]->UpSlot = ItemSlots.Num() > 0 ? ItemSlots.Last() : nullptr;
+		WeaponSlots[i]->UpSlot = ItemSlots.IsValidIndex(BottomItemIdx) ? ItemSlots[BottomItemIdx] : ItemSlots.Num() > 0 ? ItemSlots.Last() : nullptr;
 	}
 
 	// 2. 아이템 슬롯 연결

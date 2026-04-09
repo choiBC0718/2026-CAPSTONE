@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CAP_ItemSlotWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "CAP_ItemEquipPanelWidget.generated.h"
 
@@ -35,9 +36,6 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category="Inventory")
 	TSubclassOf<UCAP_ItemSlotWidget> ItemSlotWidgetClass;
-
-	UPROPERTY()
-	class UCAP_InventoryComponent* InventoryComponent;
 	
 	UPROPERTY()
 	class UCAP_ItemSlotWidget* CurrentSelectedSlot;
@@ -50,5 +48,6 @@ private:
 	UFUNCTION()
 	void HandleSlotRightClicked(class UCAP_ItemSlotWidget* ClickedSlot);
 
+	void CreateAndAddSlot(UWrapBox* TargetBox, TArray<UCAP_ItemSlotWidget*>& TargetArray, ESlotItemType SlotType, int32 Index, UObject* ItemData, UTexture2D* Icon);
 	void InitNearbySlot();
 };
