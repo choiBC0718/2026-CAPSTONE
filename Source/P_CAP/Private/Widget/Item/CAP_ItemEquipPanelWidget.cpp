@@ -46,11 +46,13 @@ void UCAP_ItemEquipPanelWidget::RefreshPanel(ACAP_PlayerCharacter* PlayerCharact
 						LoadedIcon = CurrentWeapon->GetWeaponDA()->WeaponIcon.LoadSynchronous();
 					}
 					NewWeaponSlot->InitSlot(ESlotItemType::Weapon, LoadedIcon, CurrentWeapon);
-					NewWeaponSlot->OnSlotFocused.AddDynamic(this, &UCAP_ItemEquipPanelWidget::HandleSlotFocused);
 
 					UWrapBoxSlot* WrapSlot = WeaponList->AddChildToWrapBox(NewWeaponSlot);
-					WrapSlot->SetPadding(FMargin(2.f));
+					WrapSlot->SetPadding(FMargin(15.f));
 					WeaponSlots.Add(NewWeaponSlot);
+
+					NewWeaponSlot->OnRightMouseClick.AddUObject(this, &UCAP_ItemEquipPanelWidget::HandleSlotRightClicked);
+					NewWeaponSlot->OnLeftMouseClick.AddUObject(this, &UCAP_ItemEquipPanelWidget::HandleSlotLeftClicked);
 				}
 			}
 		}
@@ -87,11 +89,13 @@ void UCAP_ItemEquipPanelWidget::RefreshPanel(ACAP_PlayerCharacter* PlayerCharact
 					}
 					// 아이템 아이콘 및 데이터 넘기기
 					NewItemSlot->InitSlot(ESlotItemType::Item, LoadedIcon, CurrentItem);
-					NewItemSlot->OnSlotFocused.AddDynamic(this, &UCAP_ItemEquipPanelWidget::HandleSlotFocused);
 					
 					UWrapBoxSlot* WrapSlot = PassiveItemList->AddChildToWrapBox(NewItemSlot);
-					WrapSlot->SetPadding(FMargin(2.f));
+					WrapSlot->SetPadding(FMargin(15.f));
 					ItemSlots.Add(NewItemSlot);
+
+					NewItemSlot->OnRightMouseClick.AddUObject(this, &UCAP_ItemEquipPanelWidget::HandleSlotRightClicked);
+					NewItemSlot->OnLeftMouseClick.AddUObject(this, &UCAP_ItemEquipPanelWidget::HandleSlotLeftClicked);
 				}
 			}
 		}
@@ -102,4 +106,16 @@ void UCAP_ItemEquipPanelWidget::HandleSlotFocused(UCAP_ItemSlotWidget* FocusedSl
 {
 	if (OnPanelSlotFocused.IsBound())
 		OnPanelSlotFocused.Broadcast(FocusedSlot);
+}
+
+void UCAP_ItemEquipPanelWidget::HandleSlotLeftClicked(class UCAP_ItemSlotWidget* ClickedSlot)
+{
+	if (OnPanelSlotClicked.IsBound())
+		OnPanelSlotClicked.Broadcast(ClickedSlot);
+}
+
+void UCAP_ItemEquipPanelWidget::HandleSlotRightClicked(class UCAP_ItemSlotWidget* ClickedSlot)
+{
+	if (OnPanelSlotClicked.IsBound())
+		OnPanelSlotClicked.Broadcast(ClickedSlot);
 }

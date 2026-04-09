@@ -53,9 +53,12 @@ class UCAP_WeaponDataAsset* UCAP_GameplayAbility::GetWeaponDataAsset() const
 {
 	if (ACAP_PlayerCharacter* Player = GetPlayerCharacterFromActorInfo())
 	{
-		if (UCAP_WeaponInstance* WeaponInst = Player->GetCurrentWeaponInstance())
+		if (UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent())
 		{
-			return WeaponInst->GetWeaponDA();
+			if (UCAP_WeaponInstance* WeaponInst = WeaponComp->GetCurrentWeaponInstance())
+			{
+				return WeaponInst->GetWeaponDA();
+			}
 		}
 	}
 	return nullptr;
@@ -66,7 +69,10 @@ const struct FWeaponSkillData* UCAP_GameplayAbility::GetCurrentSkillData() const
 	ACAP_PlayerCharacter* Player = GetPlayerCharacterFromActorInfo();
 	if (!Player)		return nullptr;
 
-	UCAP_WeaponInstance* WeaponInst = Player->GetCurrentWeaponInstance();
+	UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent();
+	if (!WeaponComp)	return nullptr;
+	
+	UCAP_WeaponInstance* WeaponInst = WeaponComp->GetCurrentWeaponInstance();
 	if (!WeaponInst)	return nullptr;
 	
 	UCAP_WeaponDataAsset* WeaponDA = GetWeaponDataAsset();

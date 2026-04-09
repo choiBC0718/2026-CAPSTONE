@@ -28,4 +28,10 @@ protected:
 	class UCAP_ItemDetailPanelWidget* ItemDetailPanel;
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_ItemSynergyPanelWidget* ItemSynergyPanel;
+
+private:
+	UFUNCTION()
+	void OnSlotFocusedHandle(class UCAP_ItemSlotWidget* FocusedSlot);
+
+	void OnItemSlotClicked(class UCAP_ItemSlotWidget* ClickedSlot);
 };

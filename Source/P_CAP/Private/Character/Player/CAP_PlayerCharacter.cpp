@@ -216,9 +216,3 @@ void ACAP_PlayerCharacter::SwapWeapon()
 	if (WeaponComponent)
 		WeaponComponent->SwapWeapon();
 }
-
-
-class UCAP_WeaponInstance* ACAP_PlayerCharacter::GetCurrentWeaponInstance() const
-{
-	return WeaponComponent ? WeaponComponent->GetCurrentWeaponInstance() : nullptr;
-}

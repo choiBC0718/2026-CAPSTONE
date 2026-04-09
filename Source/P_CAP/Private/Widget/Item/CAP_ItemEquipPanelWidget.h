@@ -10,6 +10,7 @@ class ACAP_PlayerCharacter;
 class UCAP_ItemSlotWidget;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPanelSlotFocused, UCAP_ItemSlotWidget*, FocusedSlot);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnEquipPanelSlotClicked, class UCAP_ItemSlotWidget*);
 /**
  * 
  */
@@ -26,6 +27,7 @@ public:
 
 	UPROPERTY()
 	FOnPanelSlotFocused OnPanelSlotFocused;
+	FOnEquipPanelSlotClicked OnPanelSlotClicked;
 	
 private:
 	UPROPERTY(meta = (BindWidget))
@@ -45,4 +47,9 @@ private:
 	// 개별 슬롯 포커스 이벤트를 받아 부모로 토스
 	UFUNCTION()
 	void HandleSlotFocused(UCAP_ItemSlotWidget* FocusedSlot);
+
+	UFUNCTION()
+	void HandleSlotLeftClicked(class UCAP_ItemSlotWidget* ClickedSlot);
+	UFUNCTION()
+	void HandleSlotRightClicked(class UCAP_ItemSlotWidget* ClickedSlot);
 };

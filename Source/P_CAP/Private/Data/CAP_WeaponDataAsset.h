@@ -89,6 +89,9 @@ public:
 	/** 무기 태생 등급 */
 	UPROPERTY(EditDefaultsOnly, Category="Data")
 	EItemGrade DefaultGrade = EItemGrade::Normal;
+	/** 무기 설명*/
+	UPROPERTY(EditDefaultsOnly, Category="Data")
+	FText Description;
 	/**무기 등급 - 조회할 테이블 행 이름 Map
 	 * ex.(Normal - DualSword_Normal)
 	 */

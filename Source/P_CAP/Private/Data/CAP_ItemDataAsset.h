@@ -18,7 +18,7 @@ class UCAP_ItemDataAsset : public UPrimaryDataAsset
 public:
 	// 아이템 이름
 	UPROPERTY(EditDefaultsOnly, Category="Data")
-	FName ItemName = NAME_None;
+	FText ItemName;
 	// 아이템 설명
 	UPROPERTY(EditDefaultsOnly, Category="Data")
 	FText ItemDescription;
@@ -28,4 +28,7 @@ public:
 	// 아이템 등급
 	UPROPERTY(EditDefaultsOnly, Category="Data")
 	EItemGrade ItemGrade = EItemGrade::Normal;
+	// 아이템이 보유한 시너지 종류 태그
+	UPROPERTY(EditDefaultsOnly, Category="Data")
+	TArray<FGameplayTag> SynergyTags;
 };

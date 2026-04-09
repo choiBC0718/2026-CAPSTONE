@@ -6,8 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "CAP_ItemSlotWidget.generated.h"
 
-// 슬롯이 포커스되거나 클릭되었을 때 인벤토리에 알리기 위한 델리게이트
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSlotFocused, class UCAP_ItemSlotWidget*, FocusedSlot);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnSlotMouseClick, class UCAP_ItemSlotWidget* ItemData);
 
 UENUM(BlueprintType)
 enum class ESlotItemType : uint8
@@ -26,9 +25,11 @@ class UCAP_ItemSlotWidget : public UUserWidget
 public:
 	virtual void NativeConstruct() override;
 
+	FOnSlotMouseClick OnLeftMouseClick;
+	FOnSlotMouseClick OnRightMouseClick; 
+	
 	void InitSlot(ESlotItemType InSlotType, UTexture2D* InIcon, UObject* InItemData);
 	void SetSlotNumber(int NewSlotNumber);
-	FOnSlotFocused OnSlotFocused;
 
 	UPROPERTY(BlueprintReadOnly)
 	ESlotItemType SlotType;
@@ -37,16 +38,16 @@ public:
 
 protected:
 	UPROPERTY(meta = (BindWidget))
-	class UButton* SlotButton;
-	UPROPERTY(meta = (BindWidget))
 	class UImage* ItemIcon;
 
 private:
-	UFUNCTION()
-	void HandleSlotClicked();
-
 	// WASD로 포커스 들어왔을 때 처리
 	virtual void NativeOnAddedToFocusPath(const FFocusEvent& InFocusEvent) override;
+
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void RightButtonClicked();
+	virtual void LeftButtonClicked();
 
 	int SlotNumber;
 };
