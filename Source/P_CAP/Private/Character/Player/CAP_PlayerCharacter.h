@@ -81,4 +81,7 @@ protected:
 
 	void ApplyWeaponData(class UCAP_WeaponDataAsset* WeaponDA);
 	void ClearCurrentWeaponData();
+
+	UPROPERTY(VisibleAnywhere, Category="AI|Tracker")
+	class UPlayerTrackerComponent* PlayerTracker;
 };
