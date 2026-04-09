@@ -29,6 +29,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="Data")
 	EItemGrade ItemGrade = EItemGrade::Normal;
 	// 아이템이 보유한 시너지 종류 태그
-	UPROPERTY(EditDefaultsOnly, Category="Data")
-	TArray<FGameplayTag> SynergyTags;
+	UPROPERTY(EditDefaultsOnly, Category="Data", meta=(Categories="Synergy"))
+	FGameplayTag SynergyTag1;
+	UPROPERTY(EditDefaultsOnly, Category="Data", meta=(Categories="Synergy"))
+	FGameplayTag SynergyTag2;
 };

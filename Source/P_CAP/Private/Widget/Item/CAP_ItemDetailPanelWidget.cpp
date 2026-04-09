@@ -7,6 +7,7 @@
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
+#include "Data/CAP_SynergyTypes.h"
 #include "Items/Item/CAP_ItemInstance.h"
 #include "Items/Weapon/CAP_WeaponInstance.h"
 
@@ -84,7 +85,40 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 					Icon->SetBrushFromTexture(LoadedIcon);
 				}
 
-				//TODO: 시너지 시스템 기능 추가
+				if (!SynergyDataTable)
+					return;
+
+				TArray<FSynergyDataTable*> AllSynergies;
+				SynergyDataTable->GetAllRows<FSynergyDataTable>("",AllSynergies);
+				auto UpdateSynergyUI = [&](FGameplayTag Tag)
+				{
+					if (!Tag.IsValid())	return;
+					for (FSynergyDataTable* Row : AllSynergies)
+					{
+						if (Row && Row->SynergyTag == Tag)
+						{
+							UImage* SynergyIconImg = NewObject<UImage>(this);
+							if (UTexture2D* SynergyIcon = Row->SynergyIcon.LoadSynchronous())
+							{
+								FSlateBrush IconBrush;
+								IconBrush.SetResourceObject(SynergyIcon);
+								IconBrush.ImageSize = SkillSynergyIconSize;
+								SynergyIconImg->SetBrush(IconBrush);
+							}
+
+							UHorizontalBoxSlot* HBoxSlot = FeatureIconBox->AddChildToHorizontalBox(SynergyIconImg);
+							if (HBoxSlot)
+							{
+								HBoxSlot->SetPadding(FMargin(50.f, 0.f, 50.f, 0.f));
+								HBoxSlot->SetHorizontalAlignment(HAlign_Fill);
+								HBoxSlot->SetVerticalAlignment(VAlign_Fill);
+							}
+							break;
+						}
+					}
+				};
+				UpdateSynergyUI(ItemDA->SynergyTag1);
+				UpdateSynergyUI(ItemDA->SynergyTag2);
 			}
 		}
 	}

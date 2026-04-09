@@ -3,7 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AbilitySystemComponent.h"
+#include "ActiveGameplayEffectHandle.h"
+#include "GameplayTagContainer.h"
 #include "Components/ActorComponent.h"
 #include "CAP_InventoryComponent.generated.h"
 
@@ -27,13 +28,27 @@ public:
 	
 	UPROPERTY()
 	FOnInventoryChanged OnInventoryChanged;
+
+	void RefreshSynergies();
 	
 private:
 	UPROPERTY(EditDefaultsOnly, Category="Inventory")
 	int Capacity = 9;
 
 	UPROPERTY()
-	UAbilitySystemComponent* OwnerASC;
+	class UAbilitySystemComponent* OwnerASC;
 	UPROPERTY()
 	TArray<class UCAP_ItemInstance*> InventoryItems;
+
+	// 현재 모인 시너지 개수
+	TMap<FGameplayTag, int32> CurrentSynergyCounts;
+	// 저장됐던 태그에 대한 개수
+	TMap<FGameplayTag, int32> CachedSynergyCounts;
+	// 현재 캐릭터에게 적용된 시너지 버프
+	TMap<FGameplayTag, TArray<FActiveGameplayEffectHandle>> AppliedSynergyHandles;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Synergy")
+	UDataTable* SynergyDataTable;
+
+	void UpdateSynergyEffects();
 };
