@@ -48,21 +48,23 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Door")
 	float DoorInset = 0.f;
 
-	/* 내부 셀 한 칸의 크기 */
+	/* 내부 생성 함수 시그니처를 맞추기 위해 유지하는 값 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
 	float InteriorCellSize = 250.f;
 
-	/* 벽 쪽 여유 공간 */
+	/* 내부 생성 함수 시그니처를 맞추기 위해 유지하는 값 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
 	float InteriorMargin = 200.f;
 
-	/* 방 바닥에서 경로를 띄워 그릴 높이 */
+	/* 방 바닥에서 경로를 띄워 그릴 높이 spline이 바닥과 겹쳐 안 보이는 것을 방지 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
 	float PathZOffset = 10.f;
 	
 	UPROPERTY()
 	TArray<TObjectPtr<ADoorActor>> SpawnedDoors;
 
+	/* 현재 방에서 생성한 경로 액터 목록
+	   - 방이 다시 초기화될 때 함께 정리 */
 	UPROPERTY()
 	TArray<TObjectPtr<ARoomPathActor>> SpawnedPathActors;
 
@@ -73,17 +75,20 @@ protected:
 	UPROPERTY()
 	int32 CachedMapSeed = 0;
 
-	/* 내부 배치 생성기 */
+	/* 내부 경로 생성기 */
 	UPROPERTY()
 	TObjectPtr<URoomInteriorGenerator> InteriorGenerator;
 
 private:
 	void ClearSpawnedDoors();
+	/* 이 방이 소유하는 경로 액터들을 정리 */
 	void ClearSpawnedPathActors();
 	void SpawnConnectedDoors();
 	void SpawnDoor(EDoorDirection Direction);
 
+	/* 내부 경로 데이터를 생성하고 실제 path actor를 배치 */
 	void GenerateAndSpawnInterior();
+	/* 생성된 경로 데이터를 바탕으로 전용 path actor를 스폰 */
 	void SpawnGuaranteedPaths(const FRoomInteriorLayout& Layout);
 	
 	FTransform GetDoorTransform(EDoorDirection Direction) const;

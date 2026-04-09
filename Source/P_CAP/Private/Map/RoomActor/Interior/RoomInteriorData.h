@@ -9,7 +9,9 @@
  * 방 내부의 생성 결과를 저장하는 데이터 구조
  */
 
-/* 방 내부 보장 이동 경로 1개의 정보 */
+/* 방 내부 보장 이동 경로 1개의 정보
+   - PathPoints: 문/중심을 잇는 경로 점 목록
+   - CorridorWidth: 나중에 PCG에서 경로 주변 금지 폭으로 활용 가능 */
 USTRUCT(BlueprintType)
 struct FRoomInteriorPath
 {
@@ -22,7 +24,7 @@ struct FRoomInteriorPath
 	float CorridorWidth = 0.f;
 };
 
-/* 방 하나의 내부 배치 전체 */
+/* 방 하나의 내부 배치 전체 현재는 셀 정보 없이 경로 정보만 보관 */
 USTRUCT(BlueprintType)
 struct FRoomInteriorLayout
 {
