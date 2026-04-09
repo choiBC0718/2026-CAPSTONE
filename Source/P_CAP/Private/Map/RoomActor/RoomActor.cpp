@@ -1,11 +1,10 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "RoomActor.h"
 #include "Map/RoomActor/DoorActor.h"
 #include "Map/RoomActor/Interior/RoomInteriorGenerator.h"
 #include "Map/RoomActor/Interior/RoomInteriorData.h"
-#include "Components/SceneComponent.h"
-#include "Components/StaticMeshComponent.h"
+#include "Map/RoomActor/Interior/PCG/RoomPathActor.h"
 #include "Engine/World.h"
 
 ARoomActor::ARoomActor()
@@ -25,7 +24,7 @@ void ARoomActor::InitializeRoom(const FRoomData& InRoomData, int32 InMapSeed)
 	CachedMapSeed = InMapSeed;
 
 	ClearSpawnedDoors();
-	ClearSpawnedInteriorMeshes();
+	ClearSpawnedPathActors();
 
 	SpawnConnectedDoors();
 	GenerateAndSpawnInterior();
@@ -65,7 +64,7 @@ FVector ARoomActor::GetEntrancePoint(EDoorDirection Direction) const
 void ARoomActor::Destroyed()
 {
 	ClearSpawnedDoors();
-	ClearSpawnedInteriorMeshes();
+	ClearSpawnedPathActors();
 	Super::Destroyed();
 }
 
@@ -80,6 +79,19 @@ void ARoomActor::ClearSpawnedDoors()
 	}
 
 	SpawnedDoors.Empty();
+}
+
+void ARoomActor::ClearSpawnedPathActors()
+{
+	for (ARoomPathActor* PathActor : SpawnedPathActors)
+	{
+		if (IsValid(PathActor))
+		{
+			PathActor->Destroy();
+		}
+	}
+
+	SpawnedPathActors.Empty();
 }
 
 void ARoomActor::SpawnConnectedDoors()
@@ -141,31 +153,8 @@ void ARoomActor::SpawnDoor(EDoorDirection Direction)
 	SpawnedDoors.Add(SpawnedDoor);
 }
 
-void ARoomActor::ClearSpawnedInteriorMeshes()
-{
-	for (UStaticMeshComponent* MeshComp : SpawnedInteriorMeshes)
-	{
-		if (IsValid(MeshComp))
-		{
-			MeshComp->DestroyComponent();
-		}
-	}
-
-	SpawnedInteriorMeshes.Empty();
-}
-
 void ARoomActor::GenerateAndSpawnInterior()
 {
-	if (CachedRoomData.RoomType != ERoomType::Normal)
-	{
-		return;
-	}
-
-	if (!ObstacleMesh)
-	{
-		return;
-	}
-
 	/* 생성기 준비 */
 	if (!InteriorGenerator)
 	{
@@ -178,41 +167,59 @@ void ARoomActor::GenerateAndSpawnInterior()
 	}
 
 	const FRoomInteriorLayout Layout = InteriorGenerator->GenerateInteriorLayout(
-		CachedRoomData,	RoomHalfExtent,	InteriorCellSize, InteriorMargin, CachedMapSeed);
+		CachedRoomData, RoomHalfExtent, InteriorCellSize, InteriorMargin, CachedMapSeed);
 
-	for (const FRoomInteriorCell& Cell : Layout.Cells)
+	SpawnGuaranteedPaths(Layout);
+}
+
+void ARoomActor::SpawnGuaranteedPaths(const FRoomInteriorLayout& Layout)
+{
+	UWorld* World = GetWorld();
+	if (!World)
 	{
-		if (Cell.CellType != ERoomInteriorCellType::Obstacle)
+		return;
+	}
+
+	const FVector PathOffset(0.f, 0.f, PathZOffset);
+
+	for (const FRoomInteriorPath& Path : Layout.GuaranteedPaths)
+	{
+		if (Path.PathPoints.Num() < 2)
 		{
 			continue;
 		}
 
-		SpawnObstacleMeshAtLocalPosition(Cell.LocalPosition);
+		TArray<FVector> WorldPathPoints;
+		WorldPathPoints.Reserve(Path.PathPoints.Num());
+
+		for (const FVector& PathPoint : Path.PathPoints)
+		{
+			WorldPathPoints.Add(GetActorTransform().TransformPosition(PathPoint + PathOffset));
+		}
+
+		if (WorldPathPoints.Num() < 2)
+		{
+			continue;
+		}
+
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+		ARoomPathActor* SpawnedPathActor = World->SpawnActor<ARoomPathActor>(
+			ARoomPathActor::StaticClass(),
+			FTransform::Identity,
+			SpawnParams
+		);
+
+		if (!SpawnedPathActor)
+		{
+			continue;
+		}
+
+		SpawnedPathActor->InitializePath(WorldPathPoints);
+		SpawnedPathActors.Add(SpawnedPathActor);
 	}
-}
-
-void ARoomActor::SpawnObstacleMeshAtLocalPosition(const FVector& LocalPosition)
-{
-	if (!ObstacleMesh)
-	{
-		return;
-	}
-
-	UStaticMeshComponent* MeshComp = NewObject<UStaticMeshComponent>(this);
-	if (!MeshComp)
-	{
-		return;
-	}
-
-	MeshComp->RegisterComponent();
-	MeshComp->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-	MeshComp->SetStaticMesh(ObstacleMesh);
-	MeshComp->SetRelativeLocation(LocalPosition + FVector(0.f, 0.f, ObstacleHeightOffset));
-	MeshComp->SetRelativeRotation(FRotator::ZeroRotator);
-	MeshComp->SetRelativeScale3D(FVector(1.f, 1.f, 1.f));
-	MeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-
-	SpawnedInteriorMeshes.Add(MeshComp);
 }
 
 FTransform ARoomActor::GetDoorTransform(EDoorDirection Direction) const

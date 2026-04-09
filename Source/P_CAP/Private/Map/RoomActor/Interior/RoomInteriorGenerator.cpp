@@ -1,168 +1,86 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Map/RoomActor/Interior/RoomInteriorGenerator.h"
-#include "Math/RandomStream.h"
-
 
 FRoomInteriorLayout URoomInteriorGenerator::GenerateInteriorLayout(const FRoomData& RoomData, float RoomHalfExtent, float CellSize, float Margin, int32 MapSeed) const
 {
 	FRoomInteriorLayout Layout;
 
-	/* Normal 방 내부 랜덤 생성 */
-	if (RoomData.RoomType != ERoomType::Normal)
-	{
-		return Layout;
-	}
-
-	BuildCells(Layout, RoomHalfExtent, CellSize, Margin);
-
-	if (Layout.CellsPerSide <= 0 || Layout.Cells.IsEmpty())
-	{
-		return Layout;
-	}
-
-	ReserveDoorCells(Layout, RoomData);
-
-	const int32 RoomSeed = MakeRoomSeed(RoomData, MapSeed);
-	PlaceObstacles(Layout, RoomData, RoomSeed);
+	BuildGuaranteedPaths(Layout, RoomData, RoomHalfExtent);
 
 	return Layout;
 }
 
-int32 URoomInteriorGenerator::MakeRoomSeed(const FRoomData& RoomData, int32 MapSeed) const
+void URoomInteriorGenerator::BuildGuaranteedPaths(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, float RoomHalfExtent) const
 {
-	uint32 SeedHash = ::GetTypeHash(MapSeed);
-	SeedHash = HashCombine(SeedHash, ::GetTypeHash(RoomData.GridPos.X));
-	SeedHash = HashCombine(SeedHash, ::GetTypeHash(RoomData.GridPos.Y));
-	SeedHash = HashCombine(SeedHash, ::GetTypeHash(static_cast<uint8>(RoomData.RoomType)));
-
-	return static_cast<int32>(SeedHash);
-}
-
-void URoomInteriorGenerator::BuildCells(FRoomInteriorLayout& OutLayout, float RoomHalfExtent, float CellSize, float Margin) const
-{
-	const float UsableSize = (RoomHalfExtent - Margin) * 2.f;
-	const int32 CellsPerSide = FMath::FloorToInt(UsableSize / CellSize);
-
-	if (CellsPerSide <= 0)
+	const TArray<FVector> DoorAnchors = GetDoorAnchors(RoomData, RoomHalfExtent);
+	if (DoorAnchors.IsEmpty())
 	{
 		return;
 	}
 
-	OutLayout.CellsPerSide = CellsPerSide;
-	OutLayout.Cells.Reserve(CellsPerSide * CellsPerSide);
+	const FVector HubPoint = GetHubPoint();
+	const float CorridorWidth = FMath::Max(RoomHalfExtent * 0.2f, 100.f);
 
-	const float StartOffset = -((CellsPerSide - 1) * CellSize) * 0.5f;
-
-	for (int32 Y = 0; Y < CellsPerSide; ++Y)
+	if (DoorAnchors.Num() == 1)
 	{
-		for (int32 X = 0; X < CellsPerSide; ++X)
-		{
-			FRoomInteriorCell NewCell;
-			NewCell.CellCoord = FIntPoint(X, Y);
-			NewCell.LocalPosition = FVector(
-				StartOffset + X * CellSize,
-				StartOffset + Y * CellSize,
-				0.f
-			);
-			NewCell.CellType = ERoomInteriorCellType::Empty;
-
-			OutLayout.Cells.Add(NewCell);
-		}
-	}
-}
-
-void URoomInteriorGenerator::ReserveDoorCells(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData) const
-{
-	const int32 N = OutLayout.CellsPerSide;
-	if (N <= 0)
-	{
+		FRoomInteriorPath Path;
+		Path.CorridorWidth = CorridorWidth;
+		Path.PathPoints.Add(DoorAnchors[0]);
+		Path.PathPoints.Add(HubPoint);
+		OutLayout.GuaranteedPaths.Add(Path);
 		return;
 	}
 
-	const int32 Mid = N / 2;
-	const int32 HalfDoorWidth = 1; // 중앙 포함 3칸
-	const int32 Depth = 2;         // 문 앞 2줄 예약
+	if (DoorAnchors.Num() == 2)
+	{
+		FRoomInteriorPath Path;
+		Path.CorridorWidth = CorridorWidth;
+		Path.PathPoints.Add(DoorAnchors[0]);
+		Path.PathPoints.Add(HubPoint);
+		Path.PathPoints.Add(DoorAnchors[1]);
+		OutLayout.GuaranteedPaths.Add(Path);
+		return;
+	}
+
+	for (const FVector& DoorAnchor : DoorAnchors)
+	{
+		FRoomInteriorPath Path;
+		Path.CorridorWidth = CorridorWidth;
+		Path.PathPoints.Add(DoorAnchor);
+		Path.PathPoints.Add(HubPoint);
+		OutLayout.GuaranteedPaths.Add(Path);
+	}
+}
+
+TArray<FVector> URoomInteriorGenerator::GetDoorAnchors(const FRoomData& RoomData, float RoomHalfExtent) const
+{
+	TArray<FVector> DoorAnchors;
 
 	if (RoomData.bConnectedUp)
 	{
-		ReserveCellsRect(OutLayout, Mid - HalfDoorWidth, Mid + HalfDoorWidth, N - Depth, N - 1);
+		DoorAnchors.Add(FVector(0.f, RoomHalfExtent, 0.f));
 	}
 
 	if (RoomData.bConnectedDown)
 	{
-		ReserveCellsRect(OutLayout, Mid - HalfDoorWidth, Mid + HalfDoorWidth, 0, Depth - 1);
+		DoorAnchors.Add(FVector(0.f, -RoomHalfExtent, 0.f));
 	}
 
 	if (RoomData.bConnectedLeft)
 	{
-		ReserveCellsRect(OutLayout, 0, Depth - 1, Mid - HalfDoorWidth, Mid + HalfDoorWidth);
+		DoorAnchors.Add(FVector(-RoomHalfExtent, 0.f, 0.f));
 	}
 
 	if (RoomData.bConnectedRight)
 	{
-		ReserveCellsRect(OutLayout, N - Depth, N - 1, Mid - HalfDoorWidth, Mid + HalfDoorWidth);
+		DoorAnchors.Add(FVector(RoomHalfExtent, 0.f, 0.f));
 	}
+
+	return DoorAnchors;
 }
 
-void URoomInteriorGenerator::PlaceObstacles(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, int32 RoomSeed) const
+FVector URoomInteriorGenerator::GetHubPoint() const
 {
-	FRandomStream RandomStream(RoomSeed);
-
-	TArray<int32> CandidateIndices;
-	CandidateIndices.Reserve(OutLayout.Cells.Num());
-
-	for (int32 Index = 0; Index < OutLayout.Cells.Num(); ++Index)
-	{
-		const FRoomInteriorCell& Cell = OutLayout.Cells[Index];
-
-		if (Cell.CellType != ERoomInteriorCellType::Empty)
-		{
-			continue;
-		}
-
-		CandidateIndices.Add(Index);
-	}
-
-	if (CandidateIndices.IsEmpty())
-	{
-		return;
-	}
-
-	const int32 ObstacleCount = FMath::Clamp(
-		RandomStream.RandRange(2, 5),
-		0,
-		CandidateIndices.Num()
-	);
-
-	for (int32 i = 0; i < ObstacleCount; ++i)
-	{
-		const int32 PickedCandidateIndex = RandomStream.RandRange(0, CandidateIndices.Num() - 1);
-		const int32 CellIndex = CandidateIndices[PickedCandidateIndex];
-
-		if (OutLayout.Cells.IsValidIndex(CellIndex))
-		{
-			OutLayout.Cells[CellIndex].CellType = ERoomInteriorCellType::Obstacle;
-		}
-
-		CandidateIndices.RemoveAtSwap(PickedCandidateIndex);
-	}
-}
-
-void URoomInteriorGenerator::ReserveCellsRect(FRoomInteriorLayout& OutLayout, int32 MinX, int32 MaxX, int32 MinY, int32 MaxY) const
-{
-	for (int32 Y = MinY; Y <= MaxY; ++Y)
-	{
-		for (int32 X = MinX; X <= MaxX; ++X)
-		{
-			FRoomInteriorCell* Cell = OutLayout.FindCell(X, Y);
-			if (!Cell)
-			{
-				continue;
-			}
-
-			Cell->CellType = ERoomInteriorCellType::Reserved;
-		}
-	}
+	return FVector::ZeroVector;
 }
