@@ -26,14 +26,19 @@ public:
 
 private:
 	/* 연결된 문 위치를 기준으로 방 내부 보장 경로를 생성
-	   - 문 1개: 문 -> 중심
+	   - 문 1개: 문 -> 중심 + 중심 기준 원형 경로
 	   - 문 2개: 문A -> 중심 -> 문B
 	   - 문 3개 이상: 각 문 -> 중심 */
 	void BuildGuaranteedPaths(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, float RoomHalfExtent) const;
 
-	/* 방의 연결 정보를 기준으로 문 anchor 위치를 반환 반환 좌표는 방 기준 로컬 좌표 */
+	/* 막다른 방 전용 원형 경로를 생성 */
+	FRoomInteriorPath BuildDeadEndLoopPath(float RoomHalfExtent, float CorridorWidth) const;
+
+	/* 방의 연결 정보를 기준으로 문 anchor 위치를 반환
+	   - 반환 좌표는 방 기준 로컬 좌표 */
 	TArray<FVector> GetDoorAnchors(const FRoomData& RoomData, float RoomHalfExtent) const;
 
-	/* 방 중심 허브 위치를 반환 현재는 항상 로컬 원점 (0,0,0) */
+	/* 방 중심 허브 위치를 반환
+	   - 현재는 항상 로컬 원점 (0,0,0) */
 	FVector GetHubPoint() const;
 };

@@ -22,9 +22,14 @@ struct FRoomInteriorPath
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float CorridorWidth = 0.f;
+
+	/* true면 마지막 점과 첫 점을 이어 닫힌 경로로 사용 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bClosedLoop = false;
 };
 
-/* 방 하나의 내부 배치 전체 현재는 셀 정보 없이 경로 정보만 보관 */
+/* 방 하나의 내부 배치 전체
+   - 현재는 셀 정보 없이 경로 정보만 보관 */
 USTRUCT(BlueprintType)
 struct FRoomInteriorLayout
 {

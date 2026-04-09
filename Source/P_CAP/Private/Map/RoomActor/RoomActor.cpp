@@ -233,7 +233,7 @@ void ARoomActor::SpawnGuaranteedPaths(const FRoomInteriorLayout& Layout)
 		}
 
 		/* 월드 좌표 경로를 spline으로 초기화 */
-		SpawnedPathActor->InitializePath(WorldPathPoints);
+		SpawnedPathActor->InitializePath(WorldPathPoints, Path.bClosedLoop);
 		SpawnedPathActors.Add(SpawnedPathActor);
 	}
 }

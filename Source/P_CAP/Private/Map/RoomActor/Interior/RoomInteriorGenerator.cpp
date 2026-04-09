@@ -27,14 +27,18 @@ void URoomInteriorGenerator::BuildGuaranteedPaths(FRoomInteriorLayout& OutLayout
 	/* 나중에 PCG에서 경로 주변 금지 폭으로 쓸 수 있도록 함께 저장 */
 	const float CorridorWidth = FMath::Max(RoomHalfExtent * 0.2f, 100.f);
 
-	/* 입구만 있는 dead-end 방은 문에서 중심으로 들어오는 경로 1개만 생성 */
+	/* 입구만 있는 dead-end 방은
+	   1) 문에서 중심으로 들어오는 경로 1개
+	   2) 중심 기준 원형 경로 1개
+	   를 함께 생성 */
 	if (DoorAnchors.Num() == 1)
 	{
-		FRoomInteriorPath Path;
-		Path.CorridorWidth = CorridorWidth;
-		Path.PathPoints.Add(DoorAnchors[0]);
-		Path.PathPoints.Add(HubPoint);
-		OutLayout.GuaranteedPaths.Add(Path);
+		FRoomInteriorPath EntryPath;
+		EntryPath.CorridorWidth = CorridorWidth;
+		EntryPath.PathPoints.Add(DoorAnchors[0]);
+		EntryPath.PathPoints.Add(HubPoint);
+		OutLayout.GuaranteedPaths.Add(EntryPath);
+		OutLayout.GuaranteedPaths.Add(BuildDeadEndLoopPath(RoomHalfExtent, CorridorWidth));
 		return;
 	}
 
@@ -61,6 +65,31 @@ void URoomInteriorGenerator::BuildGuaranteedPaths(FRoomInteriorLayout& OutLayout
 		Path.PathPoints.Add(HubPoint);
 		OutLayout.GuaranteedPaths.Add(Path);
 	}
+}
+
+FRoomInteriorPath URoomInteriorGenerator::BuildDeadEndLoopPath(float RoomHalfExtent, float CorridorWidth) const
+{
+	FRoomInteriorPath LoopPath;
+	LoopPath.CorridorWidth = CorridorWidth;
+	LoopPath.bClosedLoop = true;
+
+	const float LoopRadius = FMath::Max(RoomHalfExtent * 0.2f, 450.f);
+	const int32 SegmentCount = 16;
+	LoopPath.PathPoints.Reserve(SegmentCount);
+
+	for (int32 Index = 0; Index < SegmentCount; ++Index)
+	{
+		const float AngleDeg = (360.f / SegmentCount) * Index;
+		const float AngleRad = FMath::DegreesToRadians(AngleDeg);
+
+		LoopPath.PathPoints.Add(FVector(
+			FMath::Cos(AngleRad) * LoopRadius,
+			FMath::Sin(AngleRad) * LoopRadius,
+			0.f
+		));
+	}
+
+	return LoopPath;
 }
 
 TArray<FVector> URoomInteriorGenerator::GetDoorAnchors(const FRoomData& RoomData, float RoomHalfExtent) const
