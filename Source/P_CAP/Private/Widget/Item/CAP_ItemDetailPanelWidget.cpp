@@ -3,6 +3,7 @@
 
 #include "Widget/Item/CAP_ItemDetailPanelWidget.h"
 
+#include "Character/Player/CAP_PlayerCharacter.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
@@ -70,21 +71,18 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 					Icon->SetBrushFromTexture(LoadedIcon);
 				}
 
-				if (!SynergyDataTable)
+				ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn());
+				if (!Player || !Player->GetInventoryComponent())
 					return;
 
-				TArray<FSynergyDataTable*> AllSynergies;
-				SynergyDataTable->GetAllRows<FSynergyDataTable>("",AllSynergies);
+				const TMap<FGameplayTag, FSynergyDataTable*>& SynergyCache = Player->GetInventoryComponent()->GetSynergyDataCache();
+
 				auto UpdateSynergyUI = [&](FGameplayTag Tag)
 				{
 					if (!Tag.IsValid())	return;
-					for (FSynergyDataTable* Row : AllSynergies)
+					if (FSynergyDataTable* FoundRow = SynergyCache.FindRef(Tag))
 					{
-						if (Row && Row->SynergyTag == Tag)
-						{
-							AddFeatureIconToBox(Row->SynergyIcon);
-							break;
-						}
+						AddFeatureIconToBox(FoundRow->SynergyIcon);
 					}
 				};
 				UpdateSynergyUI(ItemDA->SynergyTag1);

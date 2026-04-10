@@ -32,4 +32,7 @@ protected:
 
 private:
 	void OnItemSlotClicked(class UCAP_ItemSlotWidget* ClickedSlot);
+
+	UPROPERTY()
+	class UCAP_InventoryComponent* InvComp;
 };

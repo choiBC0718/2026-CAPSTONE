@@ -17,6 +17,11 @@ void ACAP_PlayerController::OnPossess(APawn* InPawn)
 	if (PlayerCharacter)
 	{
 		SpawnGameplayWidget();
+
+		if (UCAP_InventoryComponent* InvComp = PlayerCharacter->GetInventoryComponent())
+		{
+			InvComp->OnInventoryFull.AddDynamic(this, &ACAP_PlayerController::OpenItemSwapMenu);
+		}
 	}
 }
 
@@ -34,9 +39,10 @@ void ACAP_PlayerController::SetupInputComponent()
 	UEnhancedInputComponent* EnhancedInputComp = Cast<UEnhancedInputComponent>(InputComponent);
 	if (EnhancedInputComp)
 	{
-		EnhancedInputComp->BindAction(InventoryToggleIA, ETriggerEvent::Triggered, this, &ACAP_PlayerController::ToggleCharacterMenu);
-		EnhancedInputComp->BindAction(CloseInventoryIA, ETriggerEvent::Triggered, this, &ACAP_PlayerController::CloseCharacterMenu);
+		EnhancedInputComp->BindAction(InventoryToggleIA, ETriggerEvent::Started, this, &ACAP_PlayerController::ToggleCharacterMenu);
+		EnhancedInputComp->BindAction(UICloseIA, ETriggerEvent::Started, this, &ACAP_PlayerController::UICloseHandle);
 		EnhancedInputComp->BindAction(UINavigation, ETriggerEvent::Started, this, &ACAP_PlayerController::UINavigationHandle);
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Started, this, &ACAP_PlayerController::UIConfirmHandle);
 	}
 }
 
@@ -73,11 +79,10 @@ void ACAP_PlayerController::ToggleCharacterMenu()
 {
 	if (GameplayWidget)
 	{
-		bIsMenuOpen = true;
 		// tab 메뉴 열려있지 않으면 열고 게임 일시정지
 		if (!GameplayWidget->IsCharacterMenuOpen())
 		{
-			GameplayWidget->OpenCharacterMenu();
+			GameplayWidget->ActivateSwitcher();
 			SetPause(true);
 		}
 		// 열려있다면 탭 전환
@@ -88,19 +93,49 @@ void ACAP_PlayerController::ToggleCharacterMenu()
 	}
 }
 
-void ACAP_PlayerController::CloseCharacterMenu()
-{
-	if (!GameplayWidget || !GameplayWidget->IsCharacterMenuOpen()) return;
-	// tab 메뉴 닫기
-	bIsMenuOpen = false;
-	GameplayWidget->CloseCharacterMenu();
-	SetPause(false);
-}
-
 void ACAP_PlayerController::UINavigationHandle(const FInputActionValue& InputActionValue)
 {
-	if (!bIsMenuOpen || !GameplayWidget->GetCharacterMenuWidget()) return;
-	
 	FVector2D InputVal = InputActionValue.Get<FVector2D>();
-	GameplayWidget->GetCharacterMenuWidget()->NavigationInput(InputVal);
+	if (!GameplayWidget)
+		return;
+
+	if (GameplayWidget->IsCharacterMenuOpen())
+	{
+		GameplayWidget->GetCharacterMenuWidget()->NavigationInput(InputVal);
+	}
+	else if (GameplayWidget->IsItemSwapMenuOpen())
+	{
+		GameplayWidget->GetItemSwapWidget()->MoveSelection(InputVal);
+	}
+}
+
+void ACAP_PlayerController::UIConfirmHandle(const FInputActionValue& InputActionValue)
+{
+	if (!GameplayWidget)
+		return;
+	if (GameplayWidget->IsItemSwapMenuOpen())
+	{
+		GameplayWidget->GetItemSwapWidget()->ConfirmSwap();
+	}
+}
+
+void ACAP_PlayerController::UICloseHandle(const FInputActionValue& InputActionValue)
+{
+	if (!GameplayWidget) return;
+
+	if (GameplayWidget->IsItemSwapMenuOpen() || GameplayWidget->IsCharacterMenuOpen())
+	{
+		GameplayWidget->DeactivateSwitcher();
+		SetPause(false);
+	}
+}
+
+
+void ACAP_PlayerController::OpenItemSwapMenu(class UCAP_ItemInstance* NewItem)
+{
+	if (GameplayWidget)
+	{
+		GameplayWidget->OpenItemSwapMenu(NewItem);
+		SetPause(true);
+	}
 }

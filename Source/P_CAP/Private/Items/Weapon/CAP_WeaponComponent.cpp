@@ -85,10 +85,7 @@ void UCAP_WeaponComponent::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst
 			{
 				DroppedWeapon->WeaponInstance = WeaponToDrop;
 				DroppedWeapon->FinishSpawning(SpawnTransform);
-				
-				ACAP_DropItemBase* DropItem = Cast<ACAP_DropItemBase>(DroppedWeapon);
-				if (DropItem)
-					DropItem->DropItem();
+				DroppedWeapon->DropItem();
 			}
 		}
 

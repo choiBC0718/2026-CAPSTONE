@@ -33,4 +33,11 @@ public:
 	FGameplayTag SynergyTag1;
 	UPROPERTY(EditDefaultsOnly, Category="Data", meta=(Categories="Synergy"))
 	FGameplayTag SynergyTag2;
+
+	// 아이템 메쉬
+	UPROPERTY(EditDefaultsOnly, Category="Visual")
+	TSoftObjectPtr<class UStaticMesh> ItemMesh;
+	// 메쉬 스케일 조절
+	UPROPERTY(EditDefaultsOnly, Category="Visual")
+	FVector MeshScale = FVector(1.f);
 };

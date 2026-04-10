@@ -53,6 +53,9 @@ protected:
 	class UImage* FocusBorderImg;
 
 private:
+	UPROPERTY(EditDefaultsOnly, Category="Visual")
+	UTexture2D* EmptyTexture;
+	
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual void RightButtonClicked();

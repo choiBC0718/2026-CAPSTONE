@@ -10,17 +10,24 @@ void UCAP_ItemSlotWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	SetIsFocusable(true);
-	
 }
 
 void UCAP_ItemSlotWidget::InitSlot(ESlotItemType InSlotType, UTexture2D* InIcon, UObject* InItemData)
 {
 	SlotType = InSlotType;
 	SlotItemData = InItemData;
-	if (ItemIcon && InIcon)
+	
+	if (ItemIcon)
 	{
-		ItemIcon->SetBrushFromTexture(InIcon);
 		ItemIcon->SetVisibility(ESlateVisibility::Visible);
+		if (InIcon)
+		{
+			ItemIcon->SetBrushFromTexture(InIcon);
+		}
+		else
+		{	// 아이템 분해하면 비어있는 아이콘으로 설정
+			ItemIcon->SetBrushFromTexture(EmptyTexture);
+		}
 	}
 }
 

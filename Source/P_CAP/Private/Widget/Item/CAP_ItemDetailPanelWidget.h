@@ -35,10 +35,9 @@ private:
 
 	FText GetGradeText(EItemGrade Grade) const;
 
+	
 	UPROPERTY(EditDefaultsOnly, Category="Setting")
-	class UDataTable* SynergyDataTable;
-	UPROPERTY(EditDefaultsOnly, Category="Setting")
-	FVector2D SkillSynergyIconSize = FVector2D(100.f);
+	FVector2D SkillSynergyIconSize = FVector2D(125.f);
 
 	void AddFeatureIconToBox(TSoftObjectPtr<class UTexture2D> IconPtr);
 };

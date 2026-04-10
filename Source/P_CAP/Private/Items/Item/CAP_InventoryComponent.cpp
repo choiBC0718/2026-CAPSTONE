@@ -12,15 +12,26 @@
 UCAP_InventoryComponent::UCAP_InventoryComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-
+	
+	OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwner());
 }
-
 
 void UCAP_InventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	if (SynergyDataTable)
+	{
+		TArray<FSynergyDataTable*> AllRows;
+		SynergyDataTable->GetAllRows<FSynergyDataTable>("",AllRows);
 
-	OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwner());
+		for (FSynergyDataTable* Row : AllRows)
+		{
+			if (Row && Row->SynergyTag.IsValid())
+			{
+				SynergyDataCache.Add(Row->SynergyTag, Row);
+			}
+		}
+	}
 }
 
 bool UCAP_InventoryComponent::AddItem(class UCAP_ItemInstance* NewItem)
@@ -29,7 +40,11 @@ bool UCAP_InventoryComponent::AddItem(class UCAP_ItemInstance* NewItem)
 		return false;
 
 	if (InventoryItems.Num() >= Capacity)
+	{
+		if (OnInventoryFull.IsBound())
+			OnInventoryFull.Broadcast(NewItem);
 		return false;
+	}
 
 	// 아이템 추가 후 새로고침
 	InventoryItems.Add(NewItem);
@@ -43,8 +58,11 @@ bool UCAP_InventoryComponent::AddItem(class UCAP_ItemInstance* NewItem)
 
 void UCAP_InventoryComponent::RefreshSynergies()
 {
-	if (!SynergyDataTable)
+	if (SynergyDataCache.IsEmpty())
+	{
+		UE_LOG(LogTemp,Warning, TEXT("인벤토리 컴포넌트에 시너지 데이터 테이블 넣어 - RefreshSynergies"));
 		return;
+	}
 
 	// 일단 비워
 	CurrentSynergyCounts.Empty();
@@ -60,37 +78,54 @@ void UCAP_InventoryComponent::RefreshSynergies()
 
 	for (UCAP_ItemInstance* ItemInst : InventoryItems)
 	{
-		if (ItemInst && ItemInst->GetItemDA())
+		if (!ItemInst)
+			continue;
+		const auto* ItemData = ItemInst->GetItemDA();
+		if (ItemData)
 		{
-			if (ItemInst->GetItemDA()->SynergyTag1.IsValid())
-				AddSynergyTag(ItemInst->GetItemDA()->SynergyTag1);
-			if (ItemInst->GetItemDA()->SynergyTag2.IsValid())
-				AddSynergyTag(ItemInst->GetItemDA()->SynergyTag2);
+			AddSynergyTag(ItemData->SynergyTag1);
+			AddSynergyTag(ItemData->SynergyTag2);
 		}
 	}
 	// 시너지 Effect 새로고침
 	UpdateSynergyEffects();
 }
 
+bool UCAP_InventoryComponent::SwapItem(class UCAP_ItemInstance* OldItem, class UCAP_ItemInstance* NewItem)
+{
+	if (!OldItem || !NewItem)
+		return false;
+
+	int32 Index = InventoryItems.Find(OldItem);
+	if (Index != INDEX_NONE)
+	{
+		InventoryItems[Index] = NewItem;
+		RefreshSynergies();
+		if (OnInventoryChanged.IsBound())
+			OnInventoryChanged.Broadcast(NewItem, true);
+		return true;
+	}
+	return false;
+}
+
 void UCAP_InventoryComponent::UpdateSynergyEffects()
 {
-	UAbilitySystemComponent* ASC = GetOwner()->FindComponentByClass<UAbilitySystemComponent>();
-	if (!ASC || !SynergyDataTable)
-		return;
-
-	// SynergyDataTable의 모든 행 저장
-	TArray<FSynergyDataTable*> AllSynergies;
-	SynergyDataTable->GetAllRows<FSynergyDataTable>("", AllSynergies);
-
-	for (FSynergyDataTable* Row : AllSynergies)
+	if (!OwnerASC || SynergyDataCache.IsEmpty())
 	{
-		// 태그 설정 안했으면 패스
-		if (!Row || !Row->SynergyTag.IsValid())
-			continue;
+		UE_LOG(LogTemp,Warning, TEXT("인벤토리 컴포넌트에 시너지 데이터 테이블 넣어 - UpdateSynergyEffects"));
+		return;
+	}
 
-		FGameplayTag TargetTag = Row->SynergyTag;
-		int32 CurrentCount = CurrentSynergyCounts.Contains(TargetTag) ? CurrentSynergyCounts[TargetTag] : 0;
-		int32 LastCount = CachedSynergyCounts.Contains(TargetTag) ? CachedSynergyCounts[TargetTag] : -1;
+	for (const TPair<FGameplayTag, FSynergyDataTable*>& Pair : SynergyDataCache )
+	{
+		FSynergyDataTable* Row = Pair.Value;
+		FGameplayTag TargetTag = Pair.Key;
+		
+		const int32* FoundCurrent = CurrentSynergyCounts.Find(TargetTag);
+		int32 CurrentCount = FoundCurrent ? *FoundCurrent : 0;
+
+		const int32* FoundLast = CachedSynergyCounts.Find(TargetTag);
+		int32 LastCount = FoundLast ? *FoundLast : -1;
 
 		// 태그 개수 변화 없다면 패스
 		if (CurrentCount == LastCount)	continue;
@@ -100,7 +135,7 @@ void UCAP_InventoryComponent::UpdateSynergyEffects()
 		{
 			for (FActiveGameplayEffectHandle& Handle : AppliedSynergyHandles[TargetTag])
 			{
-				ASC->RemoveActiveGameplayEffect(Handle);
+				OwnerASC->RemoveActiveGameplayEffect(Handle);
 			}
 			AppliedSynergyHandles[TargetTag].Empty();
 		}
@@ -119,11 +154,11 @@ void UCAP_InventoryComponent::UpdateSynergyEffects()
 					TSubclassOf<UGameplayEffect> EffectToApply = Row->SynergyLevels[i].SynergyEffect;
 					if (EffectToApply)
 					{
-						FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
-						FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(EffectToApply, 1.f, Context);
+						FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
+						FGameplayEffectSpecHandle Spec = OwnerASC->MakeOutgoingSpec(EffectToApply, 1.f, Context);
 						if (Spec.IsValid())
 						{
-							FActiveGameplayEffectHandle ActiveHandle = ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+							FActiveGameplayEffectHandle ActiveHandle = OwnerASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
 							AppliedSynergyHandles[TargetTag].Add(ActiveHandle);
 						}
 					}

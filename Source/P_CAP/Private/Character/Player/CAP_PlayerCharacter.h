@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "InputAction.h"
 #include "InputActionValue.h"
+#include "ViewportInteractionTypes.h"
 #include "Character/CAP_Character.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "Items/Item/CAP_InventoryComponent.h"
@@ -25,6 +26,8 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void BeginPlay() override;
+
+	FORCEINLINE AActor* GetInteractableActor() const {return InteractableActor;}
 	
 	void SetNearbyInteractable(AActor* NewInteractable) {InteractableActor = NewInteractable;}
 	void UpdateInteractUI(bool bVisible);

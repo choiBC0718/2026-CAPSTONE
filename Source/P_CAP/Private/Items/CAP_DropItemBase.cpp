@@ -53,8 +53,6 @@ void ACAP_DropItemBase::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	if (MeshContainer)
 	{
-		RootCollision->SetSimulatePhysics(true);
-		
 		float DeltaZ = FMath::Sin(GetGameTimeSinceCreation() * BobbingSpeed) * BobbingHeight;
 		MeshContainer->SetRelativeLocation(FVector(0.f,0.f,DeltaZ));
 	}

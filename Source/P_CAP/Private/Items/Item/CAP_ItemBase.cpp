@@ -30,6 +30,11 @@ void ACAP_ItemBase::BeginPlay()
 void ACAP_ItemBase::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
+	if (ItemDA && !ItemDA->ItemMesh.IsNull())
+	{
+		ItemMesh->SetStaticMesh(ItemDA->ItemMesh.LoadSynchronous());
+		ItemMesh->SetRelativeScale3D(ItemDA->MeshScale);
+	}
 }
 
 void ACAP_ItemBase::Tick(float DeltaTime)

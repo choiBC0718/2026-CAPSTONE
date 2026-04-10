@@ -5,6 +5,7 @@
 
 #include "Widget/Item/CAP_ItemDetailPanelWidget.h"
 #include "Widget/Item/CAP_ItemEquipPanelWidget.h"
+#include "Widget/Item/CAP_ItemSynergyPanelWidget.h"
 
 void UCAP_InventoryTabWidget::NativeConstruct()
 {
@@ -14,13 +15,23 @@ void UCAP_InventoryTabWidget::NativeConstruct()
 		// 슬롯 클릭 됨
 		ItemEquipPanel->OnPanelSlotClicked.AddUObject(this, &UCAP_InventoryTabWidget::OnItemSlotClicked);
 	}
+	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn());
+	if (Player)
+	{
+		InvComp = Player->GetInventoryComponent();
+	}
 }
 
 void UCAP_InventoryTabWidget::RefreshInventoryTab(ACAP_PlayerCharacter* PlayerCharacter)
 {
+
 	if (ItemEquipPanel)
 	{
 		ItemEquipPanel->RefreshPanel(PlayerCharacter);
+	}
+	if (ItemSynergyPanel)
+	{
+		ItemSynergyPanel->RefreshSynergyList(InvComp->GetCurrentSynergyCounts(), InvComp->GetSynergyDataCache());
 	}
 }
 

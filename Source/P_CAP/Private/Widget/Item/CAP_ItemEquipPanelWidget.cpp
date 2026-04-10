@@ -43,18 +43,25 @@ void UCAP_ItemEquipPanelWidget::RefreshPanel(ACAP_PlayerCharacter* PlayerCharact
 	// 패시브 아이템 슬롯 갱신
 	if (PassiveItemList)
 	{
-		PassiveItemList->ClearChildren();
-		ItemSlots.Empty();
+		//PassiveItemList->ClearChildren();
+		//ItemSlots.Empty();
 		if (UCAP_InventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent())
 		{
-			const TArray<UCAP_ItemInstance*> InventoryItems = InventoryComponent->GetInventoryItems();
+			const TArray<UCAP_ItemInstance*>& InventoryItems = InventoryComponent->GetInventoryItems();
 			
 			for (int i=0; i<InventoryComponent->GetCapacity(); i++)
 			{
 				UCAP_ItemInstance* ItemInst = InventoryItems.IsValidIndex(i) ? InventoryItems[i] : nullptr;
 				UTexture2D* Icon = (ItemInst && ItemInst->GetItemDA()) ? ItemInst->GetItemDA()->ItemIcon.LoadSynchronous() : nullptr;
 
-				CreateAndAddSlot(PassiveItemList, ItemSlots, ESlotItemType::Item, i, ItemInst, Icon);
+				// 배열에 위젯이 있다면 데이터 갈아끼우기
+				if (ItemSlots.IsValidIndex(i) && ItemSlots[i] != nullptr)
+				{
+					ItemSlots[i] -> InitSlot(ESlotItemType::Item, Icon, ItemInst);
+				}
+				// 없었다면 새로 생성
+				else
+					CreateAndAddSlot(PassiveItemList, ItemSlots, ESlotItemType::Item, i, ItemInst, Icon);
 			}
 		}
 	}
