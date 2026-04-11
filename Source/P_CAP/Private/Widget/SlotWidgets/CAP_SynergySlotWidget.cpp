@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Widget/Item/CAP_SynergySlotWidget.h"
+#include "Widget/SlotWidgets/CAP_SynergySlotWidget.h"
 
 #include "Components/Image.h"
 #include "Components/TextBlock.h"

@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CAP_ItemSlotWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
+#include "Widget/SlotWidgets/CAP_ItemSlotWidget.h"
 #include "CAP_ItemDetailPanelWidget.generated.h"
 
 /**

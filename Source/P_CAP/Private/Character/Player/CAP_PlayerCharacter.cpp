@@ -14,7 +14,6 @@
 #include "Interface/CAP_InteractInterface.h"
 #include "Items/Item/CAP_InventoryComponent.h"
 #include "Items/Weapon/CAP_WeaponComponent.h"
-#include "Items/Weapon/CAP_WeaponInstance.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 {

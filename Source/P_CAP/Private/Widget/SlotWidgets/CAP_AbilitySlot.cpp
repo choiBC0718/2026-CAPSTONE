@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Widget/Common/CAP_AbilitySlot.h"
+#include "Widget/SlotWidgets/CAP_AbilitySlot.h"
 
 #include "Components/Image.h"
 #include "Data/CAP_AbilitySlotData.h"

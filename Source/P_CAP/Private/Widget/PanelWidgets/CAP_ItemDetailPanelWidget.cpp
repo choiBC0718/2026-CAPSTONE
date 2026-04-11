@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Widget/Item/CAP_ItemDetailPanelWidget.h"
+#include "Widget/PanelWidgets/CAP_ItemDetailPanelWidget.h"
 
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Components/HorizontalBox.h"

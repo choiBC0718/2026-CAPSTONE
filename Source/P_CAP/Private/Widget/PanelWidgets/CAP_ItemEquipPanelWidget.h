@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CAP_ItemSlotWidget.h"
+#include "Widget/SlotWidgets/CAP_ItemSlotWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "CAP_ItemEquipPanelWidget.generated.h"
 

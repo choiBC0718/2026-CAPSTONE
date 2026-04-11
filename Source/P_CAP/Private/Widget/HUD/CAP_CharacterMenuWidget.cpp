@@ -5,7 +5,7 @@
 
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Components/WidgetSwitcher.h"
-#include "Widget/Common/CAP_InventoryTabWidget.h"
+#include "Widget/PanelWidgets/CAP_InventoryTabWidget.h"
 
 void UCAP_CharacterMenuWidget::NativeConstruct()
 {

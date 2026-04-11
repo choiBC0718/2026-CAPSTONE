@@ -1,9 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Widget/Item/CAP_ItemSlotWidget.h"
+#include "Widget/SlotWidgets/CAP_ItemSlotWidget.h"
 
-#include "CAP_ItemEquipPanelWidget.h"
 #include "Components/Image.h"
 
 void UCAP_ItemSlotWidget::NativeConstruct()

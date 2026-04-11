@@ -6,7 +6,7 @@
 #include "CAP_CharacterMenuWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "Widget/Common/CAP_ItemInteraction.h"
-#include "Widget/Item/CAP_ItemSwapWidget.h"
+#include "Widget/PanelWidgets/CAP_ItemSwapWidget.h"
 #include "CAP_GameplayWidget.generated.h"
 
 /**

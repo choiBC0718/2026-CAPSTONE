@@ -1,9 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Widget/Item/CAP_ItemSynergyPanelWidget.h"
+#include "Widget/PanelWidgets/CAP_ItemSynergyPanelWidget.h"
 
-#include "CAP_SynergyListView.h"
+#include "Widget/Common/CAP_SynergyListView.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_SynergySlotData.h"
 #include "Data/CAP_SynergyTypes.h"

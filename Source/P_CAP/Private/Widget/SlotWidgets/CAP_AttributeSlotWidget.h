@@ -16,17 +16,27 @@ UCLASS()
 class UCAP_AttributeSlotWidget : public UUserWidget
 {
 	GENERATED_BODY()
+public:
 	virtual void NativeConstruct() override;
-
+	
+private:
 	// 스탯 이름
 	UPROPERTY(meta = (BindWidget))
-	class UTextBlock* AttributeText;
+	class UTextBlock* AttributeNameText;
+	// 스탯 값
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* AttributeValueText;
 	// 스탯 이름에 맞는 Attribute
 	UPROPERTY(EditAnywhere, Category="Attribute")
 	FGameplayAttribute Attribute;
+	UPROPERTY(EditAnywhere, Category="Attribute")
+	FText AttributeName;
 
-	void SetValue(float NewValue);
+	UPROPERTY()
+	class UAbilitySystemComponent* OwnerASC;
+
+	void UpdatePercentage();
 	void AttributeChanged(const FOnAttributeChangeData& Data);
-	
+
 	FNumberFormattingOptions NumberFormattingOptions;
 };

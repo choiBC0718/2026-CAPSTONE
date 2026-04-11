@@ -1,11 +1,11 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Widget/Common/CAP_InventoryTabWidget.h"
+#include "Widget/PanelWidgets/CAP_InventoryTabWidget.h"
 
-#include "Widget/Item/CAP_ItemDetailPanelWidget.h"
-#include "Widget/Item/CAP_ItemEquipPanelWidget.h"
-#include "Widget/Item/CAP_ItemSynergyPanelWidget.h"
+#include "Widget/PanelWidgets/CAP_ItemDetailPanelWidget.h"
+#include "Widget/PanelWidgets/CAP_ItemEquipPanelWidget.h"
+#include "Widget/PanelWidgets/CAP_ItemSynergyPanelWidget.h"
 
 void UCAP_InventoryTabWidget::NativeConstruct()
 {

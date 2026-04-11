@@ -36,7 +36,10 @@ public:
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MagicalArmor);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CriticalChance);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CriticalDamage);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, AttackSpeed);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MoveSpeed);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, SkillCooldownSpeed);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, WeaponSwapSpeed);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CurrentDodgeCount);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxDodgeCount);
 
@@ -51,7 +54,10 @@ private:
 	UPROPERTY()	FGameplayAttributeData MagicalArmor;
 	UPROPERTY()	FGameplayAttributeData CriticalChance;
 	UPROPERTY()	FGameplayAttributeData CriticalDamage;
+	UPROPERTY()	FGameplayAttributeData AttackSpeed;
 	UPROPERTY()	FGameplayAttributeData MoveSpeed;
+	UPROPERTY()	FGameplayAttributeData SkillCooldownSpeed;
+	UPROPERTY()	FGameplayAttributeData WeaponSwapSpeed;
 	UPROPERTY()	FGameplayAttributeData CurrentDodgeCount;
 	UPROPERTY()	FGameplayAttributeData MaxDodgeCount;
 };

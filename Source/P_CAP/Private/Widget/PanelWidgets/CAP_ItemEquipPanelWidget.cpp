@@ -1,9 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Widget/Item/CAP_ItemEquipPanelWidget.h"
+#include "Widget/PanelWidgets/CAP_ItemEquipPanelWidget.h"
 
-#include "CAP_ItemSlotWidget.h"
+#include "Widget/SlotWidgets/CAP_ItemSlotWidget.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Components/WrapBox.h"
 #include "Components/WrapBoxSlot.h"
@@ -15,6 +15,16 @@
 void UCAP_ItemEquipPanelWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	if (WeaponList)
+	{
+		WeaponList->ClearChildren();
+		WeaponSlots.Empty();
+	}
+	if (PassiveItemList)
+	{
+		PassiveItemList->ClearChildren();
+		ItemSlots.Empty();
+	}
 }
 
 void UCAP_ItemEquipPanelWidget::RefreshPanel(ACAP_PlayerCharacter* PlayerCharacter)
@@ -25,8 +35,6 @@ void UCAP_ItemEquipPanelWidget::RefreshPanel(ACAP_PlayerCharacter* PlayerCharact
 	// 장착된 무기 슬롯 갱신
 	if (WeaponList)
 	{
-		WeaponList->ClearChildren();
-		WeaponSlots.Empty();
 		if (UCAP_WeaponComponent* WeaponComp = PlayerCharacter->GetWeaponComponent())
 		{
 			const TArray<UCAP_WeaponInstance*> EquippedWeapons = WeaponComp->GetEquippedWeapons();
@@ -35,7 +43,12 @@ void UCAP_ItemEquipPanelWidget::RefreshPanel(ACAP_PlayerCharacter* PlayerCharact
 				UCAP_WeaponInstance* WeaponInst = EquippedWeapons[i];
 				UTexture2D* Icon = (WeaponInst && WeaponInst->GetWeaponDA()) ? WeaponInst->GetWeaponDA()->WeaponIcon.LoadSynchronous() : nullptr;
 
-				CreateAndAddSlot(WeaponList, WeaponSlots, ESlotItemType::Weapon, i, WeaponInst, Icon);
+				if (WeaponSlots.IsValidIndex(i) && WeaponSlots[i] != nullptr)
+				{
+					WeaponSlots[i] -> InitSlot(ESlotItemType::Weapon, Icon, WeaponInst);
+				}
+				else
+					CreateAndAddSlot(WeaponList, WeaponSlots, ESlotItemType::Weapon, i, WeaponInst, Icon);
 			}
 		}
 	}
@@ -43,8 +56,6 @@ void UCAP_ItemEquipPanelWidget::RefreshPanel(ACAP_PlayerCharacter* PlayerCharact
 	// 패시브 아이템 슬롯 갱신
 	if (PassiveItemList)
 	{
-		//PassiveItemList->ClearChildren();
-		//ItemSlots.Empty();
 		if (UCAP_InventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent())
 		{
 			const TArray<UCAP_ItemInstance*>& InventoryItems = InventoryComponent->GetInventoryItems();

@@ -1,12 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Widget/Item/CAP_ItemSwapWidget.h"
+#include "Widget/PanelWidgets/CAP_ItemSwapWidget.h"
 
-#include "CAP_ItemDetailPanelWidget.h"
-#include "CAP_ItemSlotWidget.h"
-#include "CAP_SwapDetailPanelWIdget.h"
-#include "CAP_SynergySimulSlotWidget.h"
+#include "Widget/PanelWidgets/CAP_ItemDetailPanelWidget.h"
+#include "Widget/PanelWidgets/CAP_SwapDetailPanelWIdget.h"
+#include "Widget/SlotWidgets/CAP_ItemSlotWidget.h"
+#include "Widget/SlotWidgets/CAP_SynergySimulSlotWidget.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Character/Player/CAP_PlayerController.h"
 #include "Components/Image.h"
