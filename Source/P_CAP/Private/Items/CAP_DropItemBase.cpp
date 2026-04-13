@@ -68,6 +68,11 @@ void ACAP_DropItemBase::InteractDisassemble(class ACAP_PlayerCharacter* PlayerCh
 	// 자식 클래스에서 override
 }
 
+UObject* ACAP_DropItemBase::GetInteractData() const
+{
+	return nullptr;
+}
+
 void ACAP_DropItemBase::DropItem()
 {
 	if (RootCollision)

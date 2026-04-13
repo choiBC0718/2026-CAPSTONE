@@ -26,6 +26,15 @@ void UCAP_ItemSwapWidget::NativeConstruct()
 	SetIsFocusable(true);
 }
 
+void UCAP_ItemSwapWidget::OnAnimationFinished_Implementation(const UWidgetAnimation* Animation)
+{
+	Super::OnAnimationFinished_Implementation(Animation);
+	if (Animation == CloseAnim)
+	{
+		OnMenuClosed.Broadcast();
+	}
+}
+
 void UCAP_ItemSwapWidget::InitSwapUI(class ACAP_PlayerCharacter* Player, class UCAP_ItemInstance* NewItemInst)
 {
 	if (!Player || !NewItemInst)
@@ -277,3 +286,28 @@ void UCAP_ItemSwapWidget::UpdateTopSynergyIcons()
 	}
 }
 
+
+void UCAP_ItemSwapWidget::NativeOpenMenu()
+{
+	if (SlideAnim)
+	{
+		PlayAnimation(SlideAnim, 0.f, 1, EUMGSequencePlayMode::Forward,1.f,true);
+	}
+}
+
+void UCAP_ItemSwapWidget::NativeCloseMenu()
+{
+	if (CloseAnim)
+	{
+		PlayAnimation(CloseAnim, 0.f, 1, EUMGSequencePlayMode::Forward, 1.f, true);
+	}
+	else
+	{
+		OnMenuClosed.Broadcast();
+	}
+}
+
+FOnMenuClosedSignature& UCAP_ItemSwapWidget::GetOnMenuClosedDelegate()
+{
+	return OnMenuClosed;
+}

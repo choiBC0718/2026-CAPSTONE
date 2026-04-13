@@ -55,9 +55,13 @@ protected:
 	
 private:
 	UPROPERTY()
+	ACAP_PlayerCharacter* Player;
+	UPROPERTY()
 	class UAbilitySystemComponent* OwnerASC;
-
 	
 	UFUNCTION()
 	void HandleWeaponChanged(class UCAP_WeaponInstance* NewWeaponInstance);
+
+	UFUNCTION()
+	void CompleteDeactivateSwitcher();
 };

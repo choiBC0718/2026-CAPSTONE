@@ -4,23 +4,32 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Interface/CAP_MenuInterface.h"
 #include "CAP_ItemSwapWidget.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class UCAP_ItemSwapWidget : public UUserWidget
+class UCAP_ItemSwapWidget : public UUserWidget, public ICAP_MenuInterface
 {
 	GENERATED_BODY()
 
 public:
 	virtual void NativeConstruct() override;
+	virtual void OnAnimationFinished_Implementation(const UWidgetAnimation* Animation) override;
 	
 	void InitSwapUI(class ACAP_PlayerCharacter* Player, class UCAP_ItemInstance* NewItemInst);
 	void MoveSelection(FVector2D InputVal);
 	
 	void ConfirmSwap();
+
+	virtual void NativeOpenMenu() override;
+	virtual void NativeCloseMenu() override;
+	virtual FOnMenuClosedSignature& GetOnMenuClosedDelegate() override;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnMenuClosedSignature OnMenuClosed;
 
 private:
 	UPROPERTY(meta=(BindWidget))
@@ -34,6 +43,12 @@ private:
 	UPROPERTY(meta=(BindWidget))
 	class UTextBlock* InformationText;
 
+	UPROPERTY(meta = (BindWidgetAnim), Transient)
+	class UWidgetAnimation* SlideAnim;
+	UPROPERTY(meta = (BindWidgetAnim), Transient)
+	class UWidgetAnimation* CloseAnim;
+
+	
 	UPROPERTY(EditDefaultsOnly, Category="Widget")
 	TSubclassOf<class UCAP_ItemSlotWidget> ItemSlotWidgetClass;
 	UPROPERTY(EditDefaultsOnly, Category="Widget")

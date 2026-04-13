@@ -38,9 +38,9 @@ private:
 	class USpringArmComponent* SpringArm;
 	UPROPERTY(VisibleAnywhere, Category="View")
 	class UCameraComponent* Camera;
-	UPROPERTY(EditAnywhere, Category="Weapon")
+	UPROPERTY(VisibleAnywhere, Category="Weapon")
 	class UCAP_WeaponComponent* WeaponComponent;
-	UPROPERTY(EditAnywhere, Category="Inventory")
+	UPROPERTY(VisibleAnywhere, Category="Inventory")
 	class UCAP_InventoryComponent* InventoryComponent;
 	UPROPERTY(VisibleAnywhere, Category="AI|Tracker")
 	class UPlayerTrackerComponent* PlayerTracker;

@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Interface/CAP_MenuInterface.h"
 #include "CAP_CharacterMenuWidget.generated.h"
+
 
 /**
  * Tab키 입력으로 띄울 메인 위젯
@@ -13,24 +15,41 @@
  * (캐릭터 Attribute Tab) - AttributeTabWidget
  */
 UCLASS()
-class UCAP_CharacterMenuWidget : public UUserWidget
+class UCAP_CharacterMenuWidget : public UUserWidget, public ICAP_MenuInterface
 {
 	GENERATED_BODY()
 
 public:
 	virtual void NativeConstruct() override;
+	virtual void OnAnimationFinished_Implementation(const UWidgetAnimation* Animation) override;
 
+	virtual void NativeOpenMenu() override;
+	virtual void NativeCloseMenu() override;
+	virtual FOnMenuClosedSignature& GetOnMenuClosedDelegate() override;
+	
 	void NavigationInput(FVector2D InputVal);
 	void RefreshMenu();
-	void SwitchNextTab();
-private:
-	UPROPERTY(meta = (BindWidget))
-	class UWidgetSwitcher* WidgetSwitcher;
+	void SwitchCharacterMenuTab();
+
+	UPROPERTY(BlueprintAssignable)
+	FOnMenuClosedSignature OnMenuClosed;
 	
+private:
+	UPROPERTY(meta = (BindWidgetAnim), Transient)
+	class UWidgetAnimation* SlideAnim;
+	UPROPERTY(meta = (BindWidgetAnim), Transient)
+	class UWidgetAnimation* CloseAnim;
+	UPROPERTY(meta = (BindWidgetAnim), Transient)
+	class UWidgetAnimation* SwitchTab;
+
+	UPROPERTY(meta = (BindWidget))
+	class UBorder* InventoryBorder;
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_InventoryTabWidget* InventoryTabWidget;
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_AttributeTabWidget* AttributeTabWidget;
 
+	bool bIsAttributeTabOpen = false;
+	
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 };

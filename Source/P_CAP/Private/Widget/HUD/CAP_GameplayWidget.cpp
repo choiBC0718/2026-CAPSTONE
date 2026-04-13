@@ -9,6 +9,7 @@
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Components/WidgetSwitcher.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
+#include "Interface/CAP_MenuInterface.h"
 #include "Items/Weapon/CAP_WeaponComponent.h"
 #include "Widget/Common/CAP_ValueGauge.h"
 #include "Widget/Common/CAP_AbilityListView.h"
@@ -17,7 +18,7 @@
 void UCAP_GameplayWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
+	Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
 	if (!Player)
 		return;
 	
@@ -41,6 +42,11 @@ void UCAP_GameplayWidget::NativeConstruct()
 	{
 		MenuSwitcher->SetVisibility(ESlateVisibility::Collapsed);
 	}
+	if (CharacterMenuWidget)
+	{
+		// 위젯 닫힘 델리게이트 연결
+		CharacterMenuWidget->OnMenuClosed.AddDynamic(this, &UCAP_GameplayWidget::CompleteDeactivateSwitcher);
+	}
 }
 
 bool UCAP_GameplayWidget::IsCharacterMenuOpen()
@@ -53,43 +59,63 @@ bool UCAP_GameplayWidget::IsItemSwapMenuOpen()
 	return MenuSwitcher && MenuSwitcher->GetVisibility() == ESlateVisibility::Visible && MenuSwitcher->GetActiveWidget() == ItemSwapWidget;
 }
 
+// WidgetSwitcher 활성화, UI 오픈 애니메이션 재생
 void UCAP_GameplayWidget::ActivateSwitcher()
 {
 	if (MenuSwitcher && CharacterMenuWidget)
 	{
 		MenuSwitcher->SetVisibility(ESlateVisibility::Visible);
 		MenuSwitcher->SetActiveWidget(CharacterMenuWidget);
-		CharacterMenuWidget->RefreshMenu();
+		if (ICAP_MenuInterface* Menu = Cast<ICAP_MenuInterface>(CharacterMenuWidget))
+		{
+			Menu->NativeOpenMenu();
+		}
 	}
+	if (PickupItemDetailWidget)
+		PickupItemDetailWidget->SetVisibility(ESlateVisibility::Collapsed);
 }
-
+// WidgetSwitcher 비활성화, UI 닫히는 애니메이션 재생
 void UCAP_GameplayWidget::DeactivateSwitcher()
 {
-	if (MenuSwitcher)
+	if (!MenuSwitcher)
+		return;
+
+	UUserWidget* ActiveWidget = Cast<UUserWidget>(MenuSwitcher->GetActiveWidget());
+	ICAP_MenuInterface* Menu = Cast<ICAP_MenuInterface>(ActiveWidget);
+	if (Menu)
 	{
-		MenuSwitcher->SetActiveWidget(CharacterMenuWidget);
-		MenuSwitcher->SetVisibility(ESlateVisibility::Collapsed);
+		Menu->GetOnMenuClosedDelegate().AddUniqueDynamic(this, &UCAP_GameplayWidget::CompleteDeactivateSwitcher);
+		Menu->NativeCloseMenu();
+	}
+	else
+	{
+		CompleteDeactivateSwitcher();
 	}
 }
-
+// InventoryTab <-> AttributeTab 
 void UCAP_GameplayWidget::SwitchCharacterMenuTab()
 {
 	if (CharacterMenuWidget)
-		CharacterMenuWidget->SwitchNextTab();
+		CharacterMenuWidget->SwitchCharacterMenuTab();
 }
 
 void UCAP_GameplayWidget::OpenItemSwapMenu(class UCAP_ItemInstance* NewItem)
 {
-	if (MenuSwitcher && ItemSwapWidget)
+	if (PickupItemDetailWidget && MenuSwitcher && ItemSwapWidget && Player)
 	{
+		PickupItemDetailWidget->SetVisibility(ESlateVisibility::Collapsed);
+		
 		MenuSwitcher->SetVisibility(ESlateVisibility::Visible);
 		MenuSwitcher->SetActiveWidget(ItemSwapWidget);
-		
-		ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
 		ItemSwapWidget->InitSwapUI(Player, NewItem);
+		if (ICAP_MenuInterface* Menu = Cast<ICAP_MenuInterface>(ItemSwapWidget))
+		{
+			Menu->NativeOpenMenu();
+		}
 	}
 }
 
+// 아이템 상호작용 게이지 업데이트
 void UCAP_GameplayWidget::UpdateInteractProgress(float Progress)
 {
 	if (PickupItemDetailWidget)
@@ -98,6 +124,7 @@ void UCAP_GameplayWidget::UpdateInteractProgress(float Progress)
 	}
 }
 
+// 아이템 상호작용 위젯 정보 업데이트
 void UCAP_GameplayWidget::UpdateInteractionUI(bool bVisible, UObject* ItemData, const FString& KeyName)
 {
 	if (PickupItemDetailWidget)
@@ -106,6 +133,27 @@ void UCAP_GameplayWidget::UpdateInteractionUI(bool bVisible, UObject* ItemData, 
 	}
 }
 
+// 위젯 닫히는 애니메이션 끝나면 실행됨
+void UCAP_GameplayWidget::CompleteDeactivateSwitcher()
+{
+	if (MenuSwitcher)
+	{
+		UUserWidget* ActiveWidget = Cast<UUserWidget>(MenuSwitcher->GetActiveWidget());
+		if (ICAP_MenuInterface* Menu = Cast<ICAP_MenuInterface>(ActiveWidget))
+		{
+			Menu->GetOnMenuClosedDelegate().RemoveDynamic(this, &UCAP_GameplayWidget::CompleteDeactivateSwitcher);
+		}
+		MenuSwitcher->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
+	{
+		if (InvComp->GetNearbyInteractable()!=nullptr)
+			if (PickupItemDetailWidget)
+				PickupItemDetailWidget->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+// 스킬 ListView 아이콘 변경
 void UCAP_GameplayWidget::HandleWeaponChanged(class UCAP_WeaponInstance* NewWeaponInstance)
 {
 	if (AbilityListView && NewWeaponInstance)

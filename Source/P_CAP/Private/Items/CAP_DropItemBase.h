@@ -21,6 +21,7 @@ public:
 
 	virtual void InteractEquip(class ACAP_PlayerCharacter* PlayerCharacter) override;
 	virtual void InteractDisassemble(class ACAP_PlayerCharacter* PlayerCharacter) override;
+	virtual UObject* GetInteractData() const override;
 
 	void DropItem();
 protected:
