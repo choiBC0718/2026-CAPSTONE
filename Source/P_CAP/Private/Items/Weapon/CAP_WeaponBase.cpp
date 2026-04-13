@@ -5,10 +5,7 @@
 
 #include "CAP_WeaponInstance.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
-#include "Components/BoxComponent.h"
-#include "Components/SphereComponent.h"
 #include "Data/CAP_WeaponDataAsset.h"
-#include "GameFramework/RotatingMovementComponent.h"
 
 ACAP_WeaponBase::ACAP_WeaponBase()
 {
@@ -101,4 +98,3 @@ void ACAP_WeaponBase::InteractDisassemble(class ACAP_PlayerCharacter* PlayerChar
 {
 	Destroy();
 }
-

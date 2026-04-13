@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Data/CAP_WeaponDataAsset.h"
-#include "UObject/NoExportTypes.h"
 #include "CAP_WeaponInstance.generated.h"
 
 /**

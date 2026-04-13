@@ -6,19 +6,23 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "CAP_ItemInstance.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_SynergyTypes.h"
+#include "Interface/CAP_InteractInterface.h"
 
 
 UCAP_InventoryComponent::UCAP_InventoryComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-	
-	OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwner());
 }
 
 void UCAP_InventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	Player = Cast<ACAP_PlayerCharacter>(GetOwner());
+	OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
+
 	if (SynergyDataTable)
 	{
 		TArray<FSynergyDataTable*> AllRows;
@@ -56,6 +60,39 @@ bool UCAP_InventoryComponent::AddItem(class UCAP_ItemInstance* NewItem)
 	return true;
 }
 
+void UCAP_InventoryComponent::ProcessInteractInput(ETriggerEvent TriggerEvent, float ElapsedTime)
+{
+	float HoldDuration = 1.f;
+	if (!Player)
+		return;
+	
+	ICAP_InteractInterface* InteractableObj = Cast<ICAP_InteractInterface>(NearbyInteractable);
+	if (!InteractableObj)
+		return;
+
+	if (TriggerEvent == ETriggerEvent::Ongoing)
+	{
+		float Progress = FMath::Clamp(ElapsedTime / HoldDuration, 0.0f, 1.0f);
+		Player->UpdateInteractProgress(Progress);
+	}
+	else if (TriggerEvent == ETriggerEvent::Triggered)
+	{
+		if (NearbyInteractable)
+		{
+			InteractableObj->InteractDisassemble(Player);
+			Player->UpdateInteractProgress(0.f);
+		}
+	}
+	else if (TriggerEvent == ETriggerEvent::Completed || TriggerEvent == ETriggerEvent::Canceled)
+	{
+		if (ElapsedTime < ItemEquipTriggerTime && NearbyInteractable)
+		{
+			InteractableObj->InteractEquip(Player);
+		}
+		Player->UpdateInteractProgress(0.f);
+	}
+}
+
 void UCAP_InventoryComponent::RefreshSynergies()
 {
 	if (SynergyDataCache.IsEmpty())
@@ -80,7 +117,7 @@ void UCAP_InventoryComponent::RefreshSynergies()
 	{
 		if (!ItemInst)
 			continue;
-		const auto* ItemData = ItemInst->GetItemDA();
+		const UCAP_ItemDataAsset* ItemData = ItemInst->GetItemDA();
 		if (ItemData)
 		{
 			AddSynergyTag(ItemData->SynergyTag1);

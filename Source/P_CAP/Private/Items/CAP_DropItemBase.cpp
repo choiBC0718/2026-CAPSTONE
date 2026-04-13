@@ -78,12 +78,12 @@ void ACAP_DropItemBase::DropItem()
 }
 
 void ACAP_DropItemBase::OnInteractSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+                                                     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	ACAP_PlayerCharacter* PlayerCharacter = Cast<ACAP_PlayerCharacter>(OtherActor);
 	if (PlayerCharacter)
 	{
-		PlayerCharacter->SetNearbyInteractable(this);
+		PlayerCharacter->GetInventoryComponent()->SetNearbyInteractable(this);
 		PlayerCharacter->UpdateInteractUI(true);
 	}
 }
@@ -94,7 +94,7 @@ void ACAP_DropItemBase::OnInteractSphereEndOverlap(UPrimitiveComponent* Overlapp
 	ACAP_PlayerCharacter* PlayerCharacter = Cast<ACAP_PlayerCharacter>(OtherActor);
 	if (PlayerCharacter)
 	{
-		PlayerCharacter->SetNearbyInteractable(nullptr);
+		PlayerCharacter->GetInventoryComponent()->SetNearbyInteractable(nullptr);
 		PlayerCharacter->UpdateInteractUI(false);
 	}
 }

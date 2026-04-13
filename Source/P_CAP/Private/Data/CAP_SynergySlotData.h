@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "CAP_SynergyTypes.h"
-#include "UObject/NoExportTypes.h"
 #include "CAP_SynergySlotData.generated.h"
 
 /**

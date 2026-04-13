@@ -27,7 +27,7 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 
 	if (!ItemData)
 	{
-		Icon->SetVisibility(ESlateVisibility::Hidden);
+		Icon->SetVisibility(ESlateVisibility::Collapsed);
 		NameText->SetText(FText::GetEmpty());
 		GradeText->SetText(FText::GetEmpty());
 		DescriptionText->SetText(FText::GetEmpty());

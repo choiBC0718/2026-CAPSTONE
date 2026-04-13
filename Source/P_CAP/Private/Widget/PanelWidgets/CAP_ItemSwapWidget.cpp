@@ -96,14 +96,18 @@ void UCAP_ItemSwapWidget::ConfirmSwap()
 	if (CurrentSelectedSlot && CurrentSelectedSlot->SlotItemData && NewItemToSwap && Player)
 	{
 		UCAP_ItemInstance* OldItem = Cast<UCAP_ItemInstance>(CurrentSelectedSlot->SlotItemData);
-		AActor* InteractActor = Player->GetInteractableActor();
+		AActor* InteractActor = Player->GetInventoryComponent()->GetNearbyInteractable();
+
+		UCAP_InventoryComponent* InventoryComp = Player->GetInventoryComponent();
+		if (!InventoryComp)
+			return;
 		
-		if (Player->GetInventoryComponent()->SwapItem(OldItem, NewItemToSwap))
+		if (InventoryComp->SwapItem(OldItem, NewItemToSwap))
 		{
 			if (InteractActor)
 			{
 				InteractActor->Destroy();
-				Player->SetNearbyInteractable(nullptr);
+				InventoryComp->SetNearbyInteractable(nullptr);
 				Player->UpdateInteractUI(false);
 			}
 			FVector SpawnLoc = Player->GetActorLocation() + FVector(0.f,0.f,50.f);
@@ -249,7 +253,7 @@ void UCAP_ItemSwapWidget::UpdateTopSynergyIcons()
 		SortArray.Add({Tag, OriginalCount, NewCount, SynergyData});
 	}
 
-	// 2. ✨ NewCount가 높은 순서(내림차순)로 배열 정렬하기
+	// 2. NewCount가 높은 순서(내림차순)로 배열 정렬하기
 	SortArray.Sort([](const FSynergySortData& A, const FSynergySortData& B) {
 		return A.NewCount > B.NewCount;
 	});

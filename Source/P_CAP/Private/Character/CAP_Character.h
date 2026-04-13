@@ -4,9 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
-#include "Abilities/GameplayAbility.h"
 #include "GameFramework/Character.h"
-#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "CAP_Character.generated.h"
 
 UCLASS()

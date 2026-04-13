@@ -15,7 +15,6 @@ class ACAP_DropItemBase : public AActor, public ICAP_InteractInterface
 public:	
 
 	ACAP_DropItemBase();
-
 	
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;

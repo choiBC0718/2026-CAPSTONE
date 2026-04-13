@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CAP_WeaponInstance.h"
 #include "GameFramework/Actor.h"
 #include "Items/CAP_DropItemBase.h"
 #include "CAP_WeaponBase.generated.h"
@@ -20,6 +21,7 @@ public:
 
 	virtual void InteractEquip(class ACAP_PlayerCharacter* PlayerCharacter) override;
 	virtual void InteractDisassemble(class ACAP_PlayerCharacter* PlayerCharacter) override;
+	virtual UObject* GetInteractData() const override {return WeaponInstance;}
 	
 	UPROPERTY(EditDefaultsOnly, Category="Weapon Data")
 	class UCAP_WeaponDataAsset* WeaponDA;

@@ -23,4 +23,5 @@ class ICAP_InteractInterface
 public:
 	virtual void InteractEquip(class ACAP_PlayerCharacter* PlayerCharacter) =0;
 	virtual void InteractDisassemble(class ACAP_PlayerCharacter* PlayerCharacter) =0;
+	virtual UObject* GetInteractData() const {return nullptr;}
 };

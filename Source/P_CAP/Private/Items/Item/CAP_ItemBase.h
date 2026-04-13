@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CAP_ItemInstance.h"
 #include "Items/CAP_DropItemBase.h"
 #include "CAP_ItemBase.generated.h"
 
@@ -22,6 +23,7 @@ public:
 
 	virtual void InteractEquip(class ACAP_PlayerCharacter* PlayerCharacter) override;
 	virtual void InteractDisassemble(class ACAP_PlayerCharacter* PlayerCharacter) override;
+	virtual UObject* GetInteractData() const override {return ItemInstance;}
 
 	UPROPERTY(EditDefaultsOnly, Category="Item Data")
 	class UCAP_ItemDataAsset* ItemDA;

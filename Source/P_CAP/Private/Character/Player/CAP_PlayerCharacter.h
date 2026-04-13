@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "InputAction.h"
 #include "InputActionValue.h"
-#include "ViewportInteractionTypes.h"
 #include "Character/CAP_Character.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "Items/Item/CAP_InventoryComponent.h"
@@ -26,10 +25,7 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void BeginPlay() override;
-
-	FORCEINLINE AActor* GetInteractableActor() const {return InteractableActor;}
 	
-	void SetNearbyInteractable(AActor* NewInteractable) {InteractableActor = NewInteractable;}
 	void UpdateInteractUI(bool bVisible);
 	void UpdateInteractProgress(float Progress);
 	
@@ -46,6 +42,8 @@ private:
 	class UCAP_WeaponComponent* WeaponComponent;
 	UPROPERTY(EditAnywhere, Category="Inventory")
 	class UCAP_InventoryComponent* InventoryComponent;
+	UPROPERTY(VisibleAnywhere, Category="AI|Tracker")
+	class UPlayerTrackerComponent* PlayerTracker;
 
 	/**		Input			**/
 	UPROPERTY(EditDefaultsOnly, Category="Input")
@@ -66,17 +64,5 @@ private:
 	void AbilityInputHandle(const FInputActionValue& InputActionValue, EAbilityInputID AbilityInputID);
 	void InteractInputHandle(const FInputActionInstance& Instance);
 	void SwapWeapon();
-
-protected:
-	UPROPERTY()
-	AActor* InteractableActor;
-
-	UPROPERTY()
-	TArray<FGameplayAbilitySpecHandle> CurrentWeaponAbilityHandles;
-
-	void ApplyWeaponData(class UCAP_WeaponDataAsset* WeaponDA);
-	void ClearCurrentWeaponData();
-
-	UPROPERTY(VisibleAnywhere, Category="AI|Tracker")
-	class UPlayerTrackerComponent* PlayerTracker;
+	
 };

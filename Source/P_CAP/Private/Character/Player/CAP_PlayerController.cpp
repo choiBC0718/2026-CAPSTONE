@@ -7,7 +7,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Blueprint/UserWidget.h"
-#include "Widget/Common/CAP_ItemInteraction.h"
+#include "Items/CAP_DropItemBase.h"
 
 void ACAP_PlayerController::OnPossess(APawn* InPawn)
 {
@@ -46,23 +46,30 @@ void ACAP_PlayerController::SetupInputComponent()
 	}
 }
 
-void ACAP_PlayerController::SetInteractUIVisibility(bool bVisible, const FString& KeyName)
+void ACAP_PlayerController::UpdateInteractUI(bool bVisible, const FString& KeyName)
 {
-	if (GameplayWidget && GameplayWidget->GetInteractionWidget())
+	if (!GameplayWidget || !PlayerCharacter)
+		return;
+
+	UObject* ItemData = nullptr;
+	if (bVisible)
 	{
-		GameplayWidget->GetInteractionWidget()->SetInteractionUIVisibility(bVisible);
-		if (bVisible)
+		if (UCAP_InventoryComponent* InvComp = PlayerCharacter->GetInventoryComponent())
 		{
-			GameplayWidget->GetInteractionWidget()->SetInteractKeyText(KeyName);
+			if (ICAP_InteractInterface* InteractInterface = Cast<ICAP_InteractInterface>(InvComp->GetNearbyInteractable()))
+			{
+				ItemData = InteractInterface->GetInteractData();
+			}
 		}
 	}
+	GameplayWidget->UpdateInteractionUI(bVisible, ItemData, KeyName);
 }
 
 void ACAP_PlayerController::UpdateInteractProgressUI(float Progress)
 {
-	if (GameplayWidget && GameplayWidget->GetInteractionWidget())
+	if (GameplayWidget)
 	{
-		GameplayWidget->GetInteractionWidget()->UpdateInteractProgress(Progress);
+		GameplayWidget->UpdateInteractProgress(Progress);
 	}
 }
 

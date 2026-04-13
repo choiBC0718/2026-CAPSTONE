@@ -11,7 +11,6 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
-#include "Interface/CAP_InteractInterface.h"
 #include "Items/Item/CAP_InventoryComponent.h"
 #include "Items/Weapon/CAP_WeaponComponent.h"
 
@@ -122,7 +121,7 @@ void ACAP_PlayerCharacter::UpdateInteractUI(bool bVisible)
 			}
 		}
 	}
-	PC->SetInteractUIVisibility(bVisible, CurrentKeyName);
+	PC->UpdateInteractUI(bVisible, CurrentKeyName);
 }
 
 void ACAP_PlayerCharacter::UpdateInteractProgress(float Progress)
@@ -175,39 +174,8 @@ void ACAP_PlayerCharacter::AbilityInputHandle(const FInputActionValue& InputActi
 
 void ACAP_PlayerCharacter::InteractInputHandle(const FInputActionInstance& Instance)
 {
-	ETriggerEvent TriggerEvent = Instance.GetTriggerEvent();
-	float ElapsedTime = Instance.GetElapsedTime();
-	float HoldDuration = 1.f;
-	
-	if (TriggerEvent == ETriggerEvent::Ongoing)
-	{
-		float Progress = FMath::Clamp(ElapsedTime / HoldDuration, 0.0f, 1.0f);
-		UpdateInteractProgress(Progress);
-	}
-	else if (TriggerEvent == ETriggerEvent::Triggered)
-	{
-		if (InteractableActor)
-		{
-			ICAP_InteractInterface* InteractableObj = Cast<ICAP_InteractInterface>(InteractableActor);
-			if (InteractableObj)
-			{
-				InteractableObj->InteractDisassemble(this);
-			}
-			UpdateInteractProgress(0.f);
-		}
-	}
-	else if (TriggerEvent == ETriggerEvent::Completed || TriggerEvent == ETriggerEvent::Canceled)
-	{
-		if (ElapsedTime < 0.5f && InteractableActor)
-		{
-			ICAP_InteractInterface* InteractableObj = Cast<ICAP_InteractInterface>(InteractableActor);
-			if (InteractableObj)
-			{
-				InteractableObj->InteractEquip(this);
-			}
-		}
-		UpdateInteractProgress(0.f);
-	}
+	if (InventoryComponent)
+		InventoryComponent->ProcessInteractInput(Instance.GetTriggerEvent(), Instance.GetElapsedTime());
 }
 
 void ACAP_PlayerCharacter::SwapWeapon()

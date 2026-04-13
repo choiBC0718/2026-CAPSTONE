@@ -33,9 +33,9 @@ void UCAP_GameplayWidget::NativeConstruct()
 	{
 		HealthBar->SetAndBoundToGameplayAttribute(OwnerASC, UCAP_AttributeSet::GetHealthAttribute(), UCAP_AttributeSet::GetMaxHealthAttribute());
 	}
-	if (InteractionWidget)
+	if (PickupItemDetailWidget)
 	{
-		InteractionWidget->SetVisibility(ESlateVisibility::Hidden);
+		PickupItemDetailWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 	if (MenuSwitcher)
 	{
@@ -87,6 +87,22 @@ void UCAP_GameplayWidget::OpenItemSwapMenu(class UCAP_ItemInstance* NewItem)
 		
 		ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
 		ItemSwapWidget->InitSwapUI(Player, NewItem);
+	}
+}
+
+void UCAP_GameplayWidget::UpdateInteractProgress(float Progress)
+{
+	if (PickupItemDetailWidget)
+	{
+		PickupItemDetailWidget->UpdateInteractProgress(Progress);
+	}
+}
+
+void UCAP_GameplayWidget::UpdateInteractionUI(bool bVisible, UObject* ItemData, const FString& KeyName)
+{
+	if (PickupItemDetailWidget)
+	{
+		PickupItemDetailWidget->UpdateInteractionUI(bVisible, ItemData, KeyName);
 	}
 }
 

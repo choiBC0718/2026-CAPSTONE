@@ -22,7 +22,7 @@ public:
 
 	FORCEINLINE UCAP_GameplayWidget* GetGameplayWidget() const { return GameplayWidget; }
 	
-	void SetInteractUIVisibility(bool bVisible, const FString& KeyName);
+	void UpdateInteractUI(bool bVisible, const FString& KeyName);
 	void UpdateInteractProgressUI(float Progress);
 	
 private:
