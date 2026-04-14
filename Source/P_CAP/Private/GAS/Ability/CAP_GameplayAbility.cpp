@@ -10,7 +10,7 @@
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionConstantForce.h"
 #include "Animation/AN_SendRMSEvent.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
-#include "GAS/AbilityTask_RotateToCursor.h"
+#include "GAS/Tasks/AbilityTask_RotateToCursor.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "Items/Weapon/CAP_WeaponInstance.h"
 #include "Kismet/KismetMathLibrary.h"

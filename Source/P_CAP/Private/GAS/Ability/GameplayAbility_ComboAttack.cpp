@@ -7,7 +7,7 @@
 #include "GameplayTagsManager.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_WaitInputPress.h"
-#include "GAS/AbilityTask_RotateToCursor.h"
+#include "GAS/Tasks/AbilityTask_RotateToCursor.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 
 UGameplayAbility_ComboAttack::UGameplayAbility_ComboAttack()

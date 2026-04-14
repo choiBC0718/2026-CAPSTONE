@@ -16,5 +16,16 @@ void UCAP_AttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMo
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
 		SetHealth(FMath::Clamp(GetHealth(), 0, GetMaxHealth()));
+		SetCachedHealthPercent(GetHealth()/GetMaxHealth());
+	}
+}
+
+void UCAP_AttributeSet::RescaleHealth()
+{
+	if (!GetOwningActor())
+		return;
+	if (GetCachedHealthPercent() != 0.f && GetHealth() != 0.f)
+	{
+		SetHealth(GetMaxHealth() * GetCachedHealthPercent());
 	}
 }

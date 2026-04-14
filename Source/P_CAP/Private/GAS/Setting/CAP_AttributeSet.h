@@ -26,6 +26,8 @@ public:
 	virtual void PreAttributeBaseChange(const FGameplayAttribute& Attribute, float& NewValue) const override;
 	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
 
+	void RescaleHealth();
+
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, Health);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxHealth);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, PhysicalDamage);
@@ -42,6 +44,8 @@ public:
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, WeaponSwapSpeed);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CurrentDodgeCount);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxDodgeCount);
+
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CachedHealthPercent);
 
 private:
 	UPROPERTY()	FGameplayAttributeData Health;
@@ -60,4 +64,6 @@ private:
 	UPROPERTY()	FGameplayAttributeData WeaponSwapSpeed;
 	UPROPERTY()	FGameplayAttributeData CurrentDodgeCount;
 	UPROPERTY()	FGameplayAttributeData MaxDodgeCount;
+	
+	UPROPERTY()	FGameplayAttributeData CachedHealthPercent;
 };

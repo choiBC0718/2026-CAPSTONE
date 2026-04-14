@@ -187,3 +187,29 @@ void ACAP_PlayerCharacter::SwapWeapon()
 	if (WeaponComponent)
 		WeaponComponent->SwapWeapon();
 }
+
+void ACAP_PlayerCharacter::SetInputEnabledFromPlayerController(bool bEnabled)
+{
+	APlayerController* PC = GetController<APlayerController>();
+	if (PC)
+	{
+		if (bEnabled)
+		{
+			EnableInput(PC);
+		}
+		else
+		{
+			DisableInput(PC);
+		}
+	}
+}
+
+void ACAP_PlayerCharacter::OnDead()
+{
+	SetInputEnabledFromPlayerController(false);
+}
+
+void ACAP_PlayerCharacter::OnRespawn()
+{
+	SetInputEnabledFromPlayerController(true);
+}

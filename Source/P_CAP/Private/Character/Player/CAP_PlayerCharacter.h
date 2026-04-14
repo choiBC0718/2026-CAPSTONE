@@ -64,5 +64,9 @@ private:
 	void AbilityInputHandle(const FInputActionValue& InputActionValue, EAbilityInputID AbilityInputID);
 	void InteractInputHandle(const FInputActionInstance& Instance);
 	void SwapWeapon();
-	
+
+
+	void SetInputEnabledFromPlayerController(bool bEnabled);
+	virtual void OnDead() override;
+	virtual void OnRespawn() override;
 };

@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "GAS/AbilityTask_RotateToCursor.h"
+#include "GAS/Tasks/AbilityTask_RotateToCursor.h"
 
 #include "GameFramework/Character.h"
 #include "Kismet/KismetMathLibrary.h"

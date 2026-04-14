@@ -35,7 +35,6 @@ private:
 	TArray<TSubclassOf<UGameplayEffect>> InitialEffects;
 	UPROPERTY(EditDefaultsOnly, Category = "Gameplay Ability")
 	class UCAP_AbilitySystemGenerics* AbilitySystemGenerics;
-
-
+	
 	void HealthUpdated(const FOnAttributeChangeData& ChangeData);
 };

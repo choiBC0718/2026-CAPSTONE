@@ -64,7 +64,10 @@ void UCAP_AbilitySystemComponent::InitializeBaseAttribute(FName StatRowName)
 		SetNumericAttributeBase(UCAP_AttributeSet::GetMagicalArmorAttribute(), BaseStats->BaseMagicalArmor);
 		SetNumericAttributeBase(UCAP_AttributeSet::GetCriticalChanceAttribute(), BaseStats->BaseCriticalChance);
 		SetNumericAttributeBase(UCAP_AttributeSet::GetCriticalDamageAttribute(), BaseStats->BaseCriticalDamage);
+		SetNumericAttributeBase(UCAP_AttributeSet::GetAttackSpeedAttribute(), BaseStats->BaseAttackSpeed);
 		SetNumericAttributeBase(UCAP_AttributeSet::GetMoveSpeedAttribute(), BaseStats->BaseMoveSpeed);
+		SetNumericAttributeBase(UCAP_AttributeSet::GetSkillCooldownSpeedAttribute(), BaseStats->BaseCooldownMultiplier);
+		SetNumericAttributeBase(UCAP_AttributeSet::GetWeaponSwapSpeedAttribute(), BaseStats->BaseWeaponSwapCooldownMultiplier);
 	}
 }
 

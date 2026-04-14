@@ -42,7 +42,10 @@ public:
 	UPROPERTY(EditAnywhere)		float BaseMagicalArmor=0.f;
 	UPROPERTY(EditAnywhere)		float BaseCriticalChance=0.f;
 	UPROPERTY(EditAnywhere)		float BaseCriticalDamage=0.f;
+	UPROPERTY(EditAnywhere)		float BaseAttackSpeed=0.f;
 	UPROPERTY(EditAnywhere)		float BaseMoveSpeed=0.f;
+	UPROPERTY(EditAnywhere)		float BaseCooldownMultiplier=0.f;
+	UPROPERTY(EditAnywhere)		float BaseWeaponSwapCooldownMultiplier=0.f;
 };
 
 /**무기 별 보너스 스탯 (등급별로 행 다르게 제작)*/
