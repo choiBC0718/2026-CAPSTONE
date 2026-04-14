@@ -18,6 +18,15 @@ enum class EAbilityInputID : uint8
 	SwapWeapon			UMETA(DisplayName = "SwapWeapon")
 };
 
+UENUM(BlueprintType)
+enum class EItemGrade : uint8
+{
+	Normal			UMETA(DisplayName = "일반"),
+	Rare			UMETA(DisplayName = "레어"),
+	Epic			UMETA(DisplayName = "에픽"),
+	Legendary		UMETA(DisplayName = "레전더리")
+};
+
 USTRUCT(BlueprintType)
 struct FBaseStatRow : public FTableRowBase
 {
@@ -33,7 +42,10 @@ public:
 	UPROPERTY(EditAnywhere)		float BaseMagicalArmor=0.f;
 	UPROPERTY(EditAnywhere)		float BaseCriticalChance=0.f;
 	UPROPERTY(EditAnywhere)		float BaseCriticalDamage=0.f;
+	UPROPERTY(EditAnywhere)		float BaseAttackSpeed=0.f;
 	UPROPERTY(EditAnywhere)		float BaseMoveSpeed=0.f;
+	UPROPERTY(EditAnywhere)		float BaseCooldownMultiplier=0.f;
+	UPROPERTY(EditAnywhere)		float BaseWeaponSwapCooldownMultiplier=0.f;
 };
 
 /**무기 별 보너스 스탯 (등급별로 행 다르게 제작)*/

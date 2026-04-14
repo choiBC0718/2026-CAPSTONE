@@ -24,6 +24,9 @@ class UCAP_AttributeSet : public UAttributeSet
 
 public:
 	virtual void PreAttributeBaseChange(const FGameplayAttribute& Attribute, float& NewValue) const override;
+	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
+
+	void RescaleHealth();
 
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, Health);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxHealth);
@@ -35,9 +38,14 @@ public:
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MagicalArmor);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CriticalChance);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CriticalDamage);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, AttackSpeed);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MoveSpeed);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, SkillCooldownSpeed);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, WeaponSwapSpeed);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CurrentDodgeCount);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxDodgeCount);
+
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CachedHealthPercent);
 
 private:
 	UPROPERTY()	FGameplayAttributeData Health;
@@ -50,7 +58,12 @@ private:
 	UPROPERTY()	FGameplayAttributeData MagicalArmor;
 	UPROPERTY()	FGameplayAttributeData CriticalChance;
 	UPROPERTY()	FGameplayAttributeData CriticalDamage;
+	UPROPERTY()	FGameplayAttributeData AttackSpeed;
 	UPROPERTY()	FGameplayAttributeData MoveSpeed;
+	UPROPERTY()	FGameplayAttributeData SkillCooldownSpeed;
+	UPROPERTY()	FGameplayAttributeData WeaponSwapSpeed;
 	UPROPERTY()	FGameplayAttributeData CurrentDodgeCount;
 	UPROPERTY()	FGameplayAttributeData MaxDodgeCount;
+	
+	UPROPERTY()	FGameplayAttributeData CachedHealthPercent;
 };

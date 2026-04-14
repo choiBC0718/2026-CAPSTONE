@@ -3,11 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayAbilitySpecHandle.h"
 #include "InputAction.h"
 #include "InputActionValue.h"
 #include "Character/CAP_Character.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
+#include "Items/Item/CAP_InventoryComponent.h"
+#include "Items/Weapon/CAP_WeaponComponent.h"
 #include "CAP_PlayerCharacter.generated.h"
 
 /**
@@ -24,26 +25,25 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void BeginPlay() override;
-
-	UFUNCTION()
-	void PickupWeapon(class UCAP_WeaponDataAsset* NewWeaponDA);
-	void SwapWeapon();
 	
-	void SetNearbyInteractable(AActor* NewInteractable) {InteractableActor = NewInteractable;}
 	void UpdateInteractUI(bool bVisible);
 	void UpdateInteractProgress(float Progress);
 	
+	UCAP_WeaponComponent* GetWeaponComponent() const {return WeaponComponent;}
+	UCAP_InventoryComponent* GetInventoryComponent() const {return InventoryComponent;}
+	
 private:
 	/**		Components		**/
-	UPROPERTY(VisibleAnywhere, Category="Weapon")
-	class UStaticMeshComponent* WeaponMesh_R;
-	UPROPERTY(VisibleAnywhere, Category="Weapon")
-	class UStaticMeshComponent* WeaponMesh_L;
 	UPROPERTY(VisibleAnywhere, Category="View")
 	class USpringArmComponent* SpringArm;
 	UPROPERTY(VisibleAnywhere, Category="View")
 	class UCameraComponent* Camera;
-
+	UPROPERTY(VisibleAnywhere, Category="Weapon")
+	class UCAP_WeaponComponent* WeaponComponent;
+	UPROPERTY(VisibleAnywhere, Category="Inventory")
+	class UCAP_InventoryComponent* InventoryComponent;
+	UPROPERTY(VisibleAnywhere, Category="AI|Tracker")
+	class UPlayerTrackerComponent* PlayerTracker;
 
 	/**		Input			**/
 	UPROPERTY(EditDefaultsOnly, Category="Input")
@@ -57,31 +57,16 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category="Input|Ability")
 	TMap<EAbilityInputID, class UInputAction*> AbilityInputActions;
-
-
+	
 	FVector GetMoveForwardDir();
 	FVector GetMoveRightDir();
 	void MoveInputHandle(const FInputActionValue& InputActionValue);
 	void AbilityInputHandle(const FInputActionValue& InputActionValue, EAbilityInputID AbilityInputID);
 	void InteractInputHandle(const FInputActionInstance& Instance);
+	void SwapWeapon();
 
-protected:
-	UPROPERTY(EditDefaultsOnly, Category="Weapon")
-	class UCAP_WeaponDataAsset* DefaultBasicWeapon;
-	UPROPERTY(EditDefaultsOnly, Category="Weapon")
-	TArray<class UCAP_WeaponDataAsset*> EquippedWeapons;
-	UPROPERTY()
-	int32 CurrentWeaponIndex = 0;
 
-	UPROPERTY()
-	AActor* InteractableActor;
-
-	UPROPERTY()
-	TArray<FGameplayAbilitySpecHandle> CurrentWeaponAbilityHandles;
-
-	void ApplyWeaponData(class UCAP_WeaponDataAsset* WeaponDA);
-	void ClearCurrentWeaponData();
-
-	UPROPERTY(VisibleAnywhere, Category="AI|Tracker")
-	class UPlayerTrackerComponent* PlayerTracker;
+	void SetInputEnabledFromPlayerController(bool bEnabled);
+	virtual void OnDead() override;
+	virtual void OnRespawn() override;
 };

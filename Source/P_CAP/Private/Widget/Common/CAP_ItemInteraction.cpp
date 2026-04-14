@@ -29,12 +29,6 @@ void UCAP_ItemInteraction::SetInteractionUIVisibility(bool bVisible)
 
 void UCAP_ItemInteraction::UpdateInteractProgress(float Progress)
 {
-	/*
-	if (ProgressMID)
-	{
-		ProgressMID->SetScalarParameterValue(FName("Percent"), Progress);
-	}
-	*/
 	if (ProgressBar)
 	{
 		ProgressBar->SetPercent(Progress);

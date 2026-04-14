@@ -3,7 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "InputActionValue.h"
 #include "GameFramework/PlayerController.h"
+#include "Widget/HUD/CAP_GameplayWidget.h"
 #include "CAP_PlayerController.generated.h"
 
 /**
@@ -16,8 +18,11 @@ class ACAP_PlayerController : public APlayerController
 
 public:
 	virtual void OnPossess(APawn* InPawn) override;
+	virtual void SetupInputComponent() override;
 
-	void SetInteractUIVisibility(bool bVisible, const FString& KeyName);
+	FORCEINLINE UCAP_GameplayWidget* GetGameplayWidget() const { return GameplayWidget; }
+	
+	void UpdateInteractUI(bool bVisible, const FString& KeyName);
 	void UpdateInteractProgressUI(float Progress);
 	
 private:
@@ -30,4 +35,26 @@ private:
 	class UCAP_GameplayWidget* GameplayWidget;
 	
 	void SpawnGameplayWidget();
+	
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	class UInputMappingContext* UIInputMapping;
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	class UInputAction* InventoryToggleIA;
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	class UInputAction* UICloseIA;
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	class UInputAction* UINavigation;
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	class UInputAction* UIConfirm;
+
+	UFUNCTION()
+	void ToggleCharacterMenu();
+	UFUNCTION()
+	void UINavigationHandle(const FInputActionValue& InputActionValue);
+	UFUNCTION()
+	void UIConfirmHandle(const FInputActionValue& InputActionValue);
+	UFUNCTION()
+	void UICloseHandle(const FInputActionValue& InputActionValue);
+	UFUNCTION()
+	void OpenItemSwapMenu(class UCAP_ItemInstance* NewItem);
 };

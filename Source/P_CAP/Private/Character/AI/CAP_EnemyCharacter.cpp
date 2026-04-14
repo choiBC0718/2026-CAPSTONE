@@ -17,6 +17,6 @@ void ACAP_EnemyCharacter::BeginPlay()
 	if (ASC)
 	{
 		ASC->InitAbilityActorInfo(this,this);
-		ASC->InitComponent();
+		ASC->InitComponent(CharacterStatRowName);
 	}
 }
