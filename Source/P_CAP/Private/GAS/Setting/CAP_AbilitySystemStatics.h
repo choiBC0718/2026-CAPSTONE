@@ -19,9 +19,11 @@ public:
 	static FGameplayTag GetHealthFullStatTag();
 	static FGameplayTag GetHealthEmptyStatTag();
 	static FGameplayTag GetDeadStateTag();
+	static FGameplayTag GetMovementBlockStateTag();
 
 	static FGameplayTag GetBasicAttackTag();
 	static FGameplayTag GetSkillAttackTag();
 	static FGameplayTag GetTargetClearTag();
 	static FGameplayTag GetDamageTag();
+	static FGameplayTag GetRMSTag();
 };

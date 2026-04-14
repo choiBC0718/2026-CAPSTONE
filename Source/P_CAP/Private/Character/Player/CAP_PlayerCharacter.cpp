@@ -11,6 +11,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
+#include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "Items/Item/CAP_InventoryComponent.h"
 #include "Items/Weapon/CAP_WeaponComponent.h"
 
@@ -151,6 +152,9 @@ FVector ACAP_PlayerCharacter::GetMoveRightDir()
 
 void ACAP_PlayerCharacter::MoveInputHandle(const FInputActionValue& InputActionValue)
 {
+	if (GetAbilitySystemComponent()->HasMatchingGameplayTag(UCAP_AbilitySystemStatics::GetMovementBlockStateTag()))
+		return;
+	
 	FVector2D InputVal = InputActionValue.Get<FVector2D>();
 	if (InputVal.IsNearlyZero()) return;
 

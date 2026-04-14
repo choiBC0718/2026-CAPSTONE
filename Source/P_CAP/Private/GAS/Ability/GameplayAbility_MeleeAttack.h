@@ -17,9 +17,4 @@ class UGameplayAbility_MeleeAttack : public UCAP_GameplayAbility
 public:
 	UGameplayAbility_MeleeAttack();
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
-
-
-protected:
-	UFUNCTION()
-	void OnDamageTagReceived(FGameplayEventData Payload);
 };

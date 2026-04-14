@@ -20,26 +20,18 @@ public:
 
 private:
 	void SetupWaitComoInputPress();
+	void TryCommitCombo();
 	
 	UFUNCTION()
 	void OnNextComboTagReceived(FGameplayEventData Payload);
 	UFUNCTION()
-	void OnDamageTagReceived(FGameplayEventData Payload);
-	UFUNCTION()
-	void OnTargetClearTagReceived(FGameplayEventData Payload);
-	UFUNCTION()
 	void HandleInputPress(float TimeWaited);
-
-	void TryCommitCombo();
+	UFUNCTION()
+	void OnRotateTagReceived(FGameplayEventData Payload);
 	
-	FGameplayTag TargetClearTag;
 	FGameplayTag ComboChangeTag;
 	FGameplayTag ComboEndTag;
+	FGameplayTag RotateTag;
 
 	FName NextComboSectionName;
-	
-	UPROPERTY()
-	class UAnimMontage* AbilityMontage;
-	UPROPERTY()
-	TArray<AActor*> IgnoreTargets;
 };
