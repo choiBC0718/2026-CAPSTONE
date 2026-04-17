@@ -47,3 +47,8 @@ FGameplayTag UCAP_AbilitySystemStatics::GetRMSTag()
 {
 	return FGameplayTag::RequestGameplayTag("Ability.Event.RMS");
 }
+
+FGameplayTag UCAP_AbilitySystemStatics::GetSpawnProjectileTag()
+{
+	return FGameplayTag::RequestGameplayTag("Ability.Event.SpawnProjectile");
+}

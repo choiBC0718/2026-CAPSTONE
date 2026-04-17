@@ -14,7 +14,7 @@ UGameplayAbility_ComboAttack::UGameplayAbility_ComboAttack()
 {
 	AbilityTags.AddTag(UCAP_AbilitySystemStatics::GetBasicAttackTag());
 	BlockAbilitiesWithTag.AddTag(UCAP_AbilitySystemStatics::GetBasicAttackTag());
-
+	
 	ComboChangeTag = FGameplayTag::RequestGameplayTag("Ability.Combo");
 	ComboEndTag = FGameplayTag::RequestGameplayTag("Ability.Combo.End");
 	RotateTag = FGameplayTag::RequestGameplayTag("Ability.Event.Rotate");
@@ -24,11 +24,6 @@ void UGameplayAbility_ComboAttack::ActivateAbility(const FGameplayAbilitySpecHan
 		const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	if (!K2_CommitAbility())
-	{
-		K2_EndAbility();
-		return;
-	}
 	
 	UAbilityTask_WaitGameplayEvent* WaitNextComboTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, ComboChangeTag, nullptr, false, false);
 	WaitNextComboTask->EventReceived.AddDynamic(this, &UGameplayAbility_ComboAttack::OnNextComboTagReceived);
@@ -71,7 +66,7 @@ void UGameplayAbility_ComboAttack::HandleInputPress(float TimeWaited)
 
 void UGameplayAbility_ComboAttack::OnRotateTagReceived(FGameplayEventData Payload)
 {
-	UAbilityTask_RotateToCursor* RotateTask = UAbilityTask_RotateToCursor::SmoothRotateToMouse(this, 1500.f);
+	UAbilityTask_RotateToCursor* RotateTask = UAbilityTask_RotateToCursor::SmoothRotateToMouse(this, 1250.f);
 	RotateTask->ReadyForActivation();
 }
 

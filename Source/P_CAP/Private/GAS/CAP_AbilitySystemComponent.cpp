@@ -14,6 +14,8 @@
 UCAP_AbilitySystemComponent::UCAP_AbilitySystemComponent()
 {
 	GetGameplayAttributeValueChangeDelegate(UCAP_AttributeSet::GetHealthAttribute()).AddUObject(this, &UCAP_AbilitySystemComponent::HealthUpdated);
+	GenericConfirmInputID = (int32)EAbilityInputID::Confirm;
+	GenericCancelInputID  = (int32)EAbilityInputID::Cancel;
 }
 
 void UCAP_AbilitySystemComponent::InitComponent(FName StatRowName)

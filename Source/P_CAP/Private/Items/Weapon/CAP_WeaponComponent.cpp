@@ -41,7 +41,11 @@ void UCAP_WeaponComponent::BeginPlay()
 		UCAP_WeaponInstance* BasicWeapon = NewObject<UCAP_WeaponInstance>(this);
 		BasicWeapon->InitializeWeapon(DefaultBasicWeapon);
 		EquippedWeapons[0] = BasicWeapon;
-		ApplyWeaponData(BasicWeapon);
+		
+		BasicWeapon->LoadWeaponAssets(FStreamableDelegate::CreateLambda([this, BasicWeapon]()
+		{
+			ApplyWeaponData(BasicWeapon);
+		}));
 	}
 	EquippedWeapons[1] = nullptr;
 	CurrentWeaponIndex =0;
@@ -68,7 +72,6 @@ void UCAP_WeaponComponent::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst
 		// 슬롯에 바로 장착 및 데이터 적용
 		EquippedWeapons[EmptySlotIndex] = NewWeaponInst;
 		CurrentWeaponIndex = EmptySlotIndex;
-		ApplyWeaponData(NewWeaponInst);
 	}
 	// 빈 슬롯이 없다면 (현재 무기 두개 사용 중인 경우)
 	else
@@ -87,12 +90,18 @@ void UCAP_WeaponComponent::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst
 				DroppedWeapon->FinishSpawning(SpawnTransform);
 				DroppedWeapon->DropItem();
 			}
+			WeaponToDrop->UnloadWeaponAssets();
 		}
 
 		// 무기 슬롯에 상호작용한 무기 장착 및 데이터 적용
 		EquippedWeapons[CurrentWeaponIndex] = NewWeaponInst;
-		ApplyWeaponData(NewWeaponInst);
 	}
+
+	// 즉시 ApplyWeaponData가 아닌, 메모리에 로딩 후에 Apply ** 무기 획득이 처음인 경우에만 해당 (무기 교체시엔 적용 x)
+	NewWeaponInst->LoadWeaponAssets(FStreamableDelegate::CreateLambda([this, NewWeaponInst]()
+	{
+		ApplyWeaponData(NewWeaponInst);
+	}));
 }
 
 void UCAP_WeaponComponent::SwapWeapon()
@@ -103,6 +112,11 @@ void UCAP_WeaponComponent::SwapWeapon()
 
 	CurrentWeaponIndex = NextIndex;
 	ApplyWeaponData(EquippedWeapons[CurrentWeaponIndex]);
+}
+
+class USkeletalMeshComponent* UCAP_WeaponComponent::GetWeaponMesh(EEquipHand Hand) const
+{
+	return Hand == EEquipHand::Left ? WeaponMesh_L : WeaponMesh_R; 
 }
 
 void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInstance)
@@ -151,18 +165,19 @@ void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 	UCAP_AbilitySystemComponent* ASC = OwnerCharacter->GetComponentByClass<UCAP_AbilitySystemComponent>();
 	if (ASC)
 	{
-		if (WeaponDA->BasicAbility.AbilityClass)
+		const FWeaponSkillData* BasicAttack = WeaponInstance->GetBasicAttack();
+		if (BasicAttack && BasicAttack->AbilityClass.Get())
 		{
-			FGameplayAbilitySpec Spec(WeaponDA->BasicAbility.AbilityClass.LoadSynchronous(), 1, static_cast<int32>(EAbilityInputID::BasicAttack), OwnerCharacter);
+			FGameplayAbilitySpec Spec(BasicAttack->AbilityClass.Get(), 1, static_cast<int32>(EAbilityInputID::BasicAttack), OwnerCharacter);
 			CurrentWeaponAbilityHandles.Add(ASC->GiveAbility(Spec));
 		}
 		
 		int32 SkillInputIndex = static_cast<int32>(EAbilityInputID::Skill1);
 		for (const FWeaponSkillData& SkillData : WeaponInstance->GetGrantedSkills())
 		{
-			if (SkillData.AbilityClass)
+			if (SkillData.AbilityClass.Get())
 			{
-				FGameplayAbilitySpec Spec(SkillData.AbilityClass.LoadSynchronous(), 1, SkillInputIndex++, OwnerCharacter);
+				FGameplayAbilitySpec Spec(SkillData.AbilityClass.Get(), 1, SkillInputIndex++, OwnerCharacter);
 				CurrentWeaponAbilityHandles.Add(ASC->GiveAbility(Spec));
 			}
 		}

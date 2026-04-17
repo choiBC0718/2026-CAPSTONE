@@ -24,8 +24,9 @@ void UPlayerTrackerComponent::RecordLocation()
 	{
 		FVector CurrentLocation = OwnerActor->GetActorLocation();
 
-		// 플레이어 동선 확인용 초록색 구슬
-		DrawDebugSphere(GetWorld(), CurrentLocation, 30.f, 12, FColor::Green, true);
+		if (bDrawDebug)
+			// 플레이어 동선 확인용 초록색 구슬
+			DrawDebugSphere(GetWorld(), CurrentLocation, 30.f, 12, FColor::Green, true);
 
 		// 저장해둔 쿼드트리 매니저에게 위치 전달
 		if (CachedQuadtreeManager)

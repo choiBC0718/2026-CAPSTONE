@@ -9,18 +9,13 @@
 
 UGameplayAbility_HoldingAttack::UGameplayAbility_HoldingAttack()
 {
-	JogLoopTag = FGameplayTag::RequestGameplayTag("Ability.Event.JogFwdLoop");
+	JogLoopTag = FGameplayTag::RequestGameplayTag("Ability.Event.Hold.StartLoop");
 }
 
 void UGameplayAbility_HoldingAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle,const FGameplayAbilityActorInfo* ActorInfo,
                                                      const FGameplayAbilityActivationInfo ActivationInfo,const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	if (!K2_CommitAbility())
-	{
-		K2_EndAbility();
-		return;
-	}
 
 	bIsExecuted=false;
 

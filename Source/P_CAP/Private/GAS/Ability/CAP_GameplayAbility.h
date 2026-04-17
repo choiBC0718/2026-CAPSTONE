@@ -7,7 +7,8 @@
 #include "CAP_GameplayAbility.generated.h"
 
 /**
- * 
+ * 가장 기본적인 역할 수행 클래스
+ * 몽타주 재생 & 데미지 태그 이벤트 & 캐릭터 회전 & 루트모션
  */
 UCLASS()
 class UCAP_GameplayAbility : public UGameplayAbility
@@ -17,27 +18,35 @@ class UCAP_GameplayAbility : public UGameplayAbility
 public:
 	UCAP_GameplayAbility();
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
-	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
-	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags = nullptr, const FGameplayTagContainer* TargetTags = nullptr, FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
 
 protected:
-	void ApplyGameplayEffectToHitResult(const FHitResult& HitResult, TSubclassOf<UGameplayEffect> GameplayEffect, int Level=1);
-	void RotateToMouseCursor();
-	
 	UAnimInstance* GetOwnerAnimInstance() const;
 	class ACAP_PlayerCharacter* GetPlayerCharacterFromActorInfo() const;
-	class UCAP_WeaponDataAsset* GetWeaponDataAsset() const;
 	const struct FWeaponSkillData* GetCurrentSkillData() const;
-	
+
+	class ACAP_ProjectileBase* SpawnProjectile(FVector SpawnLocation);
+	FVector GetMuzzleSocketLocation(FName SocketName);
+	void SendGameplayCueEvent(FHitResult HitResult);
+
 	FGameplayTag DamageTag;
 	FGameplayTag RMSTag;
+	FGameplayTag SpawnProjectileTag;
 	UFUNCTION()
 	void OnDamageTagReceived(FGameplayEventData Payload);
 	UFUNCTION()
 	void OnRMSTagReceived(FGameplayEventData Payload);
+	UFUNCTION()
+	void OnSpawnProjectileTagReceived(FGameplayEventData Payload);
 	
 	UPROPERTY();
 	class UAnimMontage* AbilityMontage;
 	UPROPERTY();
 	TSubclassOf<UGameplayEffect> AbilityDamageEffect;
+	
+	const FWeaponSkillData* SkillData;
+
+	bool bIsCasting = false;
+	FVector CachedTargetLocation;
+	UFUNCTION()
+	virtual void OnMontageInterrupted();
 };

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayAbilitySpecHandle.h"
 #include "Components/ActorComponent.h"
+#include "Data/CAP_WeaponDataAsset.h"
 #include "CAP_WeaponComponent.generated.h"
 
 // 무기 변경 했다는 것을 알리는 델리게이트
@@ -27,6 +28,7 @@ public:
 	FOnWeaponChanged OnWeaponChanged;
 
 	TArray<class UCAP_WeaponInstance*> GetEquippedWeapons() const {return EquippedWeapons;}
+	class USkeletalMeshComponent* GetWeaponMesh(EEquipHand Hand) const;
 	
 private:
 	UPROPERTY()

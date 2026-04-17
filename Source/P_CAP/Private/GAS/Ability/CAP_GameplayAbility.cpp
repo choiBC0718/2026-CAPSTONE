@@ -5,21 +5,24 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "GameplayTagsManager.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionConstantForce.h"
 #include "Animation/AN_SendRMSEvent.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "GAS/Actors/CAP_ProjectileBase.h"
 #include "GAS/Tasks/AbilityTask_RotateToCursor.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "Items/Weapon/CAP_WeaponInstance.h"
-#include "Kismet/KismetMathLibrary.h"
 
 
 UCAP_GameplayAbility::UCAP_GameplayAbility()
 {
 	DamageTag = UCAP_AbilitySystemStatics::GetDamageTag();
 	RMSTag = UCAP_AbilitySystemStatics::GetRMSTag();
+	SpawnProjectileTag = UCAP_AbilitySystemStatics::GetSpawnProjectileTag();
+	
 	ActivationOwnedTags.AddTag(UCAP_AbilitySystemStatics::GetMovementBlockStateTag());
 }
 
@@ -28,15 +31,21 @@ void UCAP_GameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	
-	const FWeaponSkillData* SkillData = GetCurrentSkillData();
-	if (!SkillData)
+	if (!K2_CommitAbility())
+	{
+		K2_EndAbility();
 		return;
+	}
+	SkillData = GetCurrentSkillData();
+	if (!SkillData || !SkillData->AbilityMontage.Get() || !SkillData->SkillDamageTypeEffect.Get())
+	{
+		K2_EndAbility();
+		return;
+	}
 	
-	if (SkillData->AbilityMontage)
-		AbilityMontage = SkillData->AbilityMontage;
-	if (SkillData->SkillDamageTypeEffect)
-		AbilityDamageEffect = SkillData->SkillDamageTypeEffect;
+	bIsCasting = false;
+	AbilityMontage = SkillData->AbilityMontage.Get();
+	AbilityDamageEffect = SkillData->SkillDamageTypeEffect.Get();
 
 	// 마우스 방향으로 회전 이벤트
 	UAbilityTask_RotateToCursor* RotateTask = UAbilityTask_RotateToCursor::SmoothRotateToMouse(this, 1500.f);
@@ -47,77 +56,29 @@ void UCAP_GameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	MontageTask->OnCancelled.AddDynamic(this, &UCAP_GameplayAbility::K2_EndAbility);
 	MontageTask->OnCompleted.AddDynamic(this, &UCAP_GameplayAbility::K2_EndAbility);
 	MontageTask->OnBlendOut.AddDynamic(this, &UCAP_GameplayAbility::K2_EndAbility);
-	MontageTask->OnInterrupted.AddDynamic(this, &UCAP_GameplayAbility::K2_EndAbility);
+	MontageTask->OnInterrupted.AddDynamic(this, &UCAP_GameplayAbility::OnMontageInterrupted);
 	MontageTask->ReadyForActivation();
-
-	// 데미지 이벤트 처리
-	UAbilityTask_WaitGameplayEvent* WaitDamageTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, DamageTag);
-	WaitDamageTask->EventReceived.AddDynamic(this, &UCAP_GameplayAbility::OnDamageTagReceived);
-	WaitDamageTask->ReadyForActivation();
-
+	
 	// 가짜 루트 모션 이벤트 처리
 	UAbilityTask_WaitGameplayEvent* WaitRMSTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, RMSTag);
 	WaitRMSTask->EventReceived.AddDynamic(this, &UCAP_GameplayAbility::OnRMSTagReceived);
 	WaitRMSTask->ReadyForActivation();
-}
-
-void UCAP_GameplayAbility::EndAbility(const FGameplayAbilitySpecHandle Handle,
-	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
-	bool bReplicateEndAbility, bool bWasCancelled)
-{
-	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
-}
-
-bool UCAP_GameplayAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handle,const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags,const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
-{
-	FGameplayAbilitySpec* AbilitySpec = ActorInfo->AbilitySystemComponent->FindAbilitySpecFromHandle(Handle);
-	if (AbilitySpec && AbilitySpec->Level <= 0)
-		return false;
 	
-	return Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags);
-}
-
-void UCAP_GameplayAbility::ApplyGameplayEffectToHitResult(const FHitResult& HitResult, TSubclassOf<UGameplayEffect> GameplayEffect, int Level)
-{
-	FGameplayEffectSpecHandle EffectSpecHandle = MakeOutgoingGameplayEffectSpec(GameplayEffect, Level);
-	FGameplayEffectContextHandle EffectContext = MakeEffectContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
-	EffectContext.AddHitResult(HitResult);
-	EffectSpecHandle.Data->SetContext(EffectContext);
-	
-	ApplyGameplayEffectSpecToTarget(GetCurrentAbilitySpecHandle(), CurrentActorInfo, CurrentActivationInfo, EffectSpecHandle, UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(HitResult.GetActor()));
-}
-
-void UCAP_GameplayAbility::RotateToMouseCursor()
-{
-	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetAvatarActorFromActorInfo());
-	if (!Player)
-		return;
-	
-	if (APlayerController* PC = Cast<APlayerController>(Player->GetController()))
+	if (SkillData->LogicType == ESkillLogicType::Melee)
 	{
-		FHitResult HitResult;
-		if (PC->GetHitResultUnderCursor(ECC_Visibility,false,HitResult))
-		{
-			FVector StartLoc = Player->GetActorLocation();
-			FVector TargetLoc = HitResult.ImpactPoint;
-			FRotator LookRotation = UKismetMathLibrary::FindLookAtRotation(StartLoc, TargetLoc);
-			FRotator CurrentRot = Player->GetActorRotation();
-			FRotator NewRot = FRotator(CurrentRot.Pitch,LookRotation.Yaw, CurrentRot.Roll);
-
-			Player->SetActorRotation(NewRot);
-		}	
+		// 데미지 이벤트 처리
+		UAbilityTask_WaitGameplayEvent* WaitDamageTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, DamageTag);
+		WaitDamageTask->EventReceived.AddDynamic(this, &UCAP_GameplayAbility::OnDamageTagReceived);
+		WaitDamageTask->ReadyForActivation();
+	}
+	else if (SkillData->LogicType == ESkillLogicType::Projectile)
+	{
+		UAbilityTask_WaitGameplayEvent* SpawnProjectileTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, SpawnProjectileTag,nullptr,false,false);
+		SpawnProjectileTask->EventReceived.AddDynamic(this, &UCAP_GameplayAbility::OnSpawnProjectileTagReceived);
+		SpawnProjectileTask->ReadyForActivation();
 	}
 }
 
-UAnimInstance* UCAP_GameplayAbility::GetOwnerAnimInstance() const
-{
-	USkeletalMeshComponent* OwnerSkeletalMeshComp = GetOwningComponentFromActorInfo();
-	if (OwnerSkeletalMeshComp)
-	{
-		return OwnerSkeletalMeshComp->GetAnimInstance();
-	}
-	return nullptr;
-}
 
 void UCAP_GameplayAbility::OnDamageTagReceived(FGameplayEventData Payload)
 {
@@ -135,6 +96,8 @@ void UCAP_GameplayAbility::OnDamageTagReceived(FGameplayEventData Payload)
 		EffectSpecHandle.Data -> SetContext(EffectContext);
 
 		ApplyGameplayEffectSpecToTarget(GetCurrentAbilitySpecHandle(), CurrentActorInfo, CurrentActivationInfo, EffectSpecHandle, UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(HitResult.GetActor()));
+
+		SendGameplayCueEvent(HitResult);
 	}
 }
 
@@ -155,24 +118,98 @@ void UCAP_GameplayAbility::OnRMSTagReceived(FGameplayEventData Payload)
 	}
 }
 
+void UCAP_GameplayAbility::OnSpawnProjectileTagReceived(FGameplayEventData Payload)
+{
+	if (!SkillData || !SkillData->ProjectileClass.Get())
+		return;
+	
+	TArray<FName> OutNames;
+	UGameplayTagsManager::Get().SplitGameplayTagFName(Payload.EventTag, OutNames);
+
+	FVector SocketLoc = GetMuzzleSocketLocation(OutNames.Last());
+	if (ACAP_ProjectileBase* Projectile = SpawnProjectile(SocketLoc))
+	{
+		FGameplayEffectSpecHandle EffectSpecHandle;
+		if (SkillData->SkillDamageTypeEffect.Get())
+		{
+			EffectSpecHandle = MakeOutgoingGameplayEffectSpec(SkillData->SkillDamageTypeEffect.Get(), GetAbilityLevel());
+		}
+		FVector LaunchDir = GetAvatarActorFromActorInfo()->GetActorForwardVector();
+		Projectile->InitStraightProjectile(LaunchDir, EffectSpecHandle,SkillData->GameplayCueTag);
+	}
+}
+
+void UCAP_GameplayAbility::OnMontageInterrupted()
+{
+	if (!bIsCasting)
+		K2_EndAbility();
+}
+
 class ACAP_PlayerCharacter* UCAP_GameplayAbility::GetPlayerCharacterFromActorInfo() const
 {
 	return Cast<ACAP_PlayerCharacter>(GetAvatarActorFromActorInfo());
 }
 
-class UCAP_WeaponDataAsset* UCAP_GameplayAbility::GetWeaponDataAsset() const
+UAnimInstance* UCAP_GameplayAbility::GetOwnerAnimInstance() const
 {
-	if (ACAP_PlayerCharacter* Player = GetPlayerCharacterFromActorInfo())
+	USkeletalMeshComponent* OwnerSkeletalMeshComp = GetOwningComponentFromActorInfo();
+	if (OwnerSkeletalMeshComp)
+	{
+		return OwnerSkeletalMeshComp->GetAnimInstance();
+	}
+	return nullptr;
+}
+
+class ACAP_ProjectileBase* UCAP_GameplayAbility::SpawnProjectile(FVector SpawnLocation)
+{
+	AActor* OwnerAvatarActor = GetAvatarActorFromActorInfo();
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = OwnerAvatarActor;
+	SpawnParams.Instigator = Cast<APawn>(OwnerAvatarActor);
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	ACAP_ProjectileBase* Projectile = GetWorld()->SpawnActor<ACAP_ProjectileBase>(SkillData->ProjectileClass.Get(),SpawnLocation,OwnerAvatarActor->GetActorRotation(), SpawnParams);
+	if (Projectile)
+		return Projectile;
+	
+	return nullptr;
+}
+
+FVector UCAP_GameplayAbility::GetMuzzleSocketLocation(FName SocketName)
+{
+	FVector SocketLoc = GetAvatarActorFromActorInfo()->GetActorLocation();
+	ACAP_PlayerCharacter* Player = GetPlayerCharacterFromActorInfo();
+	
+	if (Player)
 	{
 		if (UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent())
 		{
-			if (UCAP_WeaponInstance* WeaponInst = WeaponComp->GetCurrentWeaponInstance())
+			USkeletalMeshComponent* R_Weapon = WeaponComp->GetWeaponMesh(EEquipHand::Right);
+			USkeletalMeshComponent* L_Weapon = WeaponComp->GetWeaponMesh(EEquipHand::Left);
+
+			if (R_Weapon && R_Weapon->DoesSocketExist(SocketName))
+				SocketLoc = R_Weapon->GetSocketLocation(SocketName);
+			else if (L_Weapon && L_Weapon->DoesSocketExist(SocketName))
+				SocketLoc = L_Weapon->GetSocketLocation(SocketName);
+			else
 			{
-				return WeaponInst->GetWeaponDA();
+				if (R_Weapon)		SocketLoc = R_Weapon->GetComponentLocation();
+				else if (L_Weapon)	SocketLoc = L_Weapon->GetComponentLocation();
 			}
 		}
 	}
-	return nullptr;
+	return SocketLoc;
+}
+
+void UCAP_GameplayAbility::SendGameplayCueEvent(FHitResult HitResult)
+{
+	if (SkillData && SkillData->GameplayCueTag.IsValid())
+	{
+		FGameplayCueParameters CueParams;
+		CueParams.Location = HitResult.ImpactPoint;
+		CueParams.Normal = HitResult.ImpactNormal;
+		CurrentActorInfo->AbilitySystemComponent->ExecuteGameplayCue(SkillData->GameplayCueTag, CueParams);
+	}
 }
 
 const struct FWeaponSkillData* UCAP_GameplayAbility::GetCurrentSkillData() const
@@ -186,7 +223,7 @@ const struct FWeaponSkillData* UCAP_GameplayAbility::GetCurrentSkillData() const
 	UCAP_WeaponInstance* WeaponInst = WeaponComp->GetCurrentWeaponInstance();
 	if (!WeaponInst)	return nullptr;
 	
-	UCAP_WeaponDataAsset* WeaponDA = GetWeaponDataAsset();
+	UCAP_WeaponDataAsset* WeaponDA = WeaponInst->GetWeaponDA();
 	if (!WeaponDA)		return nullptr;
 
 	FGameplayAbilitySpec* Spec = GetCurrentAbilitySpec();
@@ -195,7 +232,10 @@ const struct FWeaponSkillData* UCAP_GameplayAbility::GetCurrentSkillData() const
 	// 평타인 경우 DA의 BasicAbility 반환
 	if (Spec->InputID == static_cast<int32>(EAbilityInputID::BasicAttack))
 	{
-		return &WeaponDA->BasicAbility;
+		if (const FWeaponSkillData* BasicAttack = WeaponInst->GetBasicAttack())
+		{
+			return BasicAttack;
+		} 
 	}
 	// 스킬인 경우 WeaponInstance가 랜덤으로 뽑은 배열에서 반환
 	else if (Spec->InputID >= static_cast<int32>(EAbilityInputID::Skill1))

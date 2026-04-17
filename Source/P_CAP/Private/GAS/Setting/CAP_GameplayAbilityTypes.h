@@ -15,7 +15,9 @@ enum class EAbilityInputID : uint8
 	Skill2				UMETA(DisplayName = "Skill2"),
 	ActiveItem			UMETA(DisplayName = "ActiveItem"),
 	Dodge				UMETA(DisplayName = "Dodge"),
-	SwapWeapon			UMETA(DisplayName = "SwapWeapon")
+	SwapWeapon			UMETA(DisplayName = "SwapWeapon"),
+	Confirm				UMETA(DisplayName = "Confirm"),
+	Cancel				UMETA(DisplayName = "Cancel"),
 };
 
 UENUM(BlueprintType)

@@ -26,4 +26,5 @@ public:
 	static FGameplayTag GetTargetClearTag();
 	static FGameplayTag GetDamageTag();
 	static FGameplayTag GetRMSTag();
+	static FGameplayTag GetSpawnProjectileTag();
 };
