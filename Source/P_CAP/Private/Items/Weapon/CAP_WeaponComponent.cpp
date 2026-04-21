@@ -49,6 +49,8 @@ void UCAP_WeaponComponent::BeginPlay()
 	}
 	EquippedWeapons[1] = nullptr;
 	CurrentWeaponIndex =0;
+
+	ASC = OwnerCharacter->GetComponentByClass<UCAP_AbilitySystemComponent>();
 }
 
 void UCAP_WeaponComponent::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst)
@@ -91,6 +93,7 @@ void UCAP_WeaponComponent::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst
 				DroppedWeapon->DropItem();
 			}
 			WeaponToDrop->UnloadWeaponAssets();
+			RemoveWeaponAbilities(WeaponToDrop);
 		}
 
 		// 무기 슬롯에 상호작용한 무기 장착 및 데이터 적용
@@ -109,7 +112,21 @@ void UCAP_WeaponComponent::SwapWeapon()
 	int32 NextIndex = (CurrentWeaponIndex ==0) ? 1:0;
 	if (EquippedWeapons[NextIndex] == nullptr)
 		return;
+	// 교체된 무기 능력 언마운트
+	UnmapWeaponAbilities(EquippedWeapons[CurrentWeaponIndex]);
+	if (ASC)
+		ASC->CancelAllAbilities();
 
+	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+	if (OwnerCharacter && OwnerCharacter->GetMesh())
+	{
+		if (UAnimInstance* AnimInst = OwnerCharacter->GetMesh()->GetAnimInstance())
+		{
+			// BlendOut 시간을 0.0f로 주어 몽타주를 1프레임 만에 즉시 꺼버립니다!
+			AnimInst->Montage_Stop(0.0f, nullptr);
+		}
+	}
+	
 	CurrentWeaponIndex = NextIndex;
 	ApplyWeaponData(EquippedWeapons[CurrentWeaponIndex]);
 }
@@ -121,7 +138,7 @@ class USkeletalMeshComponent* UCAP_WeaponComponent::GetWeaponMesh(EEquipHand Han
 
 void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInstance)
 {
-	ClearCurrentWeaponData();
+	ClearCurrentWeaponVisuals();
 	if (!WeaponInstance)
 		return;
 
@@ -140,19 +157,20 @@ void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 		if (TargetMesh)
 		{
 			// 무기 스켈레탈 메시 설정
-			TargetMesh->SetSkeletalMesh(VisualInfo.WeaponMesh.LoadSynchronous());
-
-			// 캐릭터에 부착시킬 뼈 이름
-			FName TargetCharacterBone = (VisualInfo.CharacterBoneName != NAME_None) ? VisualInfo.CharacterBoneName : FName("hand_r");
-
-			// 무기 메시를 AttachPoint에 부착 후 위치 조정
-			TargetMesh->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TargetCharacterBone);
+			TargetMesh->SetSkeletalMesh(VisualInfo.WeaponMesh.Get());
+			TargetMesh->EmptyOverrideMaterials();
+			
 			FTransform FinalTransform = VisualInfo.GripOffsetTransform;
 			if (VisualInfo.AlignBoneName != NAME_None)
 			{
 				FTransform BoneTransform = TargetMesh->GetSocketTransform(VisualInfo.AlignBoneName, RTS_Component);
 				FinalTransform = BoneTransform.Inverse() * VisualInfo.GripOffsetTransform;
 			}
+			
+			// 캐릭터에 부착시킬 뼈 이름
+			FName TargetCharacterBone = (VisualInfo.CharacterBoneName != NAME_None) ? VisualInfo.CharacterBoneName : FName("hand_r");
+			// 무기 메시를 AttachPoint에 부착 후 위치 조정
+			TargetMesh->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TargetCharacterBone);
 			TargetMesh->SetRelativeTransform(FinalTransform);
 		}
 	}
@@ -162,26 +180,8 @@ void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 		AnimInst->UpdateWeaponAnimData(WeaponDA);
 	}
 
-	UCAP_AbilitySystemComponent* ASC = OwnerCharacter->GetComponentByClass<UCAP_AbilitySystemComponent>();
-	if (ASC)
-	{
-		const FWeaponSkillData* BasicAttack = WeaponInstance->GetBasicAttack();
-		if (BasicAttack && BasicAttack->AbilityClass.Get())
-		{
-			FGameplayAbilitySpec Spec(BasicAttack->AbilityClass.Get(), 1, static_cast<int32>(EAbilityInputID::BasicAttack), OwnerCharacter);
-			CurrentWeaponAbilityHandles.Add(ASC->GiveAbility(Spec));
-		}
-		
-		int32 SkillInputIndex = static_cast<int32>(EAbilityInputID::Skill1);
-		for (const FWeaponSkillData& SkillData : WeaponInstance->GetGrantedSkills())
-		{
-			if (SkillData.AbilityClass.Get())
-			{
-				FGameplayAbilitySpec Spec(SkillData.AbilityClass.Get(), 1, SkillInputIndex++, OwnerCharacter);
-				CurrentWeaponAbilityHandles.Add(ASC->GiveAbility(Spec));
-			}
-		}
-	}
+	GrantWeaponAbilities(WeaponInstance);
+	MapWeaponAbilities(WeaponInstance);
 
 	if (OnWeaponChanged.IsBound())
 	{
@@ -190,26 +190,89 @@ void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 	}
 }
 
-void UCAP_WeaponComponent::ClearCurrentWeaponData()
+void UCAP_WeaponComponent::ClearCurrentWeaponVisuals()
 {
 	if (WeaponMesh_R)
 		WeaponMesh_R->SetSkeletalMesh(nullptr);
 	if (WeaponMesh_L)
 		WeaponMesh_L->SetSkeletalMesh(nullptr);
-	
-	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
-	if (OwnerCharacter)
+}
+
+void UCAP_WeaponComponent::GrantWeaponAbilities(class UCAP_WeaponInstance* WeaponInst)
+{
+	if (!ASC || !WeaponInst || WeaponInst->GrantedAbilityHandles.Num() > 0)
+		return;
+	// WeaponInstance에 부여받은 능력을 추가하기
+	const FWeaponSkillData* BasicAttack = WeaponInst->GetBasicAttack();
+	if (BasicAttack && BasicAttack->AbilityClass.Get())
 	{
-		UCAP_AbilitySystemComponent* ASC = OwnerCharacter->GetComponentByClass<UCAP_AbilitySystemComponent>();
-		if (ASC)
+		FGameplayAbilitySpec Spec(BasicAttack->AbilityClass.Get(), 1, INDEX_NONE, GetOwner());
+		WeaponInst->GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
+	}
+	
+	for (const FWeaponSkillData& SkillData : WeaponInst->GetGrantedSkills())
+	{
+		if (SkillData.AbilityClass.Get())
 		{
-			for (const FGameplayAbilitySpecHandle& Handle : CurrentWeaponAbilityHandles)
-			{
-				ASC->ClearAbility(Handle);
-			}
+			FGameplayAbilitySpec Spec(SkillData.AbilityClass.Get(), 1, INDEX_NONE, GetOwner());
+			WeaponInst->GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
 		}
 	}
-	CurrentWeaponAbilityHandles.Empty();
+}
+
+void UCAP_WeaponComponent::MapWeaponAbilities(class UCAP_WeaponInstance* WeaponInst)
+{
+	if (!ASC || !WeaponInst)
+		return;
+
+	int32 HandleIndex = 0;
+	// HandleInex ( 0 = BasicAttack / 1 = Skill1 / 2 = Skill2 )
+	if (WeaponInst->GetBasicAttack() && WeaponInst->GetBasicAttack()->AbilityClass.Get())
+	{
+		if (WeaponInst->GrantedAbilityHandles.IsValidIndex(HandleIndex))
+		{
+			FGameplayAbilitySpec* Spec = ASC->FindAbilitySpecFromHandle(WeaponInst->GrantedAbilityHandles[HandleIndex]);
+			if (Spec) Spec->InputID = static_cast<int32>(EAbilityInputID::BasicAttack);
+			HandleIndex++;
+		}
+	}
+
+	int32 SkillInputIndex = static_cast<int32>(EAbilityInputID::Skill1);
+	for (const FWeaponSkillData& SkillData : WeaponInst->GetGrantedSkills())
+	{
+		if (SkillData.AbilityClass.Get() && WeaponInst->GrantedAbilityHandles.IsValidIndex(HandleIndex))
+		{
+			FGameplayAbilitySpec* Spec = ASC->FindAbilitySpecFromHandle(WeaponInst->GrantedAbilityHandles[HandleIndex]);
+			if (Spec) Spec->InputID = SkillInputIndex++;
+			HandleIndex++;
+		}
+	}
+}
+
+void UCAP_WeaponComponent::UnmapWeaponAbilities(class UCAP_WeaponInstance* WeaponInst)
+{
+	if (!ASC || !WeaponInst)
+		return;
+
+	for (const FGameplayAbilitySpecHandle& Handle : WeaponInst->GrantedAbilityHandles)
+	{
+		FGameplayAbilitySpec* Spec = ASC->FindAbilitySpecFromHandle(Handle);
+		if (Spec)
+		{
+			Spec->InputID = INDEX_NONE;
+		}
+	}
+}
+
+void UCAP_WeaponComponent::RemoveWeaponAbilities(class UCAP_WeaponInstance* WeaponInst)
+{
+	if (!ASC || !WeaponInst) return;
+
+	for (const FGameplayAbilitySpecHandle& Handle : WeaponInst->GrantedAbilityHandles)
+	{
+		ASC->ClearAbility(Handle);
+	}
+	WeaponInst->GrantedAbilityHandles.Empty();
 }
 
 class UCAP_WeaponInstance* UCAP_WeaponComponent::GetCurrentWeaponInstance() const

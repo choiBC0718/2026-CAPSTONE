@@ -35,6 +35,9 @@ void ACAP_WeaponBase::BeginPlay()
 		WeaponInstance = NewObject<UCAP_WeaponInstance>(this);
 		WeaponInstance->InitializeWeapon(WeaponDA);
 	}
+	// 월드 스폰 시 메모리에 올림
+	if (WeaponInstance)
+		WeaponInstance->LoadWeaponAssets(FStreamableDelegate::CreateLambda([](){}));
 }
 
 void ACAP_WeaponBase::OnConstruction(const FTransform& Transform)

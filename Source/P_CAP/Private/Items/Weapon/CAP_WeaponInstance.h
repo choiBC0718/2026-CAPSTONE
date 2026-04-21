@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Data/CAP_WeaponDataAsset.h"
 #include "Engine/StreamableManager.h"
+#include "GameplayAbilitySpecHandle.h"
 #include "CAP_WeaponInstance.generated.h"
 
 /**
@@ -18,6 +19,8 @@ class UCAP_WeaponInstance : public UObject
 public:
 	void InitializeWeapon(UCAP_WeaponDataAsset* WeaponDA);
 
+	UPROPERTY()
+	TArray<FGameplayAbilitySpecHandle> GrantedAbilityHandles;
 	UFUNCTION()
 	UCAP_WeaponDataAsset* GetWeaponDA() const {return WeaponDA;}
 

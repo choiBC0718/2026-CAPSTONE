@@ -7,6 +7,11 @@
 #include "Data/CAP_WeaponDataAsset.h"
 #include "AN_PlayWeaponAnim.generated.h"
 
+struct FSavedWeaponState
+{
+	FTransform OriginalTransform;
+	TWeakObjectPtr<class USkeletalMesh> OriginalMesh;
+};
 /**
  * 
  */

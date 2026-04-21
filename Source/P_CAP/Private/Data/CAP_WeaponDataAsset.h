@@ -28,28 +28,6 @@ struct FWeaponSkillData : public FTableRowBase
 	/** GA 클래스에서 실행시킬 Task 분기를 위한 구분 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Logic")
 	ESkillLogicType LogicType = ESkillLogicType::Melee;
-
-	// 투사체 클래스 (Targeting 로직에 넣을 시 타게팅 + 투사체로 실행)
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Logic|Needs", meta = (EditCondition = "LogicType == ESkillLogicType::Projectile || LogicType == ESkillLogicType::Targeting"))
-	TSoftClassPtr<class ACAP_ProjectileBase> ProjectileClass = nullptr;
-	// 투사체를 스폰시킬 무기 에셋의 소켓 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Logic|Needs", meta = (EditCondition = "LogicType == ESkillLogicType::Projectile || LogicType == ESkillLogicType::Targeting"))
-	FName ProjectileSocketName = NAME_None;
-	// 캐스트 몽타주
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Logic|Needs", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
-	TSoftObjectPtr<class UAnimMontage> CastMontage = nullptr;
-	// 타겟 액터 클래스
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Logic|Needs", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
-	TSoftClassPtr<class ACAP_TargetActor> TargetActorClass = nullptr;
-	// 타게팅 사거리 인디케이터
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Logic|Needs", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
-	TSoftClassPtr<class ACAP_TargetRangeIndicator> RangeIndicatorClass = nullptr;
-	// 타게팅 사거리
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Logic|Needs", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
-	float MaxTargetingRange = 1000.f;
-	// 데미지 구역 크기
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Logic|Needs", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
-	float TargetAreaRadius = 300.f;
 	
 	/** 스킬 애니메이션 몽타주*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Animation")
@@ -77,6 +55,37 @@ struct FWeaponSkillData : public FTableRowBase
 	/** 스킬 아이콘*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill UI")
 	TSoftObjectPtr<class UTexture2D> SkillIcon = nullptr;
+
+	
+	// 투사체 클래스 (Targeting 로직에 넣을 시 타게팅 + 투사체로 실행)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs", meta = (EditCondition = "LogicType == ESkillLogicType::Projectile || LogicType == ESkillLogicType::Targeting"))
+	TSoftClassPtr<class ACAP_ProjectileBase> ProjectileClass = nullptr;
+	// 투사체를 스폰시킬 무기 에셋의 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs", meta = (EditCondition = "LogicType == ESkillLogicType::Projectile || LogicType == ESkillLogicType::Targeting"))
+	FName ProjectileSocketName = NAME_None;
+	
+	// 캐스트 몽타주
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Targeting", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
+	TSoftObjectPtr<class UAnimMontage> CastMontage = nullptr;
+	// 타겟 액터 클래스
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Targeting", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
+	TSoftClassPtr<class ACAP_TargetActor> TargetActorClass = nullptr;
+	// 타게팅 사거리 인디케이터
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Targeting", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
+	TSoftClassPtr<class ACAP_TargetRangeIndicator> RangeIndicatorClass = nullptr;
+	// 타게팅 사거리
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Targeting", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
+	float MaxTargetingRange = 1000.f;
+	// 데미지 구역 크기
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Targeting", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
+	float TargetAreaRadius = 300.f;
+	
+	// 투사체 개수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Projectile", meta = (EditCondition = "LogicType == ESkillLogicType::Projectile"))
+	int32 NumOfProjectiles = 1;
+	// 투사체 퍼짐 각도
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Projectile", meta = (EditCondition = "LogicType == ESkillLogicType::Projectile && NumOfProjectiles>=2"))
+	float SpreadAngle = 30.f;
 };
 
 UENUM(BlueprintType)

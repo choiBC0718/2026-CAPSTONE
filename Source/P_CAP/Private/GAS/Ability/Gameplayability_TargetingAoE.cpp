@@ -114,16 +114,16 @@ void UGameplayability_TargetingAoE::TargetCancelled(const FGameplayAbilityTarget
 void UGameplayability_TargetingAoE::ProjectileTargetingConfirmed()
 {
 	FVector SpawnLoc = GetMuzzleSocketLocation(SkillData->ProjectileSocketName);
-
-	if (ACAP_ProjectileBase* Projectile = SpawnProjectile(SpawnLoc))
+	TArray<ACAP_ProjectileBase*> Projectiles = SpawnProjectile(SpawnLoc);
+	if (Projectiles.Num() > 0)
 	{
 		FGameplayEffectSpecHandle EffectSpecHandle;
 		if (SkillData->SkillDamageTypeEffect.Get())
 		{
 			EffectSpecHandle = MakeOutgoingGameplayEffectSpec(SkillData->SkillDamageTypeEffect.Get(), GetAbilityLevel());
 		}
-   			
-		Projectile->InitArcProjectile(CachedTargetLocation,0.5f,SkillData->TargetAreaRadius,EffectSpecHandle, SkillData->GameplayCueTag);
+		for (ACAP_ProjectileBase* Projectile : Projectiles)
+			Projectile->InitArcProjectile(CachedTargetLocation,0.5f,SkillData->TargetAreaRadius,EffectSpecHandle, SkillData->GameplayCueTag);
 	}
 }
 

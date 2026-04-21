@@ -43,12 +43,21 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="Weapon")
 	class UCAP_WeaponDataAsset* DefaultBasicWeapon;
 	
-	UPROPERTY()
-	TArray<FGameplayAbilitySpecHandle> CurrentWeaponAbilityHandles;
-	
 	void ApplyWeaponData(class UCAP_WeaponInstance* WeaponInstance);
-	void ClearCurrentWeaponData();
+	void ClearCurrentWeaponVisuals();
 	
 	UPROPERTY(EditDefaultsOnly, Category="Weapon")
 	int MaxWeaponCount = 2;
+
+	UPROPERTY()
+	class UCAP_AbilitySystemComponent* ASC;
+
+	// 무기 획득시 능력을 비활성화로 쥐여줌 (EAbilityInputID = INDEX_NONE)
+	void GrantWeaponAbilities(class UCAP_WeaponInstance* WeaponInst);
+	// 무기 장착 시 키 연결 (EAbilityInputID)
+	void MapWeaponAbilities(class UCAP_WeaponInstance* WeaponInst);
+	// 무기 교체 시 사용 안하는 능력 InputID 비활성화
+	void UnmapWeaponAbilities(class UCAP_WeaponInstance* WeaponInst);
+	// 무기 드랍 시에 ClearAbility
+	void RemoveWeaponAbilities(class UCAP_WeaponInstance* WeaponInst);
 };

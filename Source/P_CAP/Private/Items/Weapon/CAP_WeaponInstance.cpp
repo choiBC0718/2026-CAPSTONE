@@ -53,6 +53,12 @@ void UCAP_WeaponInstance::LoadWeaponAssets(FStreamableDelegate OnLoaded)
 	// 무기가 부여할 능력들의 주소 수집할 Array
 	TArray<FSoftObjectPath> AssetsToLoad;
 
+	for (const FWeaponVisualInfo& VisualInfo : WeaponDA->WeaponVisualInfos)
+	{
+		if (!VisualInfo.WeaponMesh.IsNull())
+			AssetsToLoad.AddUnique(VisualInfo.WeaponMesh.ToSoftObjectPath());
+	}
+	
 	// 기본 공격 에셋의 주소
 	if (!BasicAttackData.AbilityClass.IsNull())
 		AssetsToLoad.AddUnique(BasicAttackData.AbilityClass.ToSoftObjectPath());

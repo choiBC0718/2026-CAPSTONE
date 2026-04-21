@@ -127,15 +127,21 @@ void UCAP_GameplayAbility::OnSpawnProjectileTagReceived(FGameplayEventData Paylo
 	UGameplayTagsManager::Get().SplitGameplayTagFName(Payload.EventTag, OutNames);
 
 	FVector SocketLoc = GetMuzzleSocketLocation(OutNames.Last());
-	if (ACAP_ProjectileBase* Projectile = SpawnProjectile(SocketLoc))
+
+	TArray<ACAP_ProjectileBase*> Projectiles = SpawnProjectile(SocketLoc);
+	
+	if (Projectiles.Num() > 0)
 	{
 		FGameplayEffectSpecHandle EffectSpecHandle;
 		if (SkillData->SkillDamageTypeEffect.Get())
 		{
 			EffectSpecHandle = MakeOutgoingGameplayEffectSpec(SkillData->SkillDamageTypeEffect.Get(), GetAbilityLevel());
 		}
-		FVector LaunchDir = GetAvatarActorFromActorInfo()->GetActorForwardVector();
-		Projectile->InitStraightProjectile(LaunchDir, EffectSpecHandle,SkillData->GameplayCueTag);
+		for (ACAP_ProjectileBase* Projectile : Projectiles)
+		{
+			FVector LaunchDir = Projectile->GetActorForwardVector();
+			Projectile->InitStraightProjectile(LaunchDir, EffectSpecHandle,SkillData->GameplayCueTag);
+		}
 	}
 }
 
@@ -160,19 +166,37 @@ UAnimInstance* UCAP_GameplayAbility::GetOwnerAnimInstance() const
 	return nullptr;
 }
 
-class ACAP_ProjectileBase* UCAP_GameplayAbility::SpawnProjectile(FVector SpawnLocation)
+TArray<class ACAP_ProjectileBase*> UCAP_GameplayAbility::SpawnProjectile(FVector SpawnLoc)
 {
+	TArray<ACAP_ProjectileBase*> SpawnedProjectiles;
+	
 	AActor* OwnerAvatarActor = GetAvatarActorFromActorInfo();
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = OwnerAvatarActor;
 	SpawnParams.Instigator = Cast<APawn>(OwnerAvatarActor);
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	ACAP_ProjectileBase* Projectile = GetWorld()->SpawnActor<ACAP_ProjectileBase>(SkillData->ProjectileClass.Get(),SpawnLocation,OwnerAvatarActor->GetActorRotation(), SpawnParams);
-	if (Projectile)
-		return Projectile;
+	int32 ProjNums = FMath::Max(1, SkillData->NumOfProjectiles);
+	FRotator BaseRot = OwnerAvatarActor->GetActorRotation();
 	
-	return nullptr;
+	for (int32 i=0 ; i<ProjNums ; i++)
+	{
+		float CurrentAngle = 0.f;
+		if (ProjNums > 1)
+		{
+			float HalfAngle = SkillData->SpreadAngle / 2.f;
+			float Step = SkillData->SpreadAngle / (ProjNums - 1);
+			CurrentAngle = -HalfAngle + (i*Step);
+		}
+		FRotator SpawnRot = BaseRot;
+		SpawnRot.Yaw += CurrentAngle;
+
+		ACAP_ProjectileBase* Projectile = GetWorld()->SpawnActor<ACAP_ProjectileBase>(SkillData->ProjectileClass.Get(),SpawnLoc,SpawnRot, SpawnParams);
+		if (Projectile)
+			SpawnedProjectiles.Add(Projectile);
+	}
+	
+	return SpawnedProjectiles;
 }
 
 FVector UCAP_GameplayAbility::GetMuzzleSocketLocation(FName SocketName)

@@ -33,6 +33,7 @@ ACAP_ProjectileBase::ACAP_ProjectileBase()
 void ACAP_ProjectileBase::BeginPlay()
 {
 	Super::BeginPlay();
+	ProjMovementComp->MaxSpeed = ProjectileSpeed;
 	CollisionComp->OnComponentBeginOverlap.AddDynamic(this, &ACAP_ProjectileBase::OnOverlapBegin);
 }
 
@@ -72,9 +73,9 @@ void ACAP_ProjectileBase::InitArcProjectile(FVector TargetLoc, float ArcTension,
 void ACAP_ProjectileBase::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                          UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (!OtherActor || OtherActor==GetOwner() || OtherActor == this)
+	if (!OtherActor || OtherActor==GetOwner() || OtherActor == this || OtherActor->GetClass() == this->GetClass())
 		return;
-
+	
 	FHitResult Hit;
 	Hit.ImpactPoint = GetActorLocation();
 	Hit.ImpactNormal = GetActorForwardVector();

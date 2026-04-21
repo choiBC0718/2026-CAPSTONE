@@ -24,7 +24,7 @@ protected:
 	class ACAP_PlayerCharacter* GetPlayerCharacterFromActorInfo() const;
 	const struct FWeaponSkillData* GetCurrentSkillData() const;
 
-	class ACAP_ProjectileBase* SpawnProjectile(FVector SpawnLocation);
+	TArray<class ACAP_ProjectileBase*> SpawnProjectile(FVector SpawnLocation);
 	FVector GetMuzzleSocketLocation(FName SocketName);
 	void SendGameplayCueEvent(FHitResult HitResult);
 
