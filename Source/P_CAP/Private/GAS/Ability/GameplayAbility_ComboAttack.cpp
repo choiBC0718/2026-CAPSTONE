@@ -7,6 +7,7 @@
 #include "GameplayTagsManager.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_WaitInputPress.h"
+#include "Animation/ANS_SendComboStartEnd.h"
 #include "GAS/Tasks/AbilityTask_RotateToCursor.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 
@@ -25,11 +26,11 @@ void UGameplayAbility_ComboAttack::ActivateAbility(const FGameplayAbilitySpecHan
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 	
-	UAbilityTask_WaitGameplayEvent* WaitNextComboTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, ComboChangeTag, nullptr, false, false);
+	UAbilityTask_WaitGameplayEvent* WaitNextComboTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, ComboChangeTag, nullptr,false,false);
 	WaitNextComboTask->EventReceived.AddDynamic(this, &UGameplayAbility_ComboAttack::OnNextComboTagReceived);
 	WaitNextComboTask->ReadyForActivation();
 
-	UAbilityTask_WaitGameplayEvent* RotateTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, RotateTag, nullptr, false);
+	UAbilityTask_WaitGameplayEvent* RotateTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, RotateTag);
 	RotateTask->EventReceived.AddDynamic(this, &UGameplayAbility_ComboAttack::OnRotateTagReceived);
 	RotateTask->ReadyForActivation();
 	
@@ -51,10 +52,11 @@ void UGameplayAbility_ComboAttack::OnNextComboTagReceived(FGameplayEventData Pay
 		NextComboSectionName = NAME_None;
 		return;
 	}
-
-	TArray<FName> TagNames;
-	UGameplayTagsManager::Get().SplitGameplayTagFName(EventTag, TagNames);
-	NextComboSectionName = TagNames.Last();
+	const UANS_SendComboStartEnd* ComboNotify = Cast<UANS_SendComboStartEnd>(Payload.OptionalObject);
+	if (ComboNotify)
+	{
+		NextComboSectionName = ComboNotify->NextSectionName;
+	}
 }
 
 
@@ -78,6 +80,6 @@ void UGameplayAbility_ComboAttack::TryCommitCombo()
 	UAnimInstance* OwnerAnimInst = GetOwnerAnimInstance();
 	if (!OwnerAnimInst)
 		return;
-	
-	OwnerAnimInst->Montage_SetNextSection(OwnerAnimInst->Montage_GetCurrentSection(AbilityMontage), NextComboSectionName, AbilityMontage);
+	if (UAnimMontage* AbilityMontage = OwnerAnimInst->GetCurrentActiveMontage())
+		OwnerAnimInst->Montage_SetNextSection(OwnerAnimInst->Montage_GetCurrentSection(AbilityMontage), NextComboSectionName, AbilityMontage);
 }

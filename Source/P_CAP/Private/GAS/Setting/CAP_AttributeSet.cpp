@@ -13,6 +13,28 @@ void UCAP_AttributeSet::PreAttributeBaseChange(const FGameplayAttribute& Attribu
 
 void UCAP_AttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data)
 {
+	Super::PostGameplayEffectExecute(Data);
+
+	if (Data.EvaluatedData.Attribute == GetDamageAttribute())
+	{
+		float LocalDamage = GetDamage();
+		SetDamage(0.f);
+		if (LocalDamage > 0.f)
+		{
+			if (GetShield() > 0.f)
+			{
+				float ShieldDamage = FMath::Min(GetShield(), LocalDamage);
+				SetShield(GetShield() - ShieldDamage);
+				LocalDamage -= ShieldDamage;
+			}
+			if (LocalDamage >0.f)
+			{
+				const float NewHealth = GetHealth() - LocalDamage;
+				SetHealth(FMath::Clamp(NewHealth, 0.f, GetMaxHealth()));
+			}
+		}
+	}
+	
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
 		SetHealth(FMath::Clamp(GetHealth(), 0, GetMaxHealth()));

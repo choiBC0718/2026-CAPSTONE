@@ -6,8 +6,11 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "CAP_ItemInstance.h"
+#include "GameplayTagsManager.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "Data/CAP_AbilitySystemGenerics.h"
 #include "Data/CAP_SynergyTypes.h"
+#include "GAS/CAP_AbilitySystemComponent.h"
 #include "Interface/CAP_InteractInterface.h"
 
 
@@ -36,6 +39,8 @@ void UCAP_InventoryComponent::BeginPlay()
 			}
 		}
 	}
+	FGameplayTag ParentTag = FGameplayTag::RequestGameplayTag(FName("Data.ItemStat"));
+	CachedItemDataTags = UGameplayTagsManager::Get().RequestGameplayTagChildren(ParentTag);
 }
 
 bool UCAP_InventoryComponent::AddItem(class UCAP_ItemInstance* NewItem)
@@ -52,6 +57,7 @@ bool UCAP_InventoryComponent::AddItem(class UCAP_ItemInstance* NewItem)
 
 	// 아이템 추가 후 새로고침
 	InventoryItems.Add(NewItem);
+	ApplyItemStatEffects(NewItem);
 	RefreshSynergies();
 	if (OnInventoryChanged.IsBound())
 	{
@@ -210,5 +216,34 @@ void UCAP_InventoryComponent::UpdateSynergyEffects()
 			CachedSynergyCounts.Remove(TargetTag);
 			AppliedSynergyHandles.Remove(TargetTag);
 		}
+	}
+}
+
+void UCAP_InventoryComponent::ApplyItemStatEffects(UCAP_ItemInstance* ItemInst)
+{
+	if (!ItemInst || !OwnerASC)
+		return;
+	UCAP_AbilitySystemComponent* CAP_ASC = Cast<UCAP_AbilitySystemComponent>(OwnerASC);
+	if (!CAP_ASC || !CAP_ASC->GetGenerics() || !CAP_ASC->GetGenerics()->GetItemStatEffectClass())
+		return;
+
+	UCAP_ItemDataAsset* ItemDA = ItemInst->GetItemDA();
+	if (!ItemDA || ItemDA->ItemStatModifiers.IsEmpty())
+		return;
+
+	FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
+	FGameplayEffectSpecHandle SpecHandle = OwnerASC->MakeOutgoingSpec(CAP_ASC->GetGenerics()->GetItemStatEffectClass(), 1.f, Context);
+	if (SpecHandle.IsValid())
+	{
+		for (const FGameplayTag& Tag : CachedItemDataTags)
+		{
+			SpecHandle.Data->SetSetByCallerMagnitude(Tag, 0.f);
+		}
+		
+		for (const TPair<FGameplayTag, float>& StatModifier : ItemDA->ItemStatModifiers)
+		{
+			SpecHandle.Data->SetSetByCallerMagnitude(StatModifier.Key, StatModifier.Value);
+		}
+		FActiveGameplayEffectHandle ActiveGEHandle = OwnerASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 	}
 }

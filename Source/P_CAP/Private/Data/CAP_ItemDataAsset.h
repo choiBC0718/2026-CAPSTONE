@@ -34,6 +34,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="Data", meta=(Categories="Synergy"))
 	FGameplayTag SynergyTag2;
 
+	// 아이템이 제공하는 보너스 스탯
+	UPROPERTY(EditDefaultsOnly, Category="Item Effect", meta=(ForceInlineRow, Categories="Data.ItemStat"))
+	TMap<FGameplayTag, float> ItemStatModifiers;
+	// 아이템이 실행할 GA
+	UPROPERTY(EditDefaultsOnly, Category="Item Effect")
+	TArray<TSoftClassPtr<class UCAP_GameplayAbility>> GrantedPassiveAbilities;
+	
 	// 아이템 메쉬
 	UPROPERTY(EditDefaultsOnly, Category="Visual")
 	TSoftObjectPtr<class UStaticMesh> ItemMesh;

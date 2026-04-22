@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Abilities/GameplayAbility.h"
 #include "Blueprint/IUserObjectListEntry.h"
 #include "Blueprint/UserWidget.h"
 #include "CAP_AbilitySlot.generated.h"
@@ -16,12 +17,41 @@ class UCAP_AbilitySlot : public UUserWidget, public IUserObjectListEntry
 	GENERATED_BODY()
 
 public:
+	virtual void NativeConstruct() override;
 	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
 	
 private:
+	UPROPERTY(EditDefaultsOnly, Category="Cooldown")
+	float CooldownUpdateInterval = 0.1f;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Visual")
+	FName IconMaterialParamName = "Icon";
+	
+	UPROPERTY(EditDefaultsOnly, Category="Visual")
+	FName CooldownPercentParamName = "Percent";
+	
 	UPROPERTY(meta = (BindWidget))
 	class UImage* Icon;
 	
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* CooldownDurationText;
+
+	UPROPERTY()
+	FGameplayTag CooldownTag;
+	UPROPERTY()
+	class UAbilitySystemComponent* OwnerASC;
+
+	void AbilityCommitted(UGameplayAbility* Ability);
+	void StartCooldown(float CooldownTimeRemaining, float CooldownDuration);
+	void CooldownFinished();
+	void UpdateCooldown();
+
+	float CachedCooldownDuration;
+	float CachedCooldownTimeRemaining;
+	
+	FTimerHandle CooldownTimerHandle;
+	FTimerHandle CooldownTimerUpdateHandle;
+
+	FNumberFormattingOptions WholeNumberFormattingOptions;
+	FNumberFormattingOptions TwoDigitNumberFormattingOptions;
 };

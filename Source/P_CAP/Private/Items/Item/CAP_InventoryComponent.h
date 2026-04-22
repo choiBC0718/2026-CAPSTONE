@@ -74,4 +74,7 @@ private:
 	TMap<FGameplayTag, FSynergyDataTable*> SynergyDataCache;
 	
 	void UpdateSynergyEffects();
+	void ApplyItemStatEffects(UCAP_ItemInstance* ItemInst);
+	
+	FGameplayTagContainer CachedItemDataTags;
 };

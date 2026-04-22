@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "CAP_WeaponInstance.h"
-#include "GameFramework/Actor.h"
 #include "Items/CAP_DropItemBase.h"
 #include "CAP_WeaponBase.generated.h"
 

@@ -7,6 +7,11 @@
 #include "GameplayTagsManager.h"
 #include "Abilities/GameplayAbilityTypes.h"
 
+UAN_SendRMSEvent::UAN_SendRMSEvent()
+{
+	EventTag = FGameplayTag::RequestGameplayTag("Ability.Event.RMS");
+}
+
 void UAN_SendRMSEvent::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
                               const FAnimNotifyEventReference& EventReference)
 {

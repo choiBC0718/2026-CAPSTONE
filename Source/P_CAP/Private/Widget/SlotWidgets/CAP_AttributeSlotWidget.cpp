@@ -21,7 +21,7 @@ void UCAP_AttributeSlotWidget::NativeConstruct()
 	OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
 	if (OwnerASC)
 	{
-		UpdatePercentage();
+		UpdateAttributeValue();
 		OwnerASC->GetGameplayAttributeValueChangeDelegate(Attribute).AddUObject(this, &UCAP_AttributeSlotWidget::AttributeChanged);
 	}
 	if (AttributeNameText)
@@ -30,27 +30,39 @@ void UCAP_AttributeSlotWidget::NativeConstruct()
 	}
 }
 
-void UCAP_AttributeSlotWidget::UpdatePercentage()
+void UCAP_AttributeSlotWidget::UpdateAttributeValue()
 {
-	if (!OwnerASC)
+	if (!OwnerASC || !AttributeValueText)
 		return;
 
 	float CurrentVal = OwnerASC->GetNumericAttribute(Attribute);
-	float BaseVal = OwnerASC->GetNumericAttributeBase(Attribute);
-	if (FMath::IsNearlyZero(BaseVal))
-	{
-		BaseVal = 1.f;
-	}
-	float Percentage = (CurrentVal / BaseVal) * 100.f;
+	FString ResultString = TEXT("");
 
-	FString Str = FString::Printf(TEXT("%d%%"), FMath::RoundToInt(Percentage));
-	if (AttributeValueText)
+	switch (AttributeDisplay)
 	{
-		AttributeValueText->SetText(FText::FromString(Str));
+		case EAttributeDisplay::RawValue:
+			ResultString = FString::Printf(TEXT("%d"), FMath::RoundToInt(CurrentVal));
+			break;
+		case EAttributeDisplay::Percentage:
+			ResultString = FString::Printf(TEXT("%.1f%%"), CurrentVal);
+			break;
+		case EAttributeDisplay::Multiplier:
+			ResultString = FString::Printf(TEXT("%.2fx"), CurrentVal);
+			break;
+		case EAttributeDisplay::RatioFromBase:
+			{
+				float BaseVal = OwnerASC->GetNumericAttributeBase(Attribute);
+				if (FMath::IsNearlyZero(BaseVal)) BaseVal = 1.f;
+				float Percentage = (CurrentVal / BaseVal) * 100.f;
+				ResultString = FString::Printf(TEXT("%d%%"), FMath::RoundToInt(Percentage));
+			}
+			break;
 	}
+	
+	AttributeValueText->SetText(FText::FromString(ResultString));
 }
 
 void UCAP_AttributeSlotWidget::AttributeChanged(const FOnAttributeChangeData& Data)
 {
-	UpdatePercentage();
+	UpdateAttributeValue();
 }

@@ -8,7 +8,8 @@
 
 UANS_SendComboStartEnd::UANS_SendComboStartEnd()
 {
-	TargetClearTag = UCAP_AbilitySystemStatics::GetTargetClearTag();
+	NextComboTag = FGameplayTag::RequestGameplayTag("Ability.Combo");
+	ComboEndTag = FGameplayTag::RequestGameplayTag("Ability.Combo.End");
 }
 
 void UANS_SendComboStartEnd::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
@@ -24,8 +25,12 @@ void UANS_SendComboStartEnd::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnim
 	if (!UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(MeshComp->GetOwner()))
 		return;
 
-	if (NextComboNameTag.IsValid())
-		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(MeshComp->GetOwner(), NextComboNameTag, FGameplayEventData());
+	FGameplayEventData Payload;
+	Payload.OptionalObject = this;
+	Payload.EventTag = NextComboTag;
+	
+	if (NextComboTag.IsValid())
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(MeshComp->GetOwner(), NextComboTag, Payload);
 }
 
 void UANS_SendComboStartEnd::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
@@ -40,8 +45,6 @@ void UANS_SendComboStartEnd::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSe
 
 	if (!UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(MeshComp->GetOwner()))
 		return;
-
-	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(MeshComp->GetOwner(), TargetClearTag, FGameplayEventData());
 	
 	if (ComboEndTag.IsValid())
 		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(MeshComp->GetOwner(), ComboEndTag, FGameplayEventData());

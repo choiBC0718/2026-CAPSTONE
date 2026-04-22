@@ -45,6 +45,9 @@ struct FWeaponSkillData : public FTableRowBase
 	/** 스킬 쿨타임*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data")
 	float CooldownTime = 1.f;
+	/** 스킬 쿨타임*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data", meta=(Categories="Ability.Cooldown"))
+	FGameplayTag CooldownTag;
 	
 	/** 스킬 이름*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill UI")

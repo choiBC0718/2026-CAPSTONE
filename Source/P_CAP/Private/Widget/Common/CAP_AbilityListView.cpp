@@ -22,6 +22,7 @@ void UCAP_AbilityListView::RefreshWeaponSkills(class UCAP_WeaponInstance* Weapon
 		SlotData->SkillIcon			= SkillData.SkillIcon;
 		SlotData->SkillName			= SkillData.SkillName;
 		SlotData->SkillDescription	= SkillData.Description;
+		SlotData->CooldownTag		= SkillData.CooldownTag;
 
 		AddItem(SlotData);
 	}

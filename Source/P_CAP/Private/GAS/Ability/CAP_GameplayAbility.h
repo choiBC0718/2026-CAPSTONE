@@ -18,15 +18,17 @@ class UCAP_GameplayAbility : public UGameplayAbility
 public:
 	UCAP_GameplayAbility();
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
-
+	virtual void ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const override;
+	virtual bool CheckCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
+	
 protected:
 	UAnimInstance* GetOwnerAnimInstance() const;
 	class ACAP_PlayerCharacter* GetPlayerCharacterFromActorInfo() const;
-	const struct FWeaponSkillData* GetCurrentSkillData() const;
+	const struct FWeaponSkillData* GetSkillDataFromContext(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const;
 
-	TArray<class ACAP_ProjectileBase*> SpawnProjectile(FVector SpawnLocation);
+	TArray<class ACAP_ProjectileBase*> SpawnProjectile(FVector SpawnLocation, const struct FWeaponSkillData* InSkillData);
 	FVector GetMuzzleSocketLocation(FName SocketName);
-	void SendGameplayCueEvent(FHitResult HitResult);
+	void SendGameplayCueEvent(FHitResult HitResult, const struct FWeaponSkillData* InSkillData);
 
 	FGameplayTag DamageTag;
 	FGameplayTag RMSTag;
@@ -38,13 +40,6 @@ protected:
 	UFUNCTION()
 	void OnSpawnProjectileTagReceived(FGameplayEventData Payload);
 	
-	UPROPERTY();
-	class UAnimMontage* AbilityMontage;
-	UPROPERTY();
-	TSubclassOf<UGameplayEffect> AbilityDamageEffect;
-	
-	const FWeaponSkillData* SkillData;
-
 	bool bIsCasting = false;
 	FVector CachedTargetLocation;
 	UFUNCTION()

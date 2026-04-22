@@ -33,11 +33,6 @@ FGameplayTag UCAP_AbilitySystemStatics::GetSkillAttackTag()
 	return FGameplayTag::RequestGameplayTag("Ability.Attack.Skill");
 }
 
-FGameplayTag UCAP_AbilitySystemStatics::GetTargetClearTag()
-{
-	return FGameplayTag::RequestGameplayTag("Ability.Attack.TargetClear");
-}
-
 FGameplayTag UCAP_AbilitySystemStatics::GetDamageTag()
 {
 	return FGameplayTag::RequestGameplayTag("Ability.Event.Damage");

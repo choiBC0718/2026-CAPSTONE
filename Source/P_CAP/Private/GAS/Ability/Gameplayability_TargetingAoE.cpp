@@ -25,7 +25,8 @@ void UGameplayability_TargetingAoE::ActivateAbility(const FGameplayAbilitySpecHa
                                                        const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	
+
+	const FWeaponSkillData* SkillData = GetSkillDataFromContext(Handle, ActorInfo);
    	if (SkillData->RangeIndicatorClass)
    	{
    		FVector SpawnLoc = GetAvatarActorFromActorInfo()->GetActorLocation();
@@ -73,7 +74,8 @@ void UGameplayability_TargetingAoE::EndAbility(const FGameplayAbilitySpecHandle 
 {
    	if (SpawnedRangeIndicator)
    		SpawnedRangeIndicator->Destroy();
-   	
+	
+	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());   	
    	if (!SkillData || !SkillData->CastMontage.Get())
    	{
    		K2_EndAbility();
@@ -113,8 +115,12 @@ void UGameplayability_TargetingAoE::TargetCancelled(const FGameplayAbilityTarget
 
 void UGameplayability_TargetingAoE::ProjectileTargetingConfirmed()
 {
+	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
+	if (!SkillData)
+		return;
+	
 	FVector SpawnLoc = GetMuzzleSocketLocation(SkillData->ProjectileSocketName);
-	TArray<ACAP_ProjectileBase*> Projectiles = SpawnProjectile(SpawnLoc);
+	TArray<ACAP_ProjectileBase*> Projectiles = SpawnProjectile(SpawnLoc, SkillData);
 	if (Projectiles.Num() > 0)
 	{
 		FGameplayEffectSpecHandle EffectSpecHandle;
@@ -129,12 +135,16 @@ void UGameplayability_TargetingAoE::ProjectileTargetingConfirmed()
 
 void UGameplayability_TargetingAoE::InstantTargetingConfirmed(const FGameplayAbilityTargetDataHandle& Data)
 {
+	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
+	if (!SkillData)
+		return;
+	
 	if (Data.Data.IsValidIndex(0))
 	{
 		const FHitResult* Hit = Data.Data[0]->GetHitResult();
 		if (Hit)
 		{
-			SendGameplayCueEvent(*Hit);
+			SendGameplayCueEvent(*Hit,SkillData);
 			if (SkillData->SkillDamageTypeEffect.Get())
 			{
 				TArray<FOverlapResult> Overlaps;

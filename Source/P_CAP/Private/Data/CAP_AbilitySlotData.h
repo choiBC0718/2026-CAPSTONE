@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "CAP_AbilitySlotData.generated.h"
 
 /**
@@ -21,4 +22,6 @@ public:
 	FName SkillName;
 	UPROPERTY(BlueprintReadOnly)
 	FText SkillDescription;
+	UPROPERTY(BlueprintReadOnly)
+	FGameplayTag CooldownTag;
 };

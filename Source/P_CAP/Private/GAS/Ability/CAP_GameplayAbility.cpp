@@ -5,15 +5,18 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
-#include "GameplayTagsManager.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionConstantForce.h"
+#include "Animation/AN_SendBasicTagEvent.h"
 #include "Animation/AN_SendRMSEvent.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "Data/CAP_AbilitySystemGenerics.h"
+#include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Actors/CAP_ProjectileBase.h"
 #include "GAS/Tasks/AbilityTask_RotateToCursor.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
+#include "GAS/Setting/CAP_AttributeSet.h"
 #include "Items/Weapon/CAP_WeaponInstance.h"
 
 
@@ -36,7 +39,7 @@ void UCAP_GameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 		K2_EndAbility();
 		return;
 	}
-	SkillData = GetCurrentSkillData();
+	const FWeaponSkillData* SkillData = GetSkillDataFromContext(Handle, ActorInfo);
 	if (!SkillData || !SkillData->AbilityMontage.Get() || !SkillData->SkillDamageTypeEffect.Get())
 	{
 		K2_EndAbility();
@@ -44,15 +47,20 @@ void UCAP_GameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	}
 	
 	bIsCasting = false;
-	AbilityMontage = SkillData->AbilityMontage.Get();
-	AbilityDamageEffect = SkillData->SkillDamageTypeEffect.Get();
+	
+	float AttackSpeed = 1.f;
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	if (ASC)
+	{
+		AttackSpeed = ASC->GetNumericAttribute(UCAP_AttributeSet::GetAttackSpeedAttribute());
+	}
 
 	// 마우스 방향으로 회전 이벤트
 	UAbilityTask_RotateToCursor* RotateTask = UAbilityTask_RotateToCursor::SmoothRotateToMouse(this, 1500.f);
 	RotateTask->ReadyForActivation();
 
 	// 스킬 몽타주 재생
-	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, AbilityMontage);
+	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, SkillData->AbilityMontage.Get(),AttackSpeed);
 	MontageTask->OnCancelled.AddDynamic(this, &UCAP_GameplayAbility::K2_EndAbility);
 	MontageTask->OnCompleted.AddDynamic(this, &UCAP_GameplayAbility::K2_EndAbility);
 	MontageTask->OnBlendOut.AddDynamic(this, &UCAP_GameplayAbility::K2_EndAbility);
@@ -79,10 +87,60 @@ void UCAP_GameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	}
 }
 
+void UCAP_GameplayAbility::ApplyCooldown(const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	if (!ASC)
+		return;
+	UCAP_AbilitySystemComponent* CAP_ASC = Cast<UCAP_AbilitySystemComponent>(ASC);
+	if (!CAP_ASC || !CAP_ASC->GetGenerics() || !CAP_ASC->GetGenerics()->GetCooldownEffectClass())
+		return;
+
+	FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(CAP_ASC->GetGenerics()->GetCooldownEffectClass(),GetAbilityLevel());
+	if (SpecHandle.IsValid())
+	{
+		const FWeaponSkillData* SkillData = GetSkillDataFromContext(Handle, ActorInfo);
+		
+		float BaseCooldown = SkillData ? SkillData->CooldownTime : 0.f;
+		FGameplayTag CooldownTag = SkillData ? SkillData->CooldownTag : FGameplayTag();
+
+		float CooldownSpeed = ASC->GetNumericAttribute(UCAP_AttributeSet::GetSkillCooldownSpeedAttribute());
+		CooldownSpeed = FMath::Max<float>(0.1f, CooldownSpeed);
+		float FinalCooldown = BaseCooldown / CooldownSpeed;
+
+		SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Cooldown"), FinalCooldown);
+		if (CooldownTag.IsValid())
+		{
+			SpecHandle.Data->DynamicGrantedTags.AddTag(CooldownTag);
+		}
+		ApplyGameplayEffectSpecToOwner(Handle,ActorInfo,ActivationInfo,SpecHandle);
+	}
+}
+
+bool UCAP_GameplayAbility::CheckCooldown(const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo, FGameplayTagContainer* OptionalRelevantTags) const
+{
+	const FWeaponSkillData* Data = GetSkillDataFromContext(Handle, ActorInfo);
+	
+	if (Data && Data->CooldownTag.IsValid())
+	{
+		if (ActorInfo->AbilitySystemComponent->HasMatchingGameplayTag(Data->CooldownTag))
+		{
+			if (OptionalRelevantTags)
+			{
+				OptionalRelevantTags->AddTag(Data->CooldownTag);
+			}
+			return false;
+		}
+	}
+	return true;
+}
 
 void UCAP_GameplayAbility::OnDamageTagReceived(FGameplayEventData Payload)
 {
-	if (AbilityDamageEffect == nullptr)
+	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
+	if (!SkillData || !SkillData->SkillDamageTypeEffect.Get())
 		return;
 	
 	int HitResultCount = UAbilitySystemBlueprintLibrary::GetDataCountFromTargetData(Payload.TargetData);
@@ -90,14 +148,14 @@ void UCAP_GameplayAbility::OnDamageTagReceived(FGameplayEventData Payload)
 	{
 		FHitResult HitResult = UAbilitySystemBlueprintLibrary::GetHitResultFromTargetData(Payload.TargetData, i);
 		
-		FGameplayEffectSpecHandle EffectSpecHandle = MakeOutgoingGameplayEffectSpec(AbilityDamageEffect, GetAbilityLevel(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo()));
+		FGameplayEffectSpecHandle EffectSpecHandle = MakeOutgoingGameplayEffectSpec(SkillData->SkillDamageTypeEffect.Get(), GetAbilityLevel(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo()));
 		FGameplayEffectContextHandle EffectContext = MakeEffectContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
 		EffectContext.AddHitResult(HitResult);
 		EffectSpecHandle.Data -> SetContext(EffectContext);
 
 		ApplyGameplayEffectSpecToTarget(GetCurrentAbilitySpecHandle(), CurrentActorInfo, CurrentActivationInfo, EffectSpecHandle, UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(HitResult.GetActor()));
 
-		SendGameplayCueEvent(HitResult);
+		SendGameplayCueEvent(HitResult, SkillData);
 	}
 }
 
@@ -120,16 +178,18 @@ void UCAP_GameplayAbility::OnRMSTagReceived(FGameplayEventData Payload)
 
 void UCAP_GameplayAbility::OnSpawnProjectileTagReceived(FGameplayEventData Payload)
 {
+	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
 	if (!SkillData || !SkillData->ProjectileClass.Get())
 		return;
-	
-	TArray<FName> OutNames;
-	UGameplayTagsManager::Get().SplitGameplayTagFName(Payload.EventTag, OutNames);
 
-	FVector SocketLoc = GetMuzzleSocketLocation(OutNames.Last());
+	const UAN_SendBasicTagEvent* EventNotify = Cast<UAN_SendBasicTagEvent>(Payload.OptionalObject);
+	FVector SocketLoc = FVector();
+	if (EventNotify && EventNotify->ProjectileMuzzleName!=NAME_None)
+	{
+		SocketLoc = GetMuzzleSocketLocation(EventNotify->ProjectileMuzzleName);
+	}
 
-	TArray<ACAP_ProjectileBase*> Projectiles = SpawnProjectile(SocketLoc);
-	
+	TArray<ACAP_ProjectileBase*> Projectiles = SpawnProjectile(SocketLoc, SkillData);
 	if (Projectiles.Num() > 0)
 	{
 		FGameplayEffectSpecHandle EffectSpecHandle;
@@ -166,9 +226,11 @@ UAnimInstance* UCAP_GameplayAbility::GetOwnerAnimInstance() const
 	return nullptr;
 }
 
-TArray<class ACAP_ProjectileBase*> UCAP_GameplayAbility::SpawnProjectile(FVector SpawnLoc)
+TArray<class ACAP_ProjectileBase*> UCAP_GameplayAbility::SpawnProjectile(FVector SpawnLoc, const struct FWeaponSkillData* InSkillData)
 {
 	TArray<ACAP_ProjectileBase*> SpawnedProjectiles;
+	if (!InSkillData)
+		return SpawnedProjectiles;
 	
 	AActor* OwnerAvatarActor = GetAvatarActorFromActorInfo();
 	FActorSpawnParameters SpawnParams;
@@ -176,7 +238,7 @@ TArray<class ACAP_ProjectileBase*> UCAP_GameplayAbility::SpawnProjectile(FVector
 	SpawnParams.Instigator = Cast<APawn>(OwnerAvatarActor);
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	int32 ProjNums = FMath::Max(1, SkillData->NumOfProjectiles);
+	int32 ProjNums = FMath::Max(1, InSkillData->NumOfProjectiles);
 	FRotator BaseRot = OwnerAvatarActor->GetActorRotation();
 	
 	for (int32 i=0 ; i<ProjNums ; i++)
@@ -184,14 +246,14 @@ TArray<class ACAP_ProjectileBase*> UCAP_GameplayAbility::SpawnProjectile(FVector
 		float CurrentAngle = 0.f;
 		if (ProjNums > 1)
 		{
-			float HalfAngle = SkillData->SpreadAngle / 2.f;
-			float Step = SkillData->SpreadAngle / (ProjNums - 1);
+			float HalfAngle = InSkillData->SpreadAngle / 2.f;
+			float Step = InSkillData->SpreadAngle / (ProjNums - 1);
 			CurrentAngle = -HalfAngle + (i*Step);
 		}
 		FRotator SpawnRot = BaseRot;
 		SpawnRot.Yaw += CurrentAngle;
 
-		ACAP_ProjectileBase* Projectile = GetWorld()->SpawnActor<ACAP_ProjectileBase>(SkillData->ProjectileClass.Get(),SpawnLoc,SpawnRot, SpawnParams);
+		ACAP_ProjectileBase* Projectile = GetWorld()->SpawnActor<ACAP_ProjectileBase>(InSkillData->ProjectileClass.Get(),SpawnLoc,SpawnRot, SpawnParams);
 		if (Projectile)
 			SpawnedProjectiles.Add(Projectile);
 	}
@@ -225,43 +287,38 @@ FVector UCAP_GameplayAbility::GetMuzzleSocketLocation(FName SocketName)
 	return SocketLoc;
 }
 
-void UCAP_GameplayAbility::SendGameplayCueEvent(FHitResult HitResult)
+void UCAP_GameplayAbility::SendGameplayCueEvent(FHitResult HitResult, const struct FWeaponSkillData* InSkillData)
 {
-	if (SkillData && SkillData->GameplayCueTag.IsValid())
+	if (InSkillData && InSkillData->GameplayCueTag.IsValid())
 	{
 		FGameplayCueParameters CueParams;
 		CueParams.Location = HitResult.ImpactPoint;
 		CueParams.Normal = HitResult.ImpactNormal;
-		CurrentActorInfo->AbilitySystemComponent->ExecuteGameplayCue(SkillData->GameplayCueTag, CueParams);
+		CurrentActorInfo->AbilitySystemComponent->ExecuteGameplayCue(InSkillData->GameplayCueTag, CueParams);
 	}
 }
 
-const struct FWeaponSkillData* UCAP_GameplayAbility::GetCurrentSkillData() const
+const struct FWeaponSkillData* UCAP_GameplayAbility::GetSkillDataFromContext(const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo) const
 {
-	ACAP_PlayerCharacter* Player = GetPlayerCharacterFromActorInfo();
-	if (!Player)		return nullptr;
+	if (!ActorInfo || !ActorInfo->AvatarActor.IsValid() || !ActorInfo->AbilitySystemComponent.IsValid()) return nullptr;
+
+	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(ActorInfo->AvatarActor.Get());
+	if (!Player) return nullptr;
 
 	UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent();
-	if (!WeaponComp)	return nullptr;
+	if (!WeaponComp) return nullptr;
 	
 	UCAP_WeaponInstance* WeaponInst = WeaponComp->GetCurrentWeaponInstance();
-	if (!WeaponInst)	return nullptr;
+	if (!WeaponInst) return nullptr;
 	
-	UCAP_WeaponDataAsset* WeaponDA = WeaponInst->GetWeaponDA();
-	if (!WeaponDA)		return nullptr;
+	FGameplayAbilitySpec* Spec = ActorInfo->AbilitySystemComponent->FindAbilitySpecFromHandle(Handle);
+	if (!Spec) return nullptr;
 
-	FGameplayAbilitySpec* Spec = GetCurrentAbilitySpec();
-	if (!Spec)			return nullptr;
-
-	// 평타인 경우 DA의 BasicAbility 반환
 	if (Spec->InputID == static_cast<int32>(EAbilityInputID::BasicAttack))
 	{
-		if (const FWeaponSkillData* BasicAttack = WeaponInst->GetBasicAttack())
-		{
-			return BasicAttack;
-		} 
+		return WeaponInst->GetBasicAttack();
 	}
-	// 스킬인 경우 WeaponInstance가 랜덤으로 뽑은 배열에서 반환
 	else if (Spec->InputID >= static_cast<int32>(EAbilityInputID::Skill1))
 	{
 		int32 SkillIndex = Spec->InputID - static_cast<int32>(EAbilityInputID::Skill1);
@@ -270,6 +327,5 @@ const struct FWeaponSkillData* UCAP_GameplayAbility::GetCurrentSkillData() const
 			return &WeaponInst->GetGrantedSkills()[SkillIndex];
 		}
 	}
-
 	return nullptr;
 }

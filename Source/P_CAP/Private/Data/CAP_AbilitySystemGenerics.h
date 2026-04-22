@@ -24,6 +24,8 @@ public:
 	FORCEINLINE const UDataTable* GetBaseStatDataTable() const {return BaseStatDataTable;}
 	FORCEINLINE const UDataTable* GetWeaponStatDataTable() const {return WeaponStatDataTable;}
 	
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemStatEffectClass() const {return MasterStatEffectClass;}
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetCooldownEffectClass() const {return MasterCooldownEffectClass;}
 private:
 	/**플레이어 & 몬스터 최초 스폰 시 HP 가득 채우는 Effect*/
 	UPROPERTY(EditDefaultsOnly, Category="Gameplay Effect")
@@ -41,5 +43,12 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="Base Stats")
 	UDataTable* BaseStatDataTable;
 	UPROPERTY(EditDefaultsOnly, Category="Weapon Stats")
-	UDataTable* WeaponStatDataTable;	
+	UDataTable* WeaponStatDataTable;
+
+	// 아이템이 제공하는 보너스 스탯을 넣을 마스터 클래스
+	UPROPERTY(EditDefaultsOnly, Category="Item Effect")
+	TSubclassOf<class UGameplayEffect> MasterStatEffectClass;
+	// 아이템이 제공하는 보너스 스탯을 넣을 마스터 클래스
+	UPROPERTY(EditDefaultsOnly, Category="Ability Effect")
+	TSubclassOf<class UGameplayEffect> MasterCooldownEffectClass;
 };

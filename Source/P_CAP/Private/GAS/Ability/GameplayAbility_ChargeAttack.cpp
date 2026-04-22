@@ -60,9 +60,10 @@ void UGameplayAbility_ChargeAttack::ExecuteAttack()
   	bIsExecuted = true;
   	
   	UAnimInstance* AnimInst = GetOwnerAnimInstance();
-  	if (AnimInst && AbilityMontage)
+  	if (AnimInst)
   	{
-  		AnimInst->Montage_JumpToSection(FName("Attack"), AbilityMontage);
+  		if (UAnimMontage* AbilityMontage = AnimInst->GetCurrentActiveMontage())
+  			AnimInst->Montage_JumpToSection(FName("Attack"), AbilityMontage);
   	}
 }
 
