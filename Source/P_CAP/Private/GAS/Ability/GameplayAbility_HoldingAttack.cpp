@@ -15,8 +15,6 @@ UGameplayAbility_HoldingAttack::UGameplayAbility_HoldingAttack()
 void UGameplayAbility_HoldingAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle,const FGameplayAbilityActorInfo* ActorInfo,
                                                      const FGameplayAbilityActivationInfo ActivationInfo,const FGameplayEventData* TriggerEventData)
 {
-	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-
 	bIsExecuted=false;
 
 	UAbilityTask_WaitInputRelease* InputReleaseTask = UAbilityTask_WaitInputRelease::WaitInputRelease(this);
@@ -26,6 +24,8 @@ void UGameplayAbility_HoldingAttack::ActivateAbility(const FGameplayAbilitySpecH
 	UAbilityTask_WaitGameplayEvent* JogFwdTagTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this,JogLoopTag);
 	JogFwdTagTask->EventReceived.AddDynamic(this, &UGameplayAbility_HoldingAttack::OnJogFwdTagReceived);
 	JogFwdTagTask->ReadyForActivation();
+	
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 }
 
 void UGameplayAbility_HoldingAttack::OnInputReleased(float TimeHeld)

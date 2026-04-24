@@ -15,12 +15,12 @@ class UCAP_ItemInstance : public UObject
 	GENERATED_BODY()
 
 public:
-	void Initialize(UCAP_ItemDataAsset* NewItemDA);
+	void Initialize(UCAP_ItemDataBase* NewItemDA);
 
 	UFUNCTION()
-	UCAP_ItemDataAsset* GetItemDA() const {return ItemDA;}
+	UCAP_ItemDataBase* GetItemDA() const {return ItemDA;}
 
-private:
+protected:
 	UPROPERTY(VisibleAnywhere)
-	UCAP_ItemDataAsset* ItemDA;
+	UCAP_ItemDataBase* ItemDA;
 };

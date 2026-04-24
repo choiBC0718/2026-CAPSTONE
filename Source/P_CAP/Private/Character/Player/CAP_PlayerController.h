@@ -52,7 +52,7 @@ private:
 	UFUNCTION()
 	void UINavigationHandle(const FInputActionValue& InputActionValue);
 	UFUNCTION()
-	void UIConfirmHandle(const FInputActionValue& InputActionValue);
+	void UIConfirmHandle(const struct FInputActionInstance& Instance);
 	UFUNCTION()
 	void UICloseHandle(const FInputActionValue& InputActionValue);
 	UFUNCTION()

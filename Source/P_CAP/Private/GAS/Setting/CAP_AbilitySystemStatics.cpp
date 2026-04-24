@@ -47,3 +47,8 @@ FGameplayTag UCAP_AbilitySystemStatics::GetSpawnProjectileTag()
 {
 	return FGameplayTag::RequestGameplayTag("Ability.Event.SpawnProjectile");
 }
+
+FGameplayTag UCAP_AbilitySystemStatics::GetDataDamageMultiplierDataTag()
+{
+	return FGameplayTag::RequestGameplayTag("Data.Ability.Multiplier");
+}

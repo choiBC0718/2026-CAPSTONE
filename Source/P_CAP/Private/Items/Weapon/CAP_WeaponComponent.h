@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayAbilitySpecHandle.h"
 #include "Components/ActorComponent.h"
 #include "Data/CAP_WeaponDataAsset.h"
 #include "CAP_WeaponComponent.generated.h"

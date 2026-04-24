@@ -24,4 +24,6 @@ private:
 	FGameplayEffectAttributeCaptureDefinition PhysicalArmorCapture;
 	FGameplayEffectAttributeCaptureDefinition CriticalChanceCapture;
 	FGameplayEffectAttributeCaptureDefinition CriticalDamageCapture;
+
+	FGameplayTag DamageMultiplierDataTag;
 };

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "ActiveGameplayEffectHandle.h"
 #include "EnhancedInputComponent.h"
+#include "GameplayAbilitySpecHandle.h"
 #include "GameplayTagContainer.h"
 #include "Components/ActorComponent.h"
 #include "Data/CAP_SynergyTypes.h"
@@ -38,15 +39,23 @@ public:
 	void SetNearbyInteractable(AActor* NewActor) {NearbyInteractable = NewActor;}
 	void ProcessInteractInput(ETriggerEvent TriggerEvent, float ElapsedTime);
 	
-	void RefreshSynergies();
 	bool SwapItem(class UCAP_ItemInstance* OldItem, class UCAP_ItemInstance* NewItem);
+	void RemoveItemEffect(class UCAP_ItemInstance* ItemInst);
+	void RemoveItem(class UCAP_ItemInstance* ItemInst);
 
 	const TMap<FGameplayTag, int32> & GetCurrentSynergyCounts() const {return CurrentSynergyCounts;}
 	const TMap<FGameplayTag, FSynergyDataTable*>& GetSynergyDataCache() const {return SynergyDataCache;}
-	
+
 private:
+	// 아이템 장착 가능 수
 	UPROPERTY(EditDefaultsOnly, Category="Inventory")
 	int Capacity = 9;
+	// 참조할 시너지 데이터 테이블
+	UPROPERTY(EditDefaultsOnly, Category="Synergy")
+	UDataTable* SynergyDataTable;
+	// 아이템 장착 최대 누름 지속 시간
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	float ItemEquipTriggerTime = 0.25f;
 
 	UPROPERTY()
 	class ACAP_PlayerCharacter* Player;
@@ -63,18 +72,30 @@ private:
 	TMap<FGameplayTag, int32> CachedSynergyCounts;
 	// 현재 캐릭터에게 적용된 시너지 버프
 	TMap<FGameplayTag, TArray<FActiveGameplayEffectHandle>> AppliedSynergyHandles;
-	
-	UPROPERTY(EditDefaultsOnly, Category="Synergy")
-	UDataTable* SynergyDataTable;
-	// 아이템 장착 최대 누름 지속 시간
-	UPROPERTY(EditDefaultsOnly, Category="Input")
-	float ItemEquipTriggerTime = 0.25f;
 
 	// 데이터 테이블 캐시
 	TMap<FGameplayTag, FSynergyDataTable*> SynergyDataCache;
-	
+
+	// 시너지 재계산
+	void RefreshSynergies();
+	// 시너지 효과 재계산
 	void UpdateSynergyEffects();
-	void ApplyItemStatEffects(UCAP_ItemInstance* ItemInst);
 	
 	FGameplayTagContainer CachedItemDataTags;
+
+	// 아이템의 효과를 저장해 놓을 Map <Key: 아이템 정보 || Value: 아이템 효과>
+	UPROPERTY()
+	TMap<class UCAP_ItemInstance*, FActiveGameplayEffectHandle> ItemStatHandleMap;
+	// 아이템의 스킬 저장해놓을 Map <Key: 아이템 정보 || Value: 아이템 스킬>
+	UPROPERTY()
+	TMap<class UCAP_ItemInstance*, FGameplayAbilitySpecHandle> GrantedItemAbilityMap;
+
+	// 아이템 장착 시 아이템이 제공하는 보너스 스탯 적용
+	void ApplyItemStatEffects(UCAP_ItemInstance* ItemInst);
+	// 아이템 해제 시 보너스 스탯 제거
+	void RemoveItemStatEffects(UCAP_ItemInstance* ItemInst);
+	// 아이템 스킬 장착
+	void GiveItemAbility(class UCAP_ItemInstance* ItemInst);
+	// 아이템 스킬 해제
+	void RemoveItemAbility(class UCAP_ItemInstance* ItemInst);
 };

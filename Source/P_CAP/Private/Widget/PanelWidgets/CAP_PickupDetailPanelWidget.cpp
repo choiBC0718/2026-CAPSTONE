@@ -16,9 +16,9 @@ void UCAP_PickupDetailPanelWidget::UpdateDetailInfo(UObject* ItemData)
 	{
 		if (UCAP_WeaponDataAsset* WeaponDA = WeaponInst->GetWeaponDA())
 		{
-			ItemNameText->SetText(WeaponDA->WeaponName);
-			ItemGradeText->SetText(GetGradeText(WeaponDA->DefaultGrade));
-			ItemDescriptionText->SetText(WeaponDA->Description);
+			ItemNameText->SetText(WeaponDA->ItemName);
+			ItemGradeText->SetText(GetGradeText(WeaponDA->ItemGrade));
+			ItemDescriptionText->SetText(WeaponDA->ItemDescription);
 
 			for (const FWeaponSkillData SkillData : WeaponInst->GetGrantedSkills())
 			{

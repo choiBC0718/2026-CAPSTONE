@@ -10,6 +10,7 @@
 #include "Components/SphereComponent.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "Kismet/GameplayStatics.h"
 
 

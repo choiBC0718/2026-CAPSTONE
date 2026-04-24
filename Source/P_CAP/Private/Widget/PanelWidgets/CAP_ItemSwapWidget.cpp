@@ -126,7 +126,7 @@ void UCAP_ItemSwapWidget::ConfirmSwap()
 			if (DroppedItem)
 			{
 				DroppedItem->ItemInstance = OldItem;
-				DroppedItem->ItemDA = OldItem->GetItemDA();
+				DroppedItem->ItemDA = Cast<UCAP_ItemDataAsset>(OldItem->GetItemDA());
 				DroppedItem->FinishSpawning(SpawnTransform);
 				DroppedItem->DropItem();
 			}
@@ -215,25 +215,26 @@ void UCAP_ItemSwapWidget::UpdateTopSynergyIcons()
 	{
 		if (UCAP_ItemInstance* OldItemInst = Cast<UCAP_ItemInstance>(CurrentSelectedSlot->SlotItemData))
 		{
-			if (OldItemInst->GetItemDA())
+			if (UCAP_ItemDataBase* OldItemDA = OldItemInst->GetItemDA())
 			{
-				FGameplayTag OldTag1 = OldItemInst->GetItemDA()->SynergyTag1;
-				FGameplayTag OldTag2 = OldItemInst->GetItemDA()->SynergyTag2;
-
-				if (OldTag1.IsValid() && SimulatedCounts.Contains(OldTag1)) SimulatedCounts[OldTag1]--;
-				if (OldTag2.IsValid() && SimulatedCounts.Contains(OldTag2)) SimulatedCounts[OldTag2]--;
+				TArray<FGameplayTag> OldSynergies = OldItemDA->GetSynergyTags();
+				for (const FGameplayTag& Tag : OldSynergies)
+				{
+					if (SimulatedCounts.Contains(Tag))
+						SimulatedCounts[Tag]--;
+				}
 			}
 		}
 	}
 
 	// [더하기] 새로 얻을 아이템의 시너지 증가
-	if (NewItemToSwap->GetItemDA())
+	if (UCAP_ItemDataBase* ItemDA = NewItemToSwap->GetItemDA())
 	{
-		FGameplayTag NewTag1 = NewItemToSwap->GetItemDA()->SynergyTag1;
-		FGameplayTag NewTag2 = NewItemToSwap->GetItemDA()->SynergyTag2;
-
-		if (NewTag1.IsValid()) SimulatedCounts.FindOrAdd(NewTag1)++;
-		if (NewTag2.IsValid()) SimulatedCounts.FindOrAdd(NewTag2)++;
+		TArray<FGameplayTag> Synergies = ItemDA->GetSynergyTags();
+		for (const FGameplayTag& Tag : Synergies)
+		{
+			SimulatedCounts.FindOrAdd(Tag)++;
+		}
 	}
 
 	struct FSynergySortData

@@ -108,9 +108,23 @@ void ACAP_PlayerCharacter::UpdateInteractUI(bool bVisible)
 	ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(GetController());
 	if (!PC)
 		return;
+	
+	PC->UpdateInteractUI(bVisible, GetInteractKeyName());
+}
 
+void ACAP_PlayerCharacter::UpdateInteractProgress(float Progress)
+{
+	ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(GetController());
+	if (PC)
+	{
+		PC->UpdateInteractProgressUI(Progress);
+	}
+}
+
+FString ACAP_PlayerCharacter::GetInteractKeyName() const
+{
 	FString CurrentKeyName = "F";
-	if (bVisible && InteractIA)
+	if (ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(GetController()))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
 		{
@@ -122,16 +136,7 @@ void ACAP_PlayerCharacter::UpdateInteractUI(bool bVisible)
 			}
 		}
 	}
-	PC->UpdateInteractUI(bVisible, CurrentKeyName);
-}
-
-void ACAP_PlayerCharacter::UpdateInteractProgress(float Progress)
-{
-	ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(GetController());
-	if (PC)
-	{
-		PC->UpdateInteractProgressUI(Progress);
-	}
+	return CurrentKeyName;
 }
 
 FVector ACAP_PlayerCharacter::GetMoveForwardDir()

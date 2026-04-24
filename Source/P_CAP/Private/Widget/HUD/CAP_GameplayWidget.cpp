@@ -13,6 +13,8 @@
 #include "Items/Weapon/CAP_WeaponComponent.h"
 #include "Widget/Common/CAP_ValueGauge.h"
 #include "Widget/Common/CAP_AbilityListView.h"
+#include "Widget/PanelWidgets/CAP_InventoryTabWidget.h"
+#include "Widget/PanelWidgets/CAP_ItemEquipPanelWidget.h"
 #include "Widget/PanelWidgets/CAP_ItemSwapWidget.h"
 
 void UCAP_GameplayWidget::NativeConstruct()

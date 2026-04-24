@@ -5,12 +5,20 @@
 
 #include "Widget/SlotWidgets/CAP_ItemSlotWidget.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "Character/Player/CAP_PlayerController.h"
+#include "Components/Image.h"
+#include "Components/ProgressBar.h"
+#include "Components/WidgetSwitcher.h"
 #include "Components/WrapBox.h"
 #include "Components/WrapBoxSlot.h"
 #include "Items/Item/CAP_InventoryComponent.h"
 #include "Items/Item/CAP_ItemInstance.h"
 #include "Items/Weapon/CAP_WeaponComponent.h"
 #include "Items/Weapon/CAP_WeaponInstance.h"
+#include "Widget/Common/CAP_ItemInteraction.h"
+#include "Widget/HUD/CAP_GameplayWidget.h"
+
+class ACAP_PlayerController;
 
 void UCAP_ItemEquipPanelWidget::NativeConstruct()
 {
@@ -41,7 +49,7 @@ void UCAP_ItemEquipPanelWidget::RefreshPanel(ACAP_PlayerCharacter* PlayerCharact
 			for (int i=0 ; i<EquippedWeapons.Num() ; i++)
 			{
 				UCAP_WeaponInstance* WeaponInst = EquippedWeapons[i];
-				UTexture2D* Icon = (WeaponInst && WeaponInst->GetWeaponDA()) ? WeaponInst->GetWeaponDA()->WeaponIcon.LoadSynchronous() : nullptr;
+				UTexture2D* Icon = (WeaponInst && WeaponInst->GetWeaponDA()) ? WeaponInst->GetWeaponDA()->ItemIcon.LoadSynchronous() : nullptr;
 
 				if (WeaponSlots.IsValidIndex(i) && WeaponSlots[i] != nullptr)
 				{
@@ -76,6 +84,7 @@ void UCAP_ItemEquipPanelWidget::RefreshPanel(ACAP_PlayerCharacter* PlayerCharact
 			}
 		}
 	}
+	SetInteractKeyText(PlayerCharacter->GetInteractKeyName());
 	InitNearbySlot();
 }
 
@@ -96,6 +105,102 @@ void UCAP_ItemEquipPanelWidget::MoveSelection(FVector2D InputVal)
 	}
 }
 
+void UCAP_ItemEquipPanelWidget::UpdateInteractProgress(float Progress)
+{
+	if (ProgressBar)
+	{
+		ProgressBar->SetPercent(Progress);
+	}
+}
+
+void UCAP_ItemEquipPanelWidget::SetInteractKeyText(const FString& KeyName)
+{
+	if (KeyIconDataTable)
+	{
+		FName RowName = FName(*KeyName);
+		FKeyIconRow* Row = KeyIconDataTable->FindRow<FKeyIconRow>(RowName,"");
+		if (Row && Row->Icon)
+		{
+			SwapKeyIconImg->SetBrushFromTexture(Row->Icon);
+			DisassembleKeyIconImg->SetBrushFromTexture(Row->Icon);
+		}
+	}
+}
+
+void UCAP_ItemEquipPanelWidget::HandleInteractionInput(ETriggerEvent& TriggerEvent, float ElapsedTime)
+{
+	if (!CurrentSelectedSlot || !CurrentSelectedSlot->SlotItemData)
+		return;
+	
+	float HoldDuration = 1.f;
+	// 누르는 동안 프로그레스바 업데이트
+	if (TriggerEvent == ETriggerEvent::Ongoing)
+	{
+		if (CurrentSelectedSlot->SlotType == ESlotItemType::Item)
+			UpdateInteractProgress(FMath::Clamp(ElapsedTime / HoldDuration, 0.f, 1.f));
+		
+	}
+	// 완료 되면 분해 (인벤토리에서 제거)
+	else if (TriggerEvent == ETriggerEvent::Triggered)
+	{
+		UpdateInteractProgress(0.f);
+		if (CurrentSelectedSlot->SlotType != ESlotItemType::Item)
+			return;
+		
+		UCAP_ItemInstance* ItemInst = Cast<UCAP_ItemInstance>(CurrentSelectedSlot->SlotItemData);
+		ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
+		if (!ItemInst || !Player)
+			return;
+			
+		int32 SavedSlotNum = CurrentSelectedSlot->GetSlotNumber();
+			
+		Player->GetInventoryComponent()->RemoveItem(ItemInst);
+		RefreshPanel(Player);
+		
+		if (ACAP_PlayerController* PC = GetOwningPlayer<ACAP_PlayerController>())
+		{
+			if (PC && PC->GetGameplayWidget())
+			{
+				PC->GetGameplayWidget()->GetCharacterMenuWidget()->RefreshMenu();
+			}
+		}
+		UCAP_ItemSlotWidget* SlotToFocus = ItemSlots.IsValidIndex(SavedSlotNum) ? ItemSlots[SavedSlotNum] : nullptr;
+		if (SlotToFocus)
+			HandleSlotLeftClicked(SlotToFocus);
+	}
+	// 0.25초 내에 손 떼고 무기 슬롯이면 스킬 스왑
+	else if (TriggerEvent == ETriggerEvent::Completed || TriggerEvent == ETriggerEvent::Canceled)
+	{
+		UpdateInteractProgress(0.f);
+		if (ElapsedTime > 0.25f || CurrentSelectedSlot->SlotType != ESlotItemType::Weapon)
+			return;
+
+		UCAP_WeaponInstance* WeaponInst = Cast<UCAP_WeaponInstance>(CurrentSelectedSlot->SlotItemData);
+		ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
+		if (!WeaponInst || !Player)
+			return;
+		
+		int32 SavedSlotNum = CurrentSelectedSlot->GetSlotNumber();
+		
+		WeaponInst->SwapSkillOrder();
+		RefreshPanel(Player);
+					
+		if (Player->GetWeaponComponent()->GetCurrentWeaponInstance() != WeaponInst)
+			return;
+		
+		if (ACAP_PlayerController* PC = GetOwningPlayer<ACAP_PlayerController>())
+		{
+			if (PC && PC->GetGameplayWidget())
+			{
+				PC->GetGameplayWidget()->HandleWeaponChanged(WeaponInst);
+			}
+		}
+		UCAP_ItemSlotWidget* SlotToFocus = WeaponSlots.IsValidIndex(SavedSlotNum) ? WeaponSlots[SavedSlotNum] : nullptr;
+		if (SlotToFocus)
+			HandleSlotLeftClicked(SlotToFocus);
+	}
+}
+
 void UCAP_ItemEquipPanelWidget::HandleSlotLeftClicked(class UCAP_ItemSlotWidget* ClickedSlot)
 {
 	// 기존에 포커스 된 슬롯이 있다면 그 슬롯 테두리 제거
@@ -109,6 +214,25 @@ void UCAP_ItemEquipPanelWidget::HandleSlotLeftClicked(class UCAP_ItemSlotWidget*
 		ClickedSlot->SetSlotSelected(true);
 		CurrentSelectedSlot = ClickedSlot;
 	}
+	
+	if (ClickedSlot->SlotItemData == nullptr)
+	{
+		InformationSwitcher->SetVisibility(ESlateVisibility::Hidden);
+	}
+	else
+	{
+		InformationSwitcher->SetVisibility(ESlateVisibility::Visible);
+		if (ClickedSlot->SlotType == ESlotItemType::Weapon)
+		{
+			InformationSwitcher->SetActiveWidgetIndex(0);
+		}
+		else if (ClickedSlot->SlotType == ESlotItemType::Item)
+		{
+			InformationSwitcher->SetActiveWidgetIndex(1);
+		}
+	}
+	
+	
 	if (OnPanelSlotClicked.IsBound())
 		OnPanelSlotClicked.Broadcast(ClickedSlot);
 }

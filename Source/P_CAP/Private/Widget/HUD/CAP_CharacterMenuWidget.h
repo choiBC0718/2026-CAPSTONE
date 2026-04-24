@@ -31,9 +31,10 @@ public:
 	void RefreshMenu();
 	void SwitchCharacterMenuTab();
 
-	UPROPERTY(BlueprintAssignable)
+	UPROPERTY()
 	FOnMenuClosedSignature OnMenuClosed;
-	
+
+	FORCEINLINE class UCAP_InventoryTabWidget* GetInventoryTab() const {return InventoryTabWidget;}
 private:
 	UPROPERTY(meta = (BindWidgetAnim), Transient)
 	class UWidgetAnimation* SlideAnim;

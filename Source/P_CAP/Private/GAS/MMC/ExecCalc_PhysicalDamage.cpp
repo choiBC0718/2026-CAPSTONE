@@ -3,6 +3,7 @@
 
 #include "GAS/MMC/ExecCalc_PhysicalDamage.h"
 
+#include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
 
 UExecCalc_PhysicalDamage::UExecCalc_PhysicalDamage()
@@ -27,6 +28,8 @@ UExecCalc_PhysicalDamage::UExecCalc_PhysicalDamage()
 	RelevantAttributesToCapture.Add(PhysicalArmorCapture);
 	RelevantAttributesToCapture.Add(CriticalChanceCapture);
 	RelevantAttributesToCapture.Add(CriticalDamageCapture);
+
+	DamageMultiplierDataTag = UCAP_AbilitySystemStatics::GetDataDamageMultiplierDataTag();
 }
 
 void UExecCalc_PhysicalDamage::Execute_Implementation(const FGameplayEffectCustomExecutionParameters& ExecutionParams,
@@ -58,8 +61,8 @@ void UExecCalc_PhysicalDamage::Execute_Implementation(const FGameplayEffectCusto
 	float FinalDamage = PhysicalDamage * DamageMultiplier;
 
 	// 스킬 계수 연산
-	//float SkillMultiplier = Spec.GetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Skill.Multiplier"), false, 1.0f);
-	//FinalDamage *= SkillMultiplier;
+	float SkillMultiplier = Spec.GetSetByCallerMagnitude(DamageMultiplierDataTag, false, 1.0f);
+	FinalDamage *= SkillMultiplier;
 	
 	bool bCriticalHit = false;
 	if (CriticalChance > 0.0f)

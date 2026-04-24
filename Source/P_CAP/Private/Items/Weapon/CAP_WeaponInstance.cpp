@@ -11,17 +11,17 @@ void UCAP_WeaponInstance::InitializeWeapon(UCAP_WeaponDataAsset* InWeaponDA)
 	if (!InWeaponDA)
 		return;
 
-	WeaponDA = InWeaponDA;
+	ItemDA = InWeaponDA;
 
 	// 기본 공격 데이터 가져오기
-	if (FWeaponSkillData* BasicAttackRow = WeaponDA->BasicAbility.GetRow<FWeaponSkillData>(""))
+	if (FWeaponSkillData* BasicAttackRow = GetWeaponDA()->BasicAbility.GetRow<FWeaponSkillData>(""))
 	{
 		BasicAttackData = *BasicAttackRow;
 	}
 	
 	//등급에 따른 착용 가능한 스킬 수 가져오기
 	int32 SkillsToGrant = 0;
-	switch (WeaponDA->DefaultGrade)
+	switch (GetWeaponDA()->ItemGrade)
 	{
 		case EItemGrade::Normal:		SkillsToGrant = 1;	break;
 		case EItemGrade::Rare:		SkillsToGrant = 1;	break;
@@ -30,7 +30,7 @@ void UCAP_WeaponInstance::InitializeWeapon(UCAP_WeaponDataAsset* InWeaponDA)
 	}
 	
 	// DA에 설정한 DT스킬들을 랜덤으로 가져오기
-	TArray<FDataTableRowHandle> AvailableHandles = WeaponDA->ActiveAbilityArray;
+	TArray<FDataTableRowHandle> AvailableHandles = GetWeaponDA()->ActiveAbilityArray;
 	for (int32 i = 0; i < SkillsToGrant; ++i)
 	{
 		if (AvailableHandles.Num() == 0)
@@ -48,12 +48,17 @@ void UCAP_WeaponInstance::InitializeWeapon(UCAP_WeaponDataAsset* InWeaponDA)
 	}
 }
 
+UCAP_WeaponDataAsset* UCAP_WeaponInstance::GetWeaponDA() const
+{
+	return Cast<UCAP_WeaponDataAsset>(ItemDA);
+}
+
 void UCAP_WeaponInstance::LoadWeaponAssets(FStreamableDelegate OnLoaded)
 {
 	// 무기가 부여할 능력들의 주소 수집할 Array
 	TArray<FSoftObjectPath> AssetsToLoad;
 
-	for (const FWeaponVisualInfo& VisualInfo : WeaponDA->WeaponVisualInfos)
+	for (const FWeaponVisualInfo& VisualInfo : GetWeaponDA()->WeaponVisualInfos)
 	{
 		if (!VisualInfo.WeaponMesh.IsNull())
 			AssetsToLoad.AddUnique(VisualInfo.WeaponMesh.ToSoftObjectPath());
@@ -113,4 +118,10 @@ void UCAP_WeaponInstance::UnloadWeaponAssets()
 		AssetLoadHandle->ReleaseHandle();
 		AssetLoadHandle.Reset();
 	}
+}
+
+void UCAP_WeaponInstance::SwapSkillOrder()
+{
+	if (GrantedActiveSkills.Num() >= 2)
+		GrantedActiveSkills.Swap(0,1);
 }

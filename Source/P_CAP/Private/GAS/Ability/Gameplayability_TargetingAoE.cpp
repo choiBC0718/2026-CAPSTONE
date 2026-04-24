@@ -7,7 +7,6 @@
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitTargetData.h"
-#include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_WeaponDataAsset.h"
 #include "Engine/OverlapResult.h"
 #include "GAS/Actors/CAP_ProjectileBase.h"
@@ -127,6 +126,7 @@ void UGameplayability_TargetingAoE::ProjectileTargetingConfirmed()
 		if (SkillData->SkillDamageTypeEffect.Get())
 		{
 			EffectSpecHandle = MakeOutgoingGameplayEffectSpec(SkillData->SkillDamageTypeEffect.Get(), GetAbilityLevel());
+			EffectSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->BaseDamageMultiplier);
 		}
 		for (ACAP_ProjectileBase* Projectile : Projectiles)
 			Projectile->InitArcProjectile(CachedTargetLocation,0.5f,SkillData->TargetAreaRadius,EffectSpecHandle, SkillData->GameplayCueTag);

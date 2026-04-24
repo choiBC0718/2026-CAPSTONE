@@ -8,6 +8,8 @@
 #include "EnhancedInputSubsystems.h"
 #include "Blueprint/UserWidget.h"
 #include "Items/CAP_DropItemBase.h"
+#include "Widget/PanelWidgets/CAP_InventoryTabWidget.h"
+#include "Widget/PanelWidgets/CAP_ItemEquipPanelWidget.h"
 
 void ACAP_PlayerController::OnPossess(APawn* InPawn)
 {
@@ -42,7 +44,12 @@ void ACAP_PlayerController::SetupInputComponent()
 		EnhancedInputComp->BindAction(InventoryToggleIA, ETriggerEvent::Started, this, &ACAP_PlayerController::ToggleCharacterMenu);
 		EnhancedInputComp->BindAction(UICloseIA, ETriggerEvent::Started, this, &ACAP_PlayerController::UICloseHandle);
 		EnhancedInputComp->BindAction(UINavigation, ETriggerEvent::Started, this, &ACAP_PlayerController::UINavigationHandle);
+		
 		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Started, this, &ACAP_PlayerController::UIConfirmHandle);
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Ongoing, this, &ACAP_PlayerController::UIConfirmHandle);
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Triggered, this, &ACAP_PlayerController::UIConfirmHandle);
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Completed, this, &ACAP_PlayerController::UIConfirmHandle);
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Canceled, this, &ACAP_PlayerController::UIConfirmHandle);
 	}
 }
 
@@ -116,13 +123,23 @@ void ACAP_PlayerController::UINavigationHandle(const FInputActionValue& InputAct
 	}
 }
 
-void ACAP_PlayerController::UIConfirmHandle(const FInputActionValue& InputActionValue)
+void ACAP_PlayerController::UIConfirmHandle(const struct FInputActionInstance& Instance)
 {
 	if (!GameplayWidget)
 		return;
+
+	ETriggerEvent TriggerEvent = Instance.GetTriggerEvent();
+	float ElapsedTime = Instance.GetElapsedTime();
+
+	// 아이템 스왑 위젯에 대해 키 입력 (단순 1회)
 	if (GameplayWidget->IsItemSwapMenuOpen())
 	{
+		if (TriggerEvent == ETriggerEvent::Triggered || TriggerEvent == ETriggerEvent::Completed)
 		GameplayWidget->GetItemSwapWidget()->ConfirmSwap();
+	}
+	else if (GameplayWidget->IsCharacterMenuOpen())
+	{
+		GameplayWidget->GetCharacterMenuWidget()->GetInventoryTab()->GetItemEquipPanel()->HandleInteractionInput(TriggerEvent, ElapsedTime);
 	}
 }
 

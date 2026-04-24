@@ -31,6 +31,8 @@ public:
 	
 	UCAP_WeaponComponent* GetWeaponComponent() const {return WeaponComponent;}
 	UCAP_InventoryComponent* GetInventoryComponent() const {return InventoryComponent;}
+
+	FString GetInteractKeyName() const;
 	
 private:
 	/**		Components		**/

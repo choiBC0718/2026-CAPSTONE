@@ -3,7 +3,7 @@
 
 #include "Items/Item/CAP_ItemInstance.h"
 
-void UCAP_ItemInstance::Initialize(UCAP_ItemDataAsset* NewItemDA)
+void UCAP_ItemInstance::Initialize(UCAP_ItemDataBase* NewItemDA)
 {
 	ItemDA = NewItemDA;
 }

@@ -41,11 +41,11 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 		{
 			if (UCAP_WeaponDataAsset* WeaponDA = WeaponInst->GetWeaponDA())
 			{
-				NameText->SetText(WeaponDA->WeaponName);
-				GradeText->SetText(GetGradeText(WeaponDA->DefaultGrade));
-				DescriptionText->SetText(WeaponDA->Description);
+				NameText->SetText(WeaponDA->ItemName);
+				GradeText->SetText(GetGradeText(WeaponDA->ItemGrade));
+				DescriptionText->SetText(WeaponDA->ItemDescription);
 
-				if (UTexture2D* LoadedIcon = WeaponDA->WeaponIcon.LoadSynchronous())
+				if (UTexture2D* LoadedIcon = WeaponDA->ItemIcon.LoadSynchronous())
 				{
 					Icon->SetBrushFromTexture(LoadedIcon);
 				}
@@ -60,7 +60,7 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 	{
 		if (UCAP_ItemInstance* ItemInst = Cast<UCAP_ItemInstance>(ItemData))
 		{
-			if (UCAP_ItemDataAsset* ItemDA = ItemInst->GetItemDA())
+			if (UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA())
 			{
 				NameText->SetText(ItemDA->ItemName);
 				GradeText->SetText(GetGradeText(ItemDA->ItemGrade));
@@ -77,16 +77,14 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 
 				const TMap<FGameplayTag, FSynergyDataTable*>& SynergyCache = Player->GetInventoryComponent()->GetSynergyDataCache();
 
-				auto UpdateSynergyUI = [&](FGameplayTag Tag)
+				TArray<FGameplayTag> Synergies = ItemDA->GetSynergyTags();
+				for (const FGameplayTag& Tag : Synergies)
 				{
-					if (!Tag.IsValid())	return;
 					if (FSynergyDataTable* FoundRow = SynergyCache.FindRef(Tag))
 					{
 						AddFeatureIconToBox(FoundRow->SynergyIcon);
 					}
-				};
-				UpdateSynergyUI(ItemDA->SynergyTag1);
-				UpdateSynergyUI(ItemDA->SynergyTag2);
+				}
 			}
 		}
 	}

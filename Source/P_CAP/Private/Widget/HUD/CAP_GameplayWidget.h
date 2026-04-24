@@ -33,6 +33,9 @@ public:
 
 	void UpdateInteractProgress(float Progress);				// 키 누르는 동안 게이지 증가
 	void UpdateInteractionUI(bool bVisible, UObject* ItemData, const FString& KeyName);	//상호작용 할 아이템으로 UI 업데이트
+
+	UFUNCTION()
+	void HandleWeaponChanged(class UCAP_WeaponInstance* NewWeaponInstance);
 	
 protected:
 	// Hp 바
@@ -59,9 +62,6 @@ private:
 	UPROPERTY()
 	class UAbilitySystemComponent* OwnerASC;
 	
-	UFUNCTION()
-	void HandleWeaponChanged(class UCAP_WeaponInstance* NewWeaponInstance);
-
 	UFUNCTION()
 	void CompleteDeactivateSwitcher();
 };

@@ -25,6 +25,7 @@ UCAP_GameplayAbility::UCAP_GameplayAbility()
 	DamageTag = UCAP_AbilitySystemStatics::GetDamageTag();
 	RMSTag = UCAP_AbilitySystemStatics::GetRMSTag();
 	SpawnProjectileTag = UCAP_AbilitySystemStatics::GetSpawnProjectileTag();
+	DamageMultiplierDataTag = UCAP_AbilitySystemStatics::GetDataDamageMultiplierDataTag();
 	
 	ActivationOwnedTags.AddTag(UCAP_AbilitySystemStatics::GetMovementBlockStateTag());
 }
@@ -152,6 +153,7 @@ void UCAP_GameplayAbility::OnDamageTagReceived(FGameplayEventData Payload)
 		FGameplayEffectContextHandle EffectContext = MakeEffectContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
 		EffectContext.AddHitResult(HitResult);
 		EffectSpecHandle.Data -> SetContext(EffectContext);
+		EffectSpecHandle.Data -> SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->BaseDamageMultiplier);
 
 		ApplyGameplayEffectSpecToTarget(GetCurrentAbilitySpecHandle(), CurrentActorInfo, CurrentActivationInfo, EffectSpecHandle, UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(HitResult.GetActor()));
 
@@ -196,6 +198,7 @@ void UCAP_GameplayAbility::OnSpawnProjectileTagReceived(FGameplayEventData Paylo
 		if (SkillData->SkillDamageTypeEffect.Get())
 		{
 			EffectSpecHandle = MakeOutgoingGameplayEffectSpec(SkillData->SkillDamageTypeEffect.Get(), GetAbilityLevel());
+			EffectSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->BaseDamageMultiplier);
 		}
 		for (ACAP_ProjectileBase* Projectile : Projectiles)
 		{

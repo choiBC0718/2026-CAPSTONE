@@ -46,6 +46,7 @@ public:
 	UPROPERTY()
 	class UCAP_ItemSlotWidget* RightSlot;
 	
+	int GetSlotNumber() const { return SlotNumber; }
 protected:
 	UPROPERTY(meta = (BindWidget))
 	class UImage* ItemIcon;
@@ -61,5 +62,5 @@ private:
 	virtual void RightButtonClicked();
 	virtual void LeftButtonClicked();
 
-	int SlotNumber;
+	int32 SlotNumber;
 };

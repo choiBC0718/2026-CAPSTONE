@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CAP_ItemDataAsset.h"
 #include "Engine/DataAsset.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "CAP_WeaponDataAsset.generated.h"
@@ -34,7 +35,7 @@ struct FWeaponSkillData : public FTableRowBase
 	TSoftObjectPtr<class UAnimMontage> AbilityMontage = nullptr;
 
 	// 게임플레이 큐 태그
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data", meta=(Categories="GameplayCue.Hit"))
 	FGameplayTag GameplayCueTag;
 	/** 해당 스킬에 사용할 데미지 (물리/마법/방어력) */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data")
@@ -127,23 +128,11 @@ struct FWeaponVisualInfo
  * 
  */
 UCLASS()
-class UCAP_WeaponDataAsset : public UPrimaryDataAsset
+class UCAP_WeaponDataAsset : public UCAP_ItemDataBase
 {
 	GENERATED_BODY()
 
 public:
-	/** 무기 이름 */
-	UPROPERTY(EditDefaultsOnly, Category="Data")
-	FText WeaponName;
-	/** 무기 아이콘 */
-	UPROPERTY(EditDefaultsOnly, Category="Data")
-	TSoftObjectPtr<class UTexture2D> WeaponIcon;
-	/** 무기 태생 등급 */
-	UPROPERTY(EditDefaultsOnly, Category="Data")
-	EItemGrade DefaultGrade = EItemGrade::Normal;
-	/** 무기 설명*/
-	UPROPERTY(EditDefaultsOnly, Category="Data", meta=(MultiLine="true"))
-	FText Description;
 	/**무기 등급 - 조회할 테이블 행 이름 Map
 	 * ex.(Normal - DualSword_Normal)
 	 */

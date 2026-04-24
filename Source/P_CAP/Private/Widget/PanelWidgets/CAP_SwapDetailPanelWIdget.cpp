@@ -27,7 +27,7 @@ void UCAP_SwapDetailPanelWIdget::UpdateDetailInfo(UObject* ItemData)
 
 	if (UCAP_ItemInstance* ItemInst = Cast<UCAP_ItemInstance>(ItemData))
 	{
-		if (UCAP_ItemDataAsset* ItemDA = ItemInst->GetItemDA())
+		if (UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA())
 		{
 			ItemNameText->SetText(ItemDA->ItemName);
 			ItemGradeText->SetText(GetGradeText(ItemDA->ItemGrade));
@@ -39,16 +39,14 @@ void UCAP_SwapDetailPanelWIdget::UpdateDetailInfo(UObject* ItemData)
 				{
 					const TMap<FGameplayTag, FSynergyDataTable*>& SynergyCache = InventoryComp->GetSynergyDataCache();
 
-					auto UpdateSynergyUI = [&](FGameplayTag Tag)
+					TArray<FGameplayTag> Synergies = ItemDA->GetSynergyTags();
+					for (const FGameplayTag& Tag : Synergies)
 					{
-						if (!Tag.IsValid())	return;
 						if (FSynergyDataTable* FoundRow = SynergyCache.FindRef(Tag))
 						{
 							AddFeatureIconToBox(FoundRow->SynergyIcon);
 						}
-					};
-					UpdateSynergyUI(ItemDA->SynergyTag1);
-					UpdateSynergyUI(ItemDA->SynergyTag2);
+					}
 				}
 			}
 		}
