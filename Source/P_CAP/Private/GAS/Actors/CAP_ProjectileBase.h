@@ -17,8 +17,8 @@ public:
 
 	virtual void BeginPlay() override;
 
-	void InitStraightProjectile(FVector Direction, FGameplayEffectSpecHandle InHitEffectSpecHandle, FGameplayTag CueTag);
-	void InitArcProjectile(FVector TargetLoc, float ArcTension,float InExplosionRadius, FGameplayEffectSpecHandle InHitEffectSpecHandle, FGameplayTag CueTag);
+	void InitStraightProjectile(FVector Direction, FGameplayEffectSpecHandle InHitEffectSpecHandle, FGameplayTag CueTag, bool bInIsBasicAttack);
+	void InitArcProjectile(FVector TargetLoc, float ArcTension,float InExplosionRadius, FGameplayEffectSpecHandle InHitEffectSpecHandle, FGameplayTag CueTag, bool bInIsBasicAttack);
 	
 private:
 	UPROPERTY(VisibleAnywhere)
@@ -45,4 +45,6 @@ private:
 
 	void TravelMaxDistanceReached();
 	void SendLocalGameplayCue(AActor* CueTargetActor, const FHitResult& HitResult);
+
+	bool bIsBasicAttack;
 };

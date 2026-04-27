@@ -122,14 +122,11 @@ void UGameplayability_TargetingAoE::ProjectileTargetingConfirmed()
 	TArray<ACAP_ProjectileBase*> Projectiles = SpawnProjectile(SpawnLoc, SkillData);
 	if (Projectiles.Num() > 0)
 	{
-		FGameplayEffectSpecHandle EffectSpecHandle;
-		if (SkillData->SkillDamageTypeEffect.Get())
-		{
-			EffectSpecHandle = MakeOutgoingGameplayEffectSpec(SkillData->SkillDamageTypeEffect.Get(), GetAbilityLevel());
-			EffectSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->BaseDamageMultiplier);
-		}
+		FGameplayEffectSpecHandle EffectSpecHandle = MakeOutgoingGameplayEffectSpec(GetDamageGE(), GetAbilityLevel());
+		EffectSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->BaseDamageMultiplier);
+		
 		for (ACAP_ProjectileBase* Projectile : Projectiles)
-			Projectile->InitArcProjectile(CachedTargetLocation,0.5f,SkillData->TargetAreaRadius,EffectSpecHandle, SkillData->GameplayCueTag);
+			Projectile->InitArcProjectile(CachedTargetLocation,0.5f,SkillData->TargetAreaRadius,EffectSpecHandle, SkillData->GameplayCueTag, IsBasicAttack());
 	}
 }
 
@@ -145,24 +142,21 @@ void UGameplayability_TargetingAoE::InstantTargetingConfirmed(const FGameplayAbi
 		if (Hit)
 		{
 			SendGameplayCueEvent(*Hit,SkillData);
-			if (SkillData->SkillDamageTypeEffect.Get())
-			{
-				TArray<FOverlapResult> Overlaps;
-				FCollisionObjectQueryParams ObjQueryParams;
-				ObjQueryParams.AddObjectTypesToQuery(ECC_Pawn);
-				FCollisionShape SphereShape = FCollisionShape::MakeSphere(SkillData->TargetAreaRadius);
+			TArray<FOverlapResult> Overlaps;
+			FCollisionObjectQueryParams ObjQueryParams;
+			ObjQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+			FCollisionShape SphereShape = FCollisionShape::MakeSphere(SkillData->TargetAreaRadius);
 
-				bool bHit = GetWorld()->OverlapMultiByObjectType(Overlaps, Hit->ImpactPoint,FQuat::Identity, ObjQueryParams, SphereShape);
-				if (bHit)
+			bool bHit = GetWorld()->OverlapMultiByObjectType(Overlaps, Hit->ImpactPoint,FQuat::Identity, ObjQueryParams, SphereShape);
+			if (bHit)
+			{
+				for (const FOverlapResult& Overlap : Overlaps)
 				{
-					for (const FOverlapResult& Overlap : Overlaps)
+					AActor* OverlapActor = Overlap.GetActor();
+					if (OverlapActor && OverlapActor!=GetAvatarActorFromActorInfo())
 					{
-						AActor* OverlapActor = Overlap.GetActor();
-						if (OverlapActor && OverlapActor!=GetAvatarActorFromActorInfo())
-						{
-							FGameplayAbilityTargetDataHandle TargetData = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(OverlapActor);
-							BP_ApplyGameplayEffectToTarget(TargetData, SkillData->SkillDamageTypeEffect.Get(), GetAbilityLevel());
-						}
+						FGameplayAbilityTargetDataHandle TargetData = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(OverlapActor);
+						BP_ApplyGameplayEffectToTarget(TargetData, GetDamageGE(), GetAbilityLevel());
 					}
 				}
 			}

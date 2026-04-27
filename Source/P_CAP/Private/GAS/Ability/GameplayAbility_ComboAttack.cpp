@@ -46,16 +46,12 @@ void UGameplayAbility_ComboAttack::SetupWaitComoInputPress()
 
 void UGameplayAbility_ComboAttack::OnNextComboTagReceived(FGameplayEventData Payload)
 {
-	FGameplayTag EventTag = Payload.EventTag;
-	if (EventTag == ComboEndTag)
-	{
-		NextComboSectionName = NAME_None;
-		return;
-	}
 	const UANS_SendComboStartEnd* ComboNotify = Cast<UANS_SendComboStartEnd>(Payload.OptionalObject);
 	if (ComboNotify)
 	{
 		NextComboSectionName = ComboNotify->NextSectionName;
+		if (NextComboSectionName != FName("Combo02"))
+			SendItemTriggerEvent(false);
 	}
 }
 
@@ -81,5 +77,8 @@ void UGameplayAbility_ComboAttack::TryCommitCombo()
 	if (!OwnerAnimInst)
 		return;
 	if (UAnimMontage* AbilityMontage = OwnerAnimInst->GetCurrentActiveMontage())
+	{
 		OwnerAnimInst->Montage_SetNextSection(OwnerAnimInst->Montage_GetCurrentSection(AbilityMontage), NextComboSectionName, AbilityMontage);
+		NextComboSectionName = NAME_None;
+	}
 }

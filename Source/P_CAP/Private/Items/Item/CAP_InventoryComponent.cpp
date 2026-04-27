@@ -31,6 +31,7 @@ void UCAP_InventoryComponent::BeginPlay()
 	{
 		TArray<FSynergyDataTable*> AllRows;
 		SynergyDataTable->GetAllRows<FSynergyDataTable>("",AllRows);
+		SynergyDataCache.Reserve(AllRows.Num());
 
 		for (FSynergyDataTable* Row : AllRows)
 		{
@@ -154,19 +155,18 @@ void UCAP_InventoryComponent::RefreshSynergies()
 	}
 
 	// 일단 비워
-	CurrentSynergyCounts.Empty();
+	CurrentSynergyCounts.Empty(InventoryItems.Num());
 	
 	for (UCAP_ItemInstance* ItemInst : InventoryItems)
 	{
-		if (ItemInst && ItemInst->GetItemDA())
+		if (!ItemInst)
+			continue;
+		if (UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA())
 		{
-			if (UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA())
+			const TArray<FGameplayTag> Synergies = ItemDA->GetSynergyTags();
+			for (const FGameplayTag& Tag : Synergies)
 			{
-				TArray<FGameplayTag> Synergies = ItemDA->GetSynergyTags();
-				for (const FGameplayTag& Tag : Synergies)
-				{
-					CurrentSynergyCounts.FindOrAdd(Tag)++;
-				}
+				CurrentSynergyCounts.FindOrAdd(Tag)++;
 			}
 		}
 	}
@@ -247,7 +247,7 @@ void UCAP_InventoryComponent::ApplyItemStatEffects(UCAP_ItemInstance* ItemInst)
 	if (!ItemInst || !OwnerASC)
 		return;
 	UCAP_AbilitySystemComponent* CAP_ASC = Cast<UCAP_AbilitySystemComponent>(OwnerASC);
-	if (!CAP_ASC || !CAP_ASC->GetGenerics() || !CAP_ASC->GetGenerics()->GetItemStatEffectClass())
+	if (!CAP_ASC || !CAP_ASC->GetGenerics() || !CAP_ASC->GetGenerics()->GetItemStatInfiniteEffect())
 		return;
 
 	UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA();
@@ -256,7 +256,7 @@ void UCAP_InventoryComponent::ApplyItemStatEffects(UCAP_ItemInstance* ItemInst)
 
 	UE_LOG(LogTemp, Warning, TEXT("아이템 보너스 스탯 적용"));
 	FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
-	FGameplayEffectSpecHandle SpecHandle = OwnerASC->MakeOutgoingSpec(CAP_ASC->GetGenerics()->GetItemStatEffectClass(), 1.f, Context);
+	FGameplayEffectSpecHandle SpecHandle = OwnerASC->MakeOutgoingSpec(CAP_ASC->GetGenerics()->GetItemStatInfiniteEffect(), 1.f, Context);
 	if (SpecHandle.IsValid())
 	{
 		for (const FGameplayTag& Tag : CachedItemDataTags)
@@ -299,7 +299,7 @@ void UCAP_InventoryComponent::GiveItemAbility(class UCAP_ItemInstance* ItemInst)
 	{
 		if (PassiveItemDA->ItemSkills.Num() > 0)
 		{
-			FGameplayAbilitySpec Spec(UCAP_ItemGameplayAbility::StaticClass(), 1, INDEX_NONE, PassiveItemDA);
+			FGameplayAbilitySpec Spec(UCAP_ItemGameplayAbility::StaticClass(), 1, INDEX_NONE, ItemInst);
 			FGameplayAbilitySpecHandle SpecHandle = OwnerASC->GiveAbility(Spec);
 
 			// 즉시 활성화

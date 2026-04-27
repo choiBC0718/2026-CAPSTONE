@@ -26,7 +26,7 @@ public:
 	UPROPERTY()
 	FOnWeaponChanged OnWeaponChanged;
 
-	TArray<class UCAP_WeaponInstance*> GetEquippedWeapons() const {return EquippedWeapons;}
+	const TArray<class UCAP_WeaponInstance*>& GetEquippedWeapons() const {return EquippedWeapons;}
 	class USkeletalMeshComponent* GetWeaponMesh(EEquipHand Hand) const;
 	
 private:

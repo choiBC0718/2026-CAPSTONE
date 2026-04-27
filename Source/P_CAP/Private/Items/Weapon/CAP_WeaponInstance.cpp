@@ -69,8 +69,6 @@ void UCAP_WeaponInstance::LoadWeaponAssets(FStreamableDelegate OnLoaded)
 		AssetsToLoad.AddUnique(BasicAttackData.AbilityClass.ToSoftObjectPath());
 	if (!BasicAttackData.AbilityMontage.IsNull())
 		AssetsToLoad.AddUnique(BasicAttackData.AbilityMontage.ToSoftObjectPath());
-	if (!BasicAttackData.SkillDamageTypeEffect.IsNull())
-		AssetsToLoad.AddUnique(BasicAttackData.SkillDamageTypeEffect.ToSoftObjectPath());
 	if (!BasicAttackData.ProjectileClass.IsNull())
 		AssetsToLoad.AddUnique(BasicAttackData.ProjectileClass.ToSoftObjectPath());
 	if (!BasicAttackData.CastMontage.IsNull())
@@ -87,8 +85,6 @@ void UCAP_WeaponInstance::LoadWeaponAssets(FStreamableDelegate OnLoaded)
 			AssetsToLoad.AddUnique(Skill.AbilityClass.ToSoftObjectPath());
 		if (!Skill.AbilityMontage.IsNull())
 			AssetsToLoad.AddUnique(Skill.AbilityMontage.ToSoftObjectPath());
-		if (!Skill.SkillDamageTypeEffect.IsNull())
-			AssetsToLoad.AddUnique(Skill.SkillDamageTypeEffect.ToSoftObjectPath());
 		if (!Skill.ProjectileClass.IsNull())
 			AssetsToLoad.AddUnique(Skill.ProjectileClass.ToSoftObjectPath());
 		if (!Skill.CastMontage.IsNull())

@@ -41,7 +41,7 @@ void UCAP_GameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 		return;
 	}
 	const FWeaponSkillData* SkillData = GetSkillDataFromContext(Handle, ActorInfo);
-	if (!SkillData || !SkillData->AbilityMontage.Get() || !SkillData->SkillDamageTypeEffect.Get())
+	if (!SkillData || !SkillData->AbilityMontage.Get())
 	{
 		K2_EndAbility();
 		return;
@@ -86,6 +86,8 @@ void UCAP_GameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 		SpawnProjectileTask->EventReceived.AddDynamic(this, &UCAP_GameplayAbility::OnSpawnProjectileTagReceived);
 		SpawnProjectileTask->ReadyForActivation();
 	}
+
+	SendItemTriggerEvent(false);
 }
 
 void UCAP_GameplayAbility::ApplyCooldown(const FGameplayAbilitySpecHandle Handle,
@@ -95,10 +97,10 @@ void UCAP_GameplayAbility::ApplyCooldown(const FGameplayAbilitySpecHandle Handle
 	if (!ASC)
 		return;
 	UCAP_AbilitySystemComponent* CAP_ASC = Cast<UCAP_AbilitySystemComponent>(ASC);
-	if (!CAP_ASC || !CAP_ASC->GetGenerics() || !CAP_ASC->GetGenerics()->GetCooldownEffectClass())
+	if (!CAP_ASC || !CAP_ASC->GetGenerics() || !CAP_ASC->GetGenerics()->GetCooldownEffect())
 		return;
 
-	FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(CAP_ASC->GetGenerics()->GetCooldownEffectClass(),GetAbilityLevel());
+	FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(CAP_ASC->GetGenerics()->GetCooldownEffect(),GetAbilityLevel());
 	if (SpecHandle.IsValid())
 	{
 		const FWeaponSkillData* SkillData = GetSkillDataFromContext(Handle, ActorInfo);
@@ -141,7 +143,7 @@ bool UCAP_GameplayAbility::CheckCooldown(const FGameplayAbilitySpecHandle Handle
 void UCAP_GameplayAbility::OnDamageTagReceived(FGameplayEventData Payload)
 {
 	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
-	if (!SkillData || !SkillData->SkillDamageTypeEffect.Get())
+	if (!SkillData)
 		return;
 	
 	int HitResultCount = UAbilitySystemBlueprintLibrary::GetDataCountFromTargetData(Payload.TargetData);
@@ -149,7 +151,7 @@ void UCAP_GameplayAbility::OnDamageTagReceived(FGameplayEventData Payload)
 	{
 		FHitResult HitResult = UAbilitySystemBlueprintLibrary::GetHitResultFromTargetData(Payload.TargetData, i);
 		
-		FGameplayEffectSpecHandle EffectSpecHandle = MakeOutgoingGameplayEffectSpec(SkillData->SkillDamageTypeEffect.Get(), GetAbilityLevel(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo()));
+		FGameplayEffectSpecHandle EffectSpecHandle = MakeOutgoingGameplayEffectSpec(GetDamageGE(), GetAbilityLevel(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo()));
 		FGameplayEffectContextHandle EffectContext = MakeEffectContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
 		EffectContext.AddHitResult(HitResult);
 		EffectSpecHandle.Data -> SetContext(EffectContext);
@@ -158,6 +160,11 @@ void UCAP_GameplayAbility::OnDamageTagReceived(FGameplayEventData Payload)
 		ApplyGameplayEffectSpecToTarget(GetCurrentAbilitySpecHandle(), CurrentActorInfo, CurrentActivationInfo, EffectSpecHandle, UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(HitResult.GetActor()));
 
 		SendGameplayCueEvent(HitResult, SkillData);
+	}
+
+	if (HitResultCount > 0)
+	{
+		SendItemTriggerEvent(true, Payload.TargetData);
 	}
 }
 
@@ -194,16 +201,13 @@ void UCAP_GameplayAbility::OnSpawnProjectileTagReceived(FGameplayEventData Paylo
 	TArray<ACAP_ProjectileBase*> Projectiles = SpawnProjectile(SocketLoc, SkillData);
 	if (Projectiles.Num() > 0)
 	{
-		FGameplayEffectSpecHandle EffectSpecHandle;
-		if (SkillData->SkillDamageTypeEffect.Get())
-		{
-			EffectSpecHandle = MakeOutgoingGameplayEffectSpec(SkillData->SkillDamageTypeEffect.Get(), GetAbilityLevel());
-			EffectSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->BaseDamageMultiplier);
-		}
+		FGameplayEffectSpecHandle EffectSpecHandle = MakeOutgoingGameplayEffectSpec(GetDamageGE(), GetAbilityLevel());
+		EffectSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->BaseDamageMultiplier);
+		
 		for (ACAP_ProjectileBase* Projectile : Projectiles)
 		{
 			FVector LaunchDir = Projectile->GetActorForwardVector();
-			Projectile->InitStraightProjectile(LaunchDir, EffectSpecHandle,SkillData->GameplayCueTag);
+			Projectile->InitStraightProjectile(LaunchDir, EffectSpecHandle,SkillData->GameplayCueTag, IsBasicAttack());
 		}
 	}
 }
@@ -212,6 +216,41 @@ void UCAP_GameplayAbility::OnMontageInterrupted()
 {
 	if (!bIsCasting)
 		K2_EndAbility();
+}
+
+TSubclassOf<UGameplayEffect> UCAP_GameplayAbility::GetDamageGE() const
+{
+	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
+	if (!SkillData)
+		return nullptr;
+	
+	ESkillDamageType DamageType = SkillData->DamageType;
+	UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponentFromActorInfo());
+	if (!ASC || !ASC->GetGenerics()->GetDamageGE(DamageType))
+		return nullptr;
+	
+	return ASC->GetGenerics()->GetDamageGE(DamageType);
+}
+
+void UCAP_GameplayAbility::SendItemTriggerEvent(bool bIsHit, FGameplayAbilityTargetDataHandle TargetData)
+{
+	FString TagString = TEXT("Item.Trigger.");
+	TagString += bIsHit ? TEXT("Hit.") : TEXT("Cast.");
+	TagString += IsBasicAttack() ? TEXT("Basic") : TEXT("Ability");
+	UE_LOG(LogTemp,Warning,TEXT("Trigger Tag == %s") , *TagString);
+	FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName(*TagString));
+	FGameplayEventData Payload;
+	Payload.EventTag = EventTag;
+	Payload.Instigator = GetAvatarActorFromActorInfo();
+	Payload.TargetData = TargetData;
+
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetAvatarActorFromActorInfo(), EventTag, Payload);
+}
+
+bool UCAP_GameplayAbility::IsBasicAttack() const
+{
+	FGameplayAbilitySpec* Spec = GetCurrentAbilitySpec();
+	return Spec && Spec->InputID == static_cast<int32>(EAbilityInputID::BasicAttack);
 }
 
 class ACAP_PlayerCharacter* UCAP_GameplayAbility::GetPlayerCharacterFromActorInfo() const

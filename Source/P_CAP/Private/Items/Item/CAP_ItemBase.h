@@ -19,7 +19,6 @@ public:
 	ACAP_ItemBase();
 	virtual void BeginPlay() override;
 	virtual void OnConstruction(const FTransform& Transform) override;
-	virtual void Tick(float DeltaTime) override;
 
 	virtual void InteractEquip(class ACAP_PlayerCharacter* PlayerCharacter) override;
 	virtual void InteractDisassemble(class ACAP_PlayerCharacter* PlayerCharacter) override;

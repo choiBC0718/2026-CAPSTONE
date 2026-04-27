@@ -17,7 +17,6 @@ public:
 	ACAP_DropItemBase();
 	
 	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaSeconds) override;
 
 	virtual void InteractEquip(class ACAP_PlayerCharacter* PlayerCharacter) override;
 	virtual void InteractDisassemble(class ACAP_PlayerCharacter* PlayerCharacter) override;
@@ -37,11 +36,6 @@ protected:
 	// 액터 회전 컴포넌트
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class URotatingMovementComponent* RotatingMovementComp;
-
-	UPROPERTY(EditDefaultsOnly, Category="Animation")
-	float BobbingSpeed = 3.f;
-	UPROPERTY(EditDefaultsOnly, Category="Animation")
-	float BobbingHeight = 5.f;
 
 	UFUNCTION()
 	void OnInteractSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);

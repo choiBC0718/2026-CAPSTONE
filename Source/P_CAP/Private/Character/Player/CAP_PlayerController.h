@@ -57,4 +57,6 @@ private:
 	void UICloseHandle(const FInputActionValue& InputActionValue);
 	UFUNCTION()
 	void OpenItemSwapMenu(class UCAP_ItemInstance* NewItem);
+	UFUNCTION()
+	void HandleInventoryChanged(class UCAP_ItemInstance* ChangedItem, bool bIsAdded);
 };

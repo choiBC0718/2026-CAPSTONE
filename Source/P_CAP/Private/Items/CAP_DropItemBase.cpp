@@ -9,7 +9,7 @@
 
 ACAP_DropItemBase::ACAP_DropItemBase()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
 	RootCollision= CreateDefaultSubobject<USphereComponent>("Root Collision Comp");
 	SetRootComponent(RootCollision);
@@ -46,16 +46,6 @@ void ACAP_DropItemBase::BeginPlay()
 	InteractionSphere->OnComponentEndOverlap.AddDynamic(this, &ACAP_DropItemBase::OnInteractSphereEndOverlap);
 	
 	RootCollision->OnComponentHit.AddDynamic(this, &ACAP_DropItemBase::OnDropCollisionHit);
-}
-
-void ACAP_DropItemBase::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-	if (MeshContainer)
-	{
-		float DeltaZ = FMath::Sin(GetGameTimeSinceCreation() * BobbingSpeed) * BobbingHeight;
-		MeshContainer->SetRelativeLocation(FVector(0.f,0.f,DeltaZ));
-	}
 }
 
 void ACAP_DropItemBase::InteractEquip(class ACAP_PlayerCharacter* PlayerCharacter)

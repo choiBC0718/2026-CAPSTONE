@@ -45,4 +45,9 @@ protected:
 	FVector CachedTargetLocation;
 	UFUNCTION()
 	virtual void OnMontageInterrupted();
+
+	TSubclassOf<UGameplayEffect> GetDamageGE() const;
+
+	void SendItemTriggerEvent(bool bIsHit, FGameplayAbilityTargetDataHandle TargetData = FGameplayAbilityTargetDataHandle());
+	bool IsBasicAttack() const;
 };

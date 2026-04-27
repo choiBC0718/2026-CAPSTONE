@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CAP_WeaponDataAsset.h"
 #include "GameplayEffect.h"
 #include "Engine/DataAsset.h"
 #include "CAP_AbilitySystemGenerics.generated.h"
@@ -18,14 +19,18 @@ class UCAP_AbilitySystemGenerics : public UPrimaryDataAsset
 public:
 	FORCEINLINE TSubclassOf<UGameplayEffect> GetFullStatEffect() const {return FullStatEffect;}
 	FORCEINLINE TSubclassOf<UGameplayEffect> GetDeathEffect() const {return DeathEffect;}
-	FORCEINLINE TArray<TSubclassOf<UGameplayEffect>> GetInitialEffects() const {return InitialEffects;}
-	FORCEINLINE TArray<TSubclassOf<UGameplayAbility>> GetPassiveAbilities() const {return PassiveAbilities;}
+	FORCEINLINE const TArray<TSubclassOf<UGameplayEffect>>& GetInitialEffects() const {return InitialEffects;}
+	FORCEINLINE const TArray<TSubclassOf<UGameplayAbility>>& GetPassiveAbilities() const {return PassiveAbilities;}
 
 	FORCEINLINE const UDataTable* GetBaseStatDataTable() const {return BaseStatDataTable;}
 	FORCEINLINE const UDataTable* GetWeaponStatDataTable() const {return WeaponStatDataTable;}
 	
-	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemStatEffectClass() const {return MasterStatEffectClass;}
-	FORCEINLINE TSubclassOf<class UGameplayEffect> GetCooldownEffectClass() const {return MasterCooldownEffectClass;}
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemStatInfiniteEffect() const {return MasterStatInfiniteGE;}
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetCooldownEffect() const {return MasterCooldownGE;}
+
+	TSubclassOf<UGameplayEffect> GetDamageGE(ESkillDamageType Type) const;
+	TSubclassOf<UGameplayEffect> GetItemMasterGE(EItemExecutionType Type) const;
+	
 private:
 	/**플레이어 & 몬스터 최초 스폰 시 HP 가득 채우는 Effect*/
 	UPROPERTY(EditDefaultsOnly, Category="Gameplay Effect")
@@ -45,10 +50,26 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="Weapon Stats")
 	UDataTable* WeaponStatDataTable;
 
+	// 물리 데미지 GE - ExecCalc Physical 설정
+	UPROPERTY(EditDefaultsOnly, Category="Skill Master GE")
+	TSubclassOf<class UGameplayEffect> MasterPhysicalDamageGE;
+	// 마법 데미지 GE - ExecCalc Magical 설정
+	UPROPERTY(EditDefaultsOnly, Category="Skill Master GE")
+	TSubclassOf<class UGameplayEffect> MasterMagicalDamageGE;
 	// 아이템이 제공하는 보너스 스탯을 넣을 마스터 클래스
-	UPROPERTY(EditDefaultsOnly, Category="Item Effect")
-	TSubclassOf<class UGameplayEffect> MasterStatEffectClass;
-	// 아이템이 제공하는 보너스 스탯을 넣을 마스터 클래스
-	UPROPERTY(EditDefaultsOnly, Category="Ability Effect")
-	TSubclassOf<class UGameplayEffect> MasterCooldownEffectClass;
+	UPROPERTY(EditDefaultsOnly, Category="Skill Master GE")
+	TSubclassOf<class UGameplayEffect> MasterCooldownGE;
+	
+	// 아이템 착용 시, 아이템 자체의 효과 보너스 스탯을 Infinite로 넣을 마스터 클래스
+	UPROPERTY(EditDefaultsOnly, Category="Item Master GE")
+	TSubclassOf<class UGameplayEffect> MasterStatInfiniteGE;
+	// 아이템의 스킬로 일시적 스탯 증가 - Has Duration
+	UPROPERTY(EditDefaultsOnly, Category="Item Master GE")
+	TSubclassOf<class UGameplayEffect> MasterStatDurationGE;
+	// 아이템의 스킬 즉발 데미지 - Instant
+	UPROPERTY(EditDefaultsOnly, Category="Item Master GE")
+	TSubclassOf<class UGameplayEffect> MasterInstantDamageGE;
+	// 아이템의 스킬 틱 데미지 + 상태이상용 - Has Duration
+	UPROPERTY(EditDefaultsOnly, Category="Item Master GE")
+	TSubclassOf<class UGameplayEffect> MasterDotDamageGE;
 };

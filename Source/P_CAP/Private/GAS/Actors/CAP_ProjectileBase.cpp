@@ -39,10 +39,11 @@ void ACAP_ProjectileBase::BeginPlay()
 }
 
 
-void ACAP_ProjectileBase::InitStraightProjectile(FVector Direction, FGameplayEffectSpecHandle InHitEffectSpecHandle, FGameplayTag CueTag)
+void ACAP_ProjectileBase::InitStraightProjectile(FVector Direction, FGameplayEffectSpecHandle InHitEffectSpecHandle, FGameplayTag CueTag, bool bInIsBasicAttack)
 {
 	HitGameplayCueTag = CueTag;
 	HitEffectHandle = InHitEffectSpecHandle;
+	bIsBasicAttack = bInIsBasicAttack;
 
 	ProjMovementComp->ProjectileGravityScale = 0.f;
 	ProjMovementComp->Velocity = Direction.GetSafeNormal() * ProjectileSpeed;
@@ -52,11 +53,12 @@ void ACAP_ProjectileBase::InitStraightProjectile(FVector Direction, FGameplayEff
 }
 
 void ACAP_ProjectileBase::InitArcProjectile(FVector TargetLoc, float ArcTension,float InExplosionRadius,
-	FGameplayEffectSpecHandle InHitEffectSpecHandle, FGameplayTag CueTag)
+	FGameplayEffectSpecHandle InHitEffectSpecHandle, FGameplayTag CueTag, bool bInIsBasicAttack)
 {
 	HitGameplayCueTag = CueTag;
 	HitEffectHandle = InHitEffectSpecHandle;
 	ExplosionRadius = InExplosionRadius;
+	bIsBasicAttack = bInIsBasicAttack;
 
 	ProjMovementComp->ProjectileGravityScale = 1.f;
 	FVector LaunchVel;
@@ -67,7 +69,7 @@ void ACAP_ProjectileBase::InitArcProjectile(FVector TargetLoc, float ArcTension,
 	}
 	else
 	{
-		InitStraightProjectile((TargetLoc-GetActorLocation()), InHitEffectSpecHandle, CueTag);
+		InitStraightProjectile((TargetLoc-GetActorLocation()), InHitEffectSpecHandle, CueTag, false);
 	}
 }
 
@@ -76,11 +78,26 @@ void ACAP_ProjectileBase::OnOverlapBegin(UPrimitiveComponent* OverlappedComponen
 {
 	if (!OtherActor || OtherActor==GetOwner() || OtherActor == this || OtherActor->GetClass() == this->GetClass())
 		return;
-	
+
+	FString TagString = TEXT("Item.Trigger.Hit.");
+	TagString += bIsBasicAttack ? TEXT("Basic") : TEXT("Ability");
+	FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName(*TagString));
+
+	/*
 	FHitResult Hit;
 	Hit.ImpactPoint = GetActorLocation();
 	Hit.ImpactNormal = GetActorForwardVector();
 	Hit.Location = GetActorLocation();
+*/
+	FHitResult Hit(OtherActor, OtherComp, GetActorLocation(), GetActorForwardVector());
+	Hit.ImpactPoint = GetActorLocation();
+	
+	FGameplayEventData Payload;
+	Payload.Instigator = GetInstigator();
+	Payload.Target = OtherActor;
+	FGameplayAbilityTargetData_SingleTargetHit* TargetData = new FGameplayAbilityTargetData_SingleTargetHit(Hit);
+	Payload.TargetData.Add(TargetData);
+	
 	if (ExplosionRadius > 0.f)
 	{
 		TArray<FOverlapResult> Overlaps;
@@ -118,6 +135,8 @@ void ACAP_ProjectileBase::OnOverlapBegin(UPrimitiveComponent* OverlappedComponen
 			OtherASC->ApplyGameplayEffectSpecToSelf(*HitEffectHandle.Data.Get());
 		}
 	}
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetInstigator(), EventTag, Payload);
+	
 	SendLocalGameplayCue(OtherActor,Hit);
 	GetWorldTimerManager().ClearTimer(ProjTimerHandle);
 	Destroy();

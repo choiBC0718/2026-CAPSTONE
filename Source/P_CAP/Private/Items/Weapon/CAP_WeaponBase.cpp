@@ -9,7 +9,7 @@
 
 ACAP_WeaponBase::ACAP_WeaponBase()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 	
 	WeaponMesh_R = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Skeletal Mesh R");
 	WeaponMesh_R->SetupAttachment(MeshContainer);
@@ -76,11 +76,6 @@ void ACAP_WeaponBase::OnConstruction(const FTransform& Transform)
 			}
 		}
 	}
-}
-
-void ACAP_WeaponBase::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
 }
 
 

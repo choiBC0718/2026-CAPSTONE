@@ -20,7 +20,9 @@ ACAP_TargetActor::ACAP_TargetActor()
 void ACAP_TargetActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	if (!PrimaryPC || !OwningAbility || !OwningAbility->GetAvatarActorFromActorInfo())
+		return;
+	
 	const FVector TargetPoint = GetTargetPoint();
 	const FVector CharacterLoc = OwningAbility->GetAvatarActorFromActorInfo()->GetActorLocation();
 	const float CurrentDistance = FVector::Dist2D(TargetPoint, CharacterLoc);

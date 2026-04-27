@@ -9,7 +9,7 @@
 
 ACAP_ItemBase::ACAP_ItemBase()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
 	ItemMesh=CreateDefaultSubobject<UStaticMeshComponent>("ItemMesh");
 	ItemMesh->SetupAttachment(MeshContainer);
@@ -35,11 +35,6 @@ void ACAP_ItemBase::OnConstruction(const FTransform& Transform)
 		ItemMesh->SetStaticMesh(ItemDA->ItemMesh.LoadSynchronous());
 		ItemMesh->SetRelativeScale3D(ItemDA->MeshScale);
 	}
-}
-
-void ACAP_ItemBase::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
 }
 
 void ACAP_ItemBase::InteractEquip(class ACAP_PlayerCharacter* PlayerCharacter)

@@ -17,6 +17,14 @@ enum class ESkillLogicType : uint8
 	Targeting		UMETA(DisplayName = "타게팅 로직")
 };
 
+UENUM(BlueprintType)
+enum class ESkillDamageType : uint8
+{
+	Physical,
+	Magical,
+	Fixed,
+};
+
 /** 무기 데이터 에셋에서 무기마다 설정할 Ability 구조체 */
 USTRUCT(BlueprintType)
 struct FWeaponSkillData : public FTableRowBase
@@ -37,9 +45,9 @@ struct FWeaponSkillData : public FTableRowBase
 	// 게임플레이 큐 태그
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data", meta=(Categories="GameplayCue.Hit"))
 	FGameplayTag GameplayCueTag;
-	/** 해당 스킬에 사용할 데미지 (물리/마법/방어력) */
+	/** 스킬 데미지 타입 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data")
-	TSoftClassPtr<class UGameplayEffect> SkillDamageTypeEffect = nullptr;
+	ESkillDamageType DamageType = ESkillDamageType::Physical;
 	/** 스킬 데미지 배수*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data")
 	float BaseDamageMultiplier = 1.f;
@@ -137,7 +145,7 @@ public:
 	 * ex.(Normal - DualSword_Normal)
 	 */
 	UPROPERTY(EditDefaultsOnly, Category="Data")
-	TMap<EItemGrade, FName> GradeDataMap;
+	TMap<EItemGrade, FDataTableRowHandle> GradeDataMap;
 	
 	UPROPERTY(EditDefaultsOnly, Category="Visual")
 	TArray<FWeaponVisualInfo> WeaponVisualInfos;

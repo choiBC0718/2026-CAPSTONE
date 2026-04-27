@@ -22,7 +22,8 @@ void ACAP_PlayerController::OnPossess(APawn* InPawn)
 
 		if (UCAP_InventoryComponent* InvComp = PlayerCharacter->GetInventoryComponent())
 		{
-			InvComp->OnInventoryFull.AddDynamic(this, &ACAP_PlayerController::OpenItemSwapMenu);
+			InvComp->OnInventoryFull.AddUniqueDynamic(this, &ACAP_PlayerController::OpenItemSwapMenu);
+			InvComp->OnInventoryChanged.AddUniqueDynamic(this, &ACAP_PlayerController::HandleInventoryChanged);
 		}
 	}
 }
@@ -162,4 +163,10 @@ void ACAP_PlayerController::OpenItemSwapMenu(class UCAP_ItemInstance* NewItem)
 		GameplayWidget->OpenItemSwapMenu(NewItem);
 		SetPause(true);
 	}
+}
+
+void ACAP_PlayerController::HandleInventoryChanged(class UCAP_ItemInstance* ChangedItem, bool bIsAdded)
+{
+	if (UCAP_CharacterMenuWidget* CharacterMenu = GameplayWidget->GetCharacterMenuWidget())
+		CharacterMenu->RefreshMenu();
 }

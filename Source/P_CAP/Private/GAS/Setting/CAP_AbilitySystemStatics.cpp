@@ -52,3 +52,23 @@ FGameplayTag UCAP_AbilitySystemStatics::GetDataDamageMultiplierDataTag()
 {
 	return FGameplayTag::RequestGameplayTag("Data.Ability.Multiplier");
 }
+
+FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerCastBasic()
+{
+	return FGameplayTag::RequestGameplayTag("Item.Trigger.Cast.Basic");
+}
+
+FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerCastAbility()
+{
+	return FGameplayTag::RequestGameplayTag("Item.Trigger.Cast.Ability");
+}
+
+FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerHitBasic()
+{
+	return FGameplayTag::RequestGameplayTag("Item.Trigger.Hit.Basic");
+}
+
+FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerHitAbility()
+{
+	return FGameplayTag::RequestGameplayTag("Item.Trigger.Hit.Ability");
+}

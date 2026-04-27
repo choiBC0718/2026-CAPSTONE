@@ -155,15 +155,7 @@ void UCAP_ItemEquipPanelWidget::HandleInteractionInput(ETriggerEvent& TriggerEve
 		int32 SavedSlotNum = CurrentSelectedSlot->GetSlotNumber();
 			
 		Player->GetInventoryComponent()->RemoveItem(ItemInst);
-		RefreshPanel(Player);
-		
-		if (ACAP_PlayerController* PC = GetOwningPlayer<ACAP_PlayerController>())
-		{
-			if (PC && PC->GetGameplayWidget())
-			{
-				PC->GetGameplayWidget()->GetCharacterMenuWidget()->RefreshMenu();
-			}
-		}
+
 		UCAP_ItemSlotWidget* SlotToFocus = ItemSlots.IsValidIndex(SavedSlotNum) ? ItemSlots[SavedSlotNum] : nullptr;
 		if (SlotToFocus)
 			HandleSlotLeftClicked(SlotToFocus);
