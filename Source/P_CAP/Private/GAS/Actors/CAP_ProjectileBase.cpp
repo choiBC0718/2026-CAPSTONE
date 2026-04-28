@@ -12,6 +12,7 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "Kismet/GameplayStatics.h"
+#include "P_CAP/P_CAP.h"
 
 
 ACAP_ProjectileBase::ACAP_ProjectileBase()
@@ -82,29 +83,25 @@ void ACAP_ProjectileBase::OnOverlapBegin(UPrimitiveComponent* OverlappedComponen
 	FString TagString = TEXT("Item.Trigger.Hit.");
 	TagString += bIsBasicAttack ? TEXT("Basic") : TEXT("Ability");
 	FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName(*TagString));
+	UE_LOG(LogTemp,Warning,TEXT("Trigger Tag == %s") , *TagString);
 
-	/*
+	
 	FHitResult Hit;
 	Hit.ImpactPoint = GetActorLocation();
 	Hit.ImpactNormal = GetActorForwardVector();
 	Hit.Location = GetActorLocation();
-*/
-	FHitResult Hit(OtherActor, OtherComp, GetActorLocation(), GetActorForwardVector());
-	Hit.ImpactPoint = GetActorLocation();
 	
 	FGameplayEventData Payload;
 	Payload.Instigator = GetInstigator();
-	Payload.Target = OtherActor;
-	FGameplayAbilityTargetData_SingleTargetHit* TargetData = new FGameplayAbilityTargetData_SingleTargetHit(Hit);
-	Payload.TargetData.Add(TargetData);
-	
+
 	if (ExplosionRadius > 0.f)
 	{
 		TArray<FOverlapResult> Overlaps;
 		FCollisionObjectQueryParams ObjQueryParams;
-		ObjQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+		ObjQueryParams.AddObjectTypesToQuery(ECC_Hitbox);
 
 		FCollisionShape SphereShape = FCollisionShape::MakeSphere(ExplosionRadius);
+		TArray<TWeakObjectPtr<AActor>> HitActorsArray;
 		
 		bool bHit = GetWorld()->OverlapMultiByObjectType(Overlaps, Hit.ImpactPoint,FQuat::Identity, ObjQueryParams, SphereShape);
 		if (bHit)
@@ -112,8 +109,9 @@ void ACAP_ProjectileBase::OnOverlapBegin(UPrimitiveComponent* OverlappedComponen
 			for (const FOverlapResult& Overlap : Overlaps)
 			{
 				AActor* OverlapActor = Overlap.GetActor();
-				if (OverlapActor && OverlapActor != GetOwner())
+				if (OverlapActor && OverlapActor != GetOwner() && !HitActorsArray.Contains(OverlapActor))
 				{
+					HitActorsArray.Add(OverlapActor);
 					UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OverlapActor);
 					if (TargetASC && HitEffectHandle.IsValid())
 					{
@@ -123,10 +121,22 @@ void ACAP_ProjectileBase::OnOverlapBegin(UPrimitiveComponent* OverlappedComponen
 					}
 				}
 			}
+			if (HitActorsArray.Num() > 0 && HitActorsArray[0].IsValid())
+			{
+				Payload.Target = HitActorsArray[0].Get();
+				FGameplayAbilityTargetData_ActorArray* TargetDataArray = new FGameplayAbilityTargetData_ActorArray();
+				TargetDataArray->TargetActorArray = HitActorsArray;
+				Payload.TargetData.Add(TargetDataArray);
+			}
 		}
 	}
 	else
 	{
+		Payload.Target = OtherActor;
+		FHitResult FinalHit(OtherActor, OtherComp, GetActorLocation(), GetActorForwardVector());
+		FGameplayAbilityTargetData_SingleTargetHit* TargetData = new FGameplayAbilityTargetData_SingleTargetHit(FinalHit);
+		Payload.TargetData.Add(TargetData);
+		
 		UAbilitySystemComponent* OtherASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor);
 		if (OtherASC && HitEffectHandle.IsValid())
 		{
@@ -135,7 +145,11 @@ void ACAP_ProjectileBase::OnOverlapBegin(UPrimitiveComponent* OverlappedComponen
 			OtherASC->ApplyGameplayEffectSpecToSelf(*HitEffectHandle.Data.Get());
 		}
 	}
-	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetInstigator(), EventTag, Payload);
+
+	if (Payload.TargetData.Num() > 0)
+	{
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetInstigator(), EventTag, Payload);
+	}
 	
 	SendLocalGameplayCue(OtherActor,Hit);
 	GetWorldTimerManager().ClearTimer(ProjTimerHandle);

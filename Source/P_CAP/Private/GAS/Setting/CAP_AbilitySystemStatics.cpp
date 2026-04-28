@@ -53,6 +53,16 @@ FGameplayTag UCAP_AbilitySystemStatics::GetDataDamageMultiplierDataTag()
 	return FGameplayTag::RequestGameplayTag("Data.Ability.Multiplier");
 }
 
+FGameplayTag UCAP_AbilitySystemStatics::GetDataCooldownTag()
+{
+	return FGameplayTag::RequestGameplayTag("Data.Cooldown");
+}
+
+FGameplayTag UCAP_AbilitySystemStatics::GetDataItemEffectDurationTag()
+{
+	return FGameplayTag::RequestGameplayTag("Data.ItemEffect.Duration");
+}
+
 FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerCastBasic()
 {
 	return FGameplayTag::RequestGameplayTag("Item.Trigger.Cast.Basic");

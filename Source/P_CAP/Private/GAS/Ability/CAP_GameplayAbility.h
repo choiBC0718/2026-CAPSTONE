@@ -34,6 +34,7 @@ protected:
 	FGameplayTag DamageTag;
 	FGameplayTag RMSTag;
 	FGameplayTag SpawnProjectileTag;
+	FGameplayTag DataCooldownTag;
 	UFUNCTION()
 	void OnDamageTagReceived(FGameplayEventData Payload);
 	UFUNCTION()

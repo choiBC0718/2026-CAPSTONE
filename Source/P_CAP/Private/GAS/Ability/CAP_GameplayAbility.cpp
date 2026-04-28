@@ -26,6 +26,7 @@ UCAP_GameplayAbility::UCAP_GameplayAbility()
 	RMSTag = UCAP_AbilitySystemStatics::GetRMSTag();
 	SpawnProjectileTag = UCAP_AbilitySystemStatics::GetSpawnProjectileTag();
 	DamageMultiplierDataTag = UCAP_AbilitySystemStatics::GetDataDamageMultiplierDataTag();
+	DataCooldownTag = UCAP_AbilitySystemStatics::GetDataCooldownTag();
 	
 	ActivationOwnedTags.AddTag(UCAP_AbilitySystemStatics::GetMovementBlockStateTag());
 }
@@ -112,7 +113,7 @@ void UCAP_GameplayAbility::ApplyCooldown(const FGameplayAbilitySpecHandle Handle
 		CooldownSpeed = FMath::Max<float>(0.1f, CooldownSpeed);
 		float FinalCooldown = BaseCooldown / CooldownSpeed;
 
-		SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Cooldown"), FinalCooldown);
+		SpecHandle.Data->SetSetByCallerMagnitude(DataCooldownTag, FinalCooldown);
 		if (CooldownTag.IsValid())
 		{
 			SpecHandle.Data->DynamicGrantedTags.AddTag(CooldownTag);

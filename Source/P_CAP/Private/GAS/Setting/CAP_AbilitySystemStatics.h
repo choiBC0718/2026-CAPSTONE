@@ -28,6 +28,8 @@ public:
 	static FGameplayTag GetSpawnProjectileTag();
 
 	static FGameplayTag GetDataDamageMultiplierDataTag();
+	static FGameplayTag GetDataCooldownTag();
+	static FGameplayTag GetDataItemEffectDurationTag();
 
 	static FGameplayTag GetItemTriggerCastBasic();
 	static FGameplayTag GetItemTriggerCastAbility();

@@ -10,11 +10,15 @@
 #include "Data/CAP_AbilitySystemGenerics.h"
 #include "Data/CAP_ItemDataAsset.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
+#include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "Items/Item/CAP_ItemInstance.h"
 
 UCAP_ItemGameplayAbility::UCAP_ItemGameplayAbility()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+
+	ItemEffectDurationTag = UCAP_AbilitySystemStatics::GetDataItemEffectDurationTag();
+	DataCooldownTag = UCAP_AbilitySystemStatics::GetDataCooldownTag();
 }
 
 void UCAP_ItemGameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,const FGameplayAbilityActorInfo* ActorInfo,
@@ -138,13 +142,18 @@ void UCAP_ItemGameplayAbility::ExecuteEffect(const struct FItemSkillData& SkillD
 	if (CAP_ASC->GetGenerics()->GetCooldownEffect())
 	{
 		FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(CAP_ASC->GetGenerics()->GetCooldownEffect(), GetAbilityLevel());
-		SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Cooldown"), SkillData.Cooldown);
+		SpecHandle.Data->SetSetByCallerMagnitude(DataCooldownTag, SkillData.Cooldown);
 		if (SkillData.CooldownTag.IsValid())
 		{
 			SpecHandle.Data->DynamicGrantedTags.AddTag(SkillData.CooldownTag);
 		}
 		ApplyGameplayEffectSpecToOwner(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), SpecHandle);
 	}
+
+	// Payload에서 HitResult 꺼내오기
+	const FHitResult* HitResult = nullptr;
+	if (Payload.TargetData.Num() > 0)
+		HitResult = Payload.TargetData.Get(0)->GetHitResult();
 	
 	// 액션 별 분기
 	for (const FItemEffectPayload& Effect : SkillData.ItemEffectPayloads)
@@ -183,113 +192,169 @@ void UCAP_ItemGameplayAbility::ExecuteEffect(const struct FItemSkillData& SkillD
 			continue;
 		}
 
-		TArray<UAbilitySystemComponent*> TargetASCs;
-		// 나에게 적용할지, 적에게 적용할지
-		if (Effect.ExecutionType == EItemExecutionType::Buff_Self)
-		{	// 나에게 적용하는 경우, 나의 ASC 가져오기
-			TargetASCs.Add(SourceASC);
-		}
-		else if (Payload.TargetData.Num() >0)
-		{	// 적에게 적용하는 경우, 타격된 대상의 ASC 모두 가져오기
-			UE_LOG(LogTemp,Warning, TEXT("Payload.TargetData.Num() = %d"), Payload.TargetData.Num());
-			for (auto& Data : Payload.TargetData.Data)
-			{
-				if (Data.IsValid())
-				{
-					for (auto TargetActor : Data->GetActors())
-					{
-						UE_LOG(LogTemp,Warning, TEXT("맞은 대상 = %s"), *TargetActor->GetName());
-						if (UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor.Get()))
-							TargetASCs.AddUnique(TargetASC);
-					}
-				}
-			}
-		}
-		
-		// 데미지 수치 조정 ( 기본 데미지 + 스탯*계수 )
-		float FinalMagnitude = Effect.BaseValue;
-		if (Effect.ScaleAttribute.IsValid())
-		{
-			float StatValue = SourceASC->GetNumericAttribute(Effect.ScaleAttribute);
-			FinalMagnitude += (StatValue * Effect.Magnitude);
-		}
+		TArray<UAbilitySystemComponent*> TargetASCs = GetTargetASCs(Effect,Payload,SourceASC);		
 
-		// 각 대상에게 독립적 스택 검사 & 적용 (A몬스터는 방깍 스택 5 / B몬스터는 방깍 스택 2 - 서로 독립적으로) 
-		for (UAbilitySystemComponent* DestASC : TargetASCs)
+		// 타격 대상에 독립적 스택 검사 & 스택 업데이트
+		for (UAbilitySystemComponent* TargetASC : TargetASCs)
 		{
-			int32 CurrentStacks =0;
-			// 갱신하기 위해 지울 기존 핸들 Ary
-			TArray<FActiveGameplayEffectHandle> HandlesToRemove;
+			int32 CurrentStacks =0;					// 현재 쌓은 스택 개수
+			FActiveGameplayEffectHandle OldHandle;	// 버프를 통해 스탯을 올릴 때 사용된 GE - 스택이 바뀔 때 이전의 스택으로 받은 버프 제거하기 위해 
+			float AppliedBonus=0.f;					// 일시적 버프로 상승한 스탯 값
+
+			// 적용되던 버프 탐색 (OldHandle, 현재 스택, 적용된 보너스 스탯에 값 지정)
+			FindExistingStack(TargetASC, Effect, ItemInst, OldHandle, CurrentStacks, AppliedBonus);
+
+			// 영구적 버프로만 계산하여 적용시킬 값
+			float FinalMagnitude = CalculateCleanMagnitude(SourceASC, Effect, AppliedBonus);
+			int32 TargetStackCount = FMath::Min(CurrentStacks+1, Effect.MaxStackCount >0 ? Effect.MaxStackCount : 999);
 			
-			if (Effect.DynamicTag.IsValid())
-			{
-				FGameplayEffectQuery Query;
-				Query.EffectTagQuery = FGameplayTagQuery::MakeQuery_MatchAnyTags(Effect.DynamicTag.GetSingleTagContainer());
-				TArray<FActiveGameplayEffectHandle> ActiveHandles = DestASC->GetActiveEffects(Query);
+			// 업데이트 이전의 스택 효과 삭제
+			if (OldHandle.IsValid())
+				TargetASC->RemoveActiveGameplayEffect(OldHandle);
 
-				for (const FActiveGameplayEffectHandle& Handle : ActiveHandles)
-				{
-					const FActiveGameplayEffect* ActiveGE = DestASC->GetActiveGameplayEffect(Handle);
-					if (ActiveGE && ActiveGE->Spec.GetEffectContext().GetSourceObject() == ItemInst)
-					{
-						CurrentStacks += ActiveGE->Spec.GetStackCount();
-						// 고유의 아이템이 건 버프면 지울 Ary에 삽입
-						HandlesToRemove.Add(Handle);
-					}
-				}
-			}
-
-			// 목표 스택 계산
-			int32 TargetStackCount = CurrentStacks +1;
-			if (Effect.MaxStackCount >0)
-				TargetStackCount = FMath::Min(TargetStackCount, Effect.MaxStackCount);
-
-			// 기존 스택들 삭제
-			for (const FActiveGameplayEffectHandle& Handle : HandlesToRemove)
-				DestASC->RemoveActiveGameplayEffect(Handle);
-
-			for (int32 i=0 ; i<TargetStackCount ; ++i)
-			{
-				FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
-				Context.AddSourceObject(ItemInst);
-
-				FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(MasterGE,GetAbilityLevel(), Context);
-				if (SpecHandle.IsValid())
-				{
-					FGameplayTag ValueTag = Effect.TargetStatTag.IsValid() ? Effect.TargetStatTag : FGameplayTag::RequestGameplayTag("Data.Value");
-					SpecHandle.Data->SetSetByCallerMagnitude(ValueTag, FinalMagnitude);
-
-					if (Effect.Duration >0.f)
-						SpecHandle.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Duration"), Effect.Duration);
-					if (Effect.DynamicTag.IsValid())
-						SpecHandle.Data->DynamicGrantedTags.AddTag(Effect.DynamicTag);
-
-					// 나머지 값 0으로 초기화하여 에러 로그 방지
-					if (const UGameplayEffect* DefaultGE = MasterGE->GetDefaultObject<UGameplayEffect>())
-					{
-						for (const FGameplayModifierInfo& ModInfo : DefaultGE->Modifiers)
-						{
-							if (ModInfo.ModifierMagnitude.GetMagnitudeCalculationType() == EGameplayEffectMagnitudeCalculation::SetByCaller)
-							{
-								FGameplayTag CallerTag = ModInfo.ModifierMagnitude.GetSetByCallerFloat().DataTag;
-								
-								if (CallerTag.IsValid() && CallerTag != ValueTag && CallerTag != FGameplayTag::RequestGameplayTag("Data.Duration"))
-								{
-									SpecHandle.Data->SetSetByCallerMagnitude(CallerTag, 0.f);
-								}
-							}
-						}
-					}
-					
-					DestASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-				}
-			}
+			ApplyEffectToTarget(SourceASC, TargetASC, Effect, ItemInst, FinalMagnitude,TargetStackCount, HitResult, MasterGE);
 		}
 	}
 	if (SkillData.SpawnActorClass)
 	{
 		FTransform SpawnTrans = GetAvatarActorFromActorInfo()->GetActorTransform();
 		GetWorld()->SpawnActor<AActor>(SkillData.SpawnActorClass, SpawnTrans);
+	}
+}
+
+TArray<UAbilitySystemComponent*> UCAP_ItemGameplayAbility::GetTargetASCs(const struct FItemEffectPayload& Effect,
+	const FGameplayEventData& Payload, UAbilitySystemComponent* SourceASC) const
+{
+	TArray<UAbilitySystemComponent*> TargetASCs;
+
+	// 플레이어에게 적용되는 아이템 - 플레이어의 ASC를 챙겨
+	if (Effect.ExecutionType == EItemExecutionType::Buff_Self)
+	{
+		UE_LOG(LogTemp,Warning, TEXT("Buff Self 아이템. 플레이어의 ASC를 챙깁니다"));
+		TargetASCs.Add(SourceASC);
+	}
+	// 타격된 대상에게 적용되는 아이템 - 타격 대상의 ASC를 챙겨
+	else if (Payload.TargetData.Num() >0)
+	{
+		UE_LOG(LogTemp,Warning, TEXT("타격된 대상의 ASC를 챙깁니다"));
+		for (auto& Data : Payload.TargetData.Data)
+		{
+			if (Data.IsValid())
+			{
+				for (auto TargetActor : Data->GetActors())
+				{
+					if (UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor.Get()))
+					{
+						UE_LOG(LogTemp,Warning, TEXT("이 ASC의 주인은 = %s"), *TargetActor->GetName());
+						TargetASCs.Add(TargetASC);
+					}
+				}
+			}
+		}
+	}
+	return TargetASCs;
+}
+
+void UCAP_ItemGameplayAbility::FindExistingStack(UAbilitySystemComponent* TargetASC,
+	const struct FItemEffectPayload& Effect, class UCAP_ItemInstance* ItemInst,
+	FActiveGameplayEffectHandle& OutOldHandle, int32& OutCurrentStacks, float& OutAppliedBonus) const
+{
+	OutOldHandle = FActiveGameplayEffectHandle();
+	OutCurrentStacks = 0;
+	OutAppliedBonus = 0.f;
+
+	if (!Effect.DynamicTag.IsValid())
+		return;
+	
+	FGameplayEffectQuery Query;
+	TArray<FActiveGameplayEffectHandle> AllHandles = TargetASC->GetActiveEffects(Query);
+	for (const FActiveGameplayEffectHandle& Handle : AllHandles)
+	{
+		const FActiveGameplayEffect* ActiveGE = TargetASC->GetActiveGameplayEffect(Handle);
+		if (ActiveGE)
+		{
+			bool bHasTag = ActiveGE->Spec.DynamicGrantedTags.HasTagExact(Effect.DynamicTag);
+			bool bSameSource = (ActiveGE->Spec.GetEffectContext().GetSourceObject() == ItemInst);
+			if (bHasTag && bSameSource)
+			{
+				FGameplayTag StackTag = FGameplayTag::RequestGameplayTag("Data.StackCount");
+				OutCurrentStacks = FMath::RoundToInt(ActiveGE->Spec.GetSetByCallerMagnitude(StackTag, false, 1.f));
+				OutOldHandle = Handle;
+				
+				if (Effect.ExecutionType == EItemExecutionType::Buff_Self)
+				{
+					FGameplayTag ValueTag = Effect.TargetStatTag.IsValid() ? Effect.TargetStatTag : FGameplayTag::RequestGameplayTag("Data.Value");
+					OutAppliedBonus = ActiveGE->Spec.GetSetByCallerMagnitude(ValueTag, false, 0.f);
+				}
+				break;
+			}
+		}
+	}
+}
+
+float UCAP_ItemGameplayAbility::CalculateCleanMagnitude(UAbilitySystemComponent* SourceASC,
+	const struct FItemEffectPayload& Effect, float AppliedBonus) const
+{
+	float FinalMagnitude = Effect.BaseValue;
+	if (Effect.ScaleAttribute.IsValid())
+	{
+		// 아이템 효과 (영구적 + 일시적 버프)가 모두 적용된 상태의 스탯값
+		float CleanStatValue = SourceASC->GetNumericAttribute(Effect.ScaleAttribute);
+		// 모든 아이템 효과 - 일시적 버프 값 = 영구적 (장착한 아이템의 스탯만 남도록)
+		CleanStatValue -= AppliedBonus;
+		FinalMagnitude += (CleanStatValue * Effect.Magnitude);
+	}
+	return FinalMagnitude;
+}
+
+void UCAP_ItemGameplayAbility::ApplyEffectToTarget(UAbilitySystemComponent* SourceASC,
+	UAbilitySystemComponent* TargetASC, const struct FItemEffectPayload& Effect, class UCAP_ItemInstance* ItemInst,
+	float FinalMagnitude, int32 TargetStackCount, const FHitResult* HitResult,
+	TSubclassOf<UGameplayEffect> MasterGE) const
+{
+	// 새로운 스펙 바구니 생성
+	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
+	Context.AddSourceObject(ItemInst);
+	if (HitResult)
+	{
+		Context.AddHitResult(*HitResult); // 피격 이펙트 및 데미지 폰트용 보존
+	}
+
+	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(MasterGE, GetAbilityLevel(), Context);
+	if (SpecHandle.IsValid())
+	{
+		FGameplayTag ValueTag = Effect.TargetStatTag.IsValid() ? Effect.TargetStatTag : FGameplayTag::RequestGameplayTag("Data.Value");
+		FGameplayTag StackTag = FGameplayTag::RequestGameplayTag("Data.StackCount");
+
+		// (계산된 최종 값 * 업데이트 된 스택 개수) 한번에 적용
+		SpecHandle.Data->SetSetByCallerMagnitude(ValueTag, FinalMagnitude * TargetStackCount);
+		// 스택 몇개 쌓았는지 적용
+		SpecHandle.Data->SetSetByCallerMagnitude(StackTag, TargetStackCount);
+		UE_LOG(LogTemp, Warning,TEXT("현재 스택 = %d"), TargetStackCount);
+
+		// 효과 지속 시간 설정
+		if (Effect.Duration > 0.f)
+			SpecHandle.Data->SetSetByCallerMagnitude(ItemEffectDurationTag, Effect.Duration);
+		// 태그 부여
+		if (Effect.DynamicTag.IsValid())
+			SpecHandle.Data->DynamicGrantedTags.AddTag(Effect.DynamicTag);
+
+		// 나머지 세팅값 0 초기화 방어
+		if (const UGameplayEffect* DefaultGE = MasterGE->GetDefaultObject<UGameplayEffect>())
+		{	// 현재 사용중인 GE에서 설정한 모든 Modifier 가져와
+			for (const FGameplayModifierInfo& ModInfo : DefaultGE->Modifiers)
+			{	// 가져온 Modifier에서 SetbyCaller로 설정한 것만 챙겨와
+				if (ModInfo.ModifierMagnitude.GetMagnitudeCalculationType() == EGameplayEffectMagnitudeCalculation::SetByCaller)
+				{	// SetbyCaller의 호출자로 설정한 태그 가져와
+					FGameplayTag CallerTag = ModInfo.ModifierMagnitude.GetSetByCallerFloat().DataTag;
+					if (CallerTag.IsValid() && CallerTag != ValueTag && CallerTag != ItemEffectDurationTag && CallerTag != StackTag)
+					{
+						SpecHandle.Data->SetSetByCallerMagnitude(CallerTag, 0.f);
+					}
+				}
+			}
+		}
+		TargetASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 	}
 }
 
