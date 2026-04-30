@@ -45,7 +45,7 @@ private:
 	FTransform MeshRelativeTransform;
 	
 	void StartDeathSequence();
-	virtual void OnDead();
+	virtual void OnDead() {};
 	void PlayDeathAnimation();
 	void DeathMontageFinished();
 	void SetRagdollEnabled(bool bIsEnable);
@@ -57,6 +57,6 @@ private:
 	FTimerHandle DeathMontageTimerHandle;
 	
 	void Respawn();
-	virtual void OnRespawn();
+	virtual void OnRespawn() {};
 	void SetAIPerceptionStimuliSourceEnabled(bool bIsEnabled);
 };

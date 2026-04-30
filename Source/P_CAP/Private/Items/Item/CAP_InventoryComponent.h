@@ -15,6 +15,8 @@
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInventoryChanged, class UCAP_ItemInstance*, ChangedItem, bool, bIsAdded);
 // 인벤토리 가득 참 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInventoryFull, class UCAP_ItemInstance*, OverflowItem);
+// 아이템 효과 발동 델리게이트
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FOnItemEffectTriggered, class UCAP_ItemInstance*, ItemInst, FGameplayTag, DynamicTag, float,Cooldown,float,Duration,int32,Stacks);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class UCAP_InventoryComponent : public UActorComponent
@@ -34,6 +36,8 @@ public:
 	FOnInventoryChanged OnInventoryChanged;
 	UPROPERTY()
 	FOnInventoryFull OnInventoryFull;
+	UPROPERTY()
+	FOnItemEffectTriggered OnItemEffectTriggered;
 
 	AActor* GetNearbyInteractable() const { return NearbyInteractable; }
 	void SetNearbyInteractable(AActor* NewActor) {NearbyInteractable = NewActor;}

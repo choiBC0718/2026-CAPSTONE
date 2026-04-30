@@ -55,7 +55,10 @@ protected:
 	class UCAP_CharacterMenuWidget* CharacterMenuWidget;
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_ItemSwapWidget* ItemSwapWidget;
-	
+
+	// 아이템 버프 리스트 위젯
+	UPROPERTY(meta = (BindWidget))
+	class UCAP_BuffListPanelWidget* BuffListPanel;
 private:
 	UPROPERTY()
 	ACAP_PlayerCharacter* Player;

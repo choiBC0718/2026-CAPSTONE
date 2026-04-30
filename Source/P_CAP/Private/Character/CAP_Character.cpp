@@ -110,7 +110,6 @@ void ACAP_Character::Respawn()
 		CAPAbilitySystemComponent->ApplyFullStatEffect();
 	}
 }
-void ACAP_Character::OnDead(){}
 
 void ACAP_Character::PlayDeathAnimation()
 {
@@ -143,8 +142,6 @@ void ACAP_Character::SetRagdollEnabled(bool bIsEnable)
 		GetMesh()->SetRelativeTransform(MeshRelativeTransform);
 	}
 }
-
-void ACAP_Character::OnRespawn(){}
 
 void ACAP_Character::SetAIPerceptionStimuliSourceEnabled(bool bIsEnabled)
 {

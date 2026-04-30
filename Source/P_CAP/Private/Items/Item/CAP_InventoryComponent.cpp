@@ -297,7 +297,7 @@ void UCAP_InventoryComponent::GiveItemAbility(class UCAP_ItemInstance* ItemInst)
 	UE_LOG(LogTemp, Warning, TEXT("아이템 스킬 활성화"));
 	if (UCAP_ItemDataAsset* PassiveItemDA = Cast<UCAP_ItemDataAsset>(ItemDA))
 	{
-		if (PassiveItemDA->ItemSkills.Num() > 0)
+		if (PassiveItemDA->ItemBehaviors.Num() > 0)
 		{
 			FGameplayAbilitySpec Spec(UCAP_ItemGameplayAbility::StaticClass(), 1, INDEX_NONE, ItemInst);
 			FGameplayAbilitySpecHandle SpecHandle = OwnerASC->GiveAbility(Spec);

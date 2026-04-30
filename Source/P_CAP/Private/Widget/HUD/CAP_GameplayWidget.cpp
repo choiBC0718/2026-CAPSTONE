@@ -13,8 +13,7 @@
 #include "Items/Weapon/CAP_WeaponComponent.h"
 #include "Widget/Common/CAP_ValueGauge.h"
 #include "Widget/Common/CAP_AbilityListView.h"
-#include "Widget/PanelWidgets/CAP_InventoryTabWidget.h"
-#include "Widget/PanelWidgets/CAP_ItemEquipPanelWidget.h"
+#include "Widget/PanelWidgets/CAP_BuffListPanelWidget.h"
 #include "Widget/PanelWidgets/CAP_ItemSwapWidget.h"
 
 void UCAP_GameplayWidget::NativeConstruct()
@@ -48,6 +47,10 @@ void UCAP_GameplayWidget::NativeConstruct()
 	{
 		// 위젯 닫힘 델리게이트 연결
 		CharacterMenuWidget->OnMenuClosed.AddDynamic(this, &UCAP_GameplayWidget::CompleteDeactivateSwitcher);
+	}
+	if (BuffListPanel)
+	{
+		BuffListPanel->InitializeWidget(Player);
 	}
 }
 

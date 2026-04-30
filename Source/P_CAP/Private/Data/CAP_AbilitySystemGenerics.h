@@ -26,10 +26,13 @@ public:
 	FORCEINLINE const UDataTable* GetWeaponStatDataTable() const {return WeaponStatDataTable;}
 	
 	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemStatInfiniteEffect() const {return MasterStatInfiniteGE;}
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemStatDurationEffect() const {return MasterStatDurationGE;}
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetDotEffect() const {return MasterDotDamageGE;}
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetInstantDamageEffect() const {return MasterInstantDamageGE;}
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemMarkGE() const {return MasterMarkGE;}
 	FORCEINLINE TSubclassOf<class UGameplayEffect> GetCooldownEffect() const {return MasterCooldownGE;}
 
 	TSubclassOf<UGameplayEffect> GetDamageGE(ESkillDamageType Type) const;
-	TSubclassOf<UGameplayEffect> GetItemMasterGE(EItemExecutionType Type) const;
 	
 private:
 	/**플레이어 & 몬스터 최초 스폰 시 HP 가득 채우는 Effect*/
@@ -72,4 +75,7 @@ private:
 	// 아이템의 스킬 틱 데미지 + 상태이상용 - Has Duration
 	UPROPERTY(EditDefaultsOnly, Category="Item Master GE")
 	TSubclassOf<class UGameplayEffect> MasterDotDamageGE;
+	// 아이템 효과를 부여할때 어떤 아이템이 어떤 효과를 일으켰는지 구분하기 위한 GE
+	UPROPERTY(EditDefaultsOnly, Category="Item Master GE")
+	TSubclassOf<class UGameplayEffect> MasterMarkGE;
 };

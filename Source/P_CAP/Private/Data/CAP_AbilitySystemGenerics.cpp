@@ -15,19 +15,3 @@ TSubclassOf<UGameplayEffect> UCAP_AbilitySystemGenerics::GetDamageGE(ESkillDamag
 			return nullptr;
 	}
 }
-
-TSubclassOf<UGameplayEffect> UCAP_AbilitySystemGenerics::GetItemMasterGE(EItemExecutionType Type) const
-{
-	switch (Type)
-	{
-	case EItemExecutionType::Instant_Damage:
-		return MasterInstantDamageGE;
-	case EItemExecutionType::DotDamage:
-		return MasterDotDamageGE;
-	case EItemExecutionType::Buff_Self:
-	case EItemExecutionType::Debuff_Target:
-		return MasterStatDurationGE;
-	default:
-			return nullptr;
-	}
-}
