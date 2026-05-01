@@ -30,6 +30,7 @@ UExecCalc_PhysicalDamage::UExecCalc_PhysicalDamage()
 	RelevantAttributesToCapture.Add(CriticalDamageCapture);
 
 	DamageMultiplierDataTag = UCAP_AbilitySystemStatics::GetDataDamageMultiplierDataTag();
+	ChargeMultiplierDataTag = UCAP_AbilitySystemStatics::GetAbilityChargeTimeTag();
 }
 
 void UExecCalc_PhysicalDamage::Execute_Implementation(const FGameplayEffectCustomExecutionParameters& ExecutionParams,
@@ -63,6 +64,8 @@ void UExecCalc_PhysicalDamage::Execute_Implementation(const FGameplayEffectCusto
 	// 스킬 계수 연산
 	float SkillMultiplier = Spec.GetSetByCallerMagnitude(DamageMultiplierDataTag, false, 1.0f);
 	FinalDamage *= SkillMultiplier;
+	float ChargeMultiplier = Spec.GetSetByCallerMagnitude(ChargeMultiplierDataTag, false, 1.0f);
+	FinalDamage *= ChargeMultiplier;
 	
 	bool bCriticalHit = false;
 	if (CriticalChance > 0.0f)
@@ -73,6 +76,7 @@ void UExecCalc_PhysicalDamage::Execute_Implementation(const FGameplayEffectCusto
 			FinalDamage *= CriticalDamage;
 		}
 	}
+	UE_LOG(LogTemp,Warning,TEXT(" 최종 데미지 : %f"), FinalDamage);
 
 	// 최종 데미지를 Damage 어트리뷰트에
 	OutExecutionOutput.AddOutputModifier(FGameplayModifierEvaluatedData(UCAP_AttributeSet::GetDamageAttribute(), EGameplayModOp::Additive, FinalDamage));

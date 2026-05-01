@@ -26,6 +26,7 @@ public:
 	static FGameplayTag GetDamageTag();
 	static FGameplayTag GetRMSTag();
 	static FGameplayTag GetSpawnProjectileTag();
+	static FGameplayTag GetAbilityChargeTimeTag();
 
 	static FGameplayTag GetDataDamageMultiplierDataTag();
 	static FGameplayTag GetDataCooldownTag();

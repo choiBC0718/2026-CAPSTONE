@@ -26,6 +26,7 @@ UCAP_GameplayAbility::UCAP_GameplayAbility()
 	RMSTag = UCAP_AbilitySystemStatics::GetRMSTag();
 	SpawnProjectileTag = UCAP_AbilitySystemStatics::GetSpawnProjectileTag();
 	DamageMultiplierDataTag = UCAP_AbilitySystemStatics::GetDataDamageMultiplierDataTag();
+	ChargeMultiplierDataTag = UCAP_AbilitySystemStatics::GetAbilityChargeTimeTag();
 	DataCooldownTag = UCAP_AbilitySystemStatics::GetDataCooldownTag();
 	
 	ActivationOwnedTags.AddTag(UCAP_AbilitySystemStatics::GetMovementBlockStateTag());
@@ -49,6 +50,7 @@ void UCAP_GameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	}
 	
 	bIsCasting = false;
+	ChargedTime = 1.f;
 	
 	float AttackSpeed = 1.f;
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
@@ -148,18 +150,20 @@ void UCAP_GameplayAbility::OnDamageTagReceived(FGameplayEventData Payload)
 		return;
 	
 	int HitResultCount = UAbilitySystemBlueprintLibrary::GetDataCountFromTargetData(Payload.TargetData);
+	FGameplayEffectContextHandle EffectContext = MakeEffectContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
+	FGameplayEffectSpecHandle DamageSpecHandle = MakeOutgoingGameplayEffectSpec(GetDamageGE(), GetAbilityLevel(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo()));
+	
+	DamageSpecHandle.Data -> SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->BaseDamageMultiplier);
+	DamageSpecHandle.Data->SetSetByCallerMagnitude(ChargeMultiplierDataTag, ChargedTime);
+
 	for (int i =0; i<HitResultCount; i++)
 	{
 		FHitResult HitResult = UAbilitySystemBlueprintLibrary::GetHitResultFromTargetData(Payload.TargetData, i);
 		
-		FGameplayEffectSpecHandle EffectSpecHandle = MakeOutgoingGameplayEffectSpec(GetDamageGE(), GetAbilityLevel(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo()));
-		FGameplayEffectContextHandle EffectContext = MakeEffectContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
 		EffectContext.AddHitResult(HitResult);
-		EffectSpecHandle.Data -> SetContext(EffectContext);
-		EffectSpecHandle.Data -> SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->BaseDamageMultiplier);
+		DamageSpecHandle.Data -> SetContext(EffectContext);
 
-		ApplyGameplayEffectSpecToTarget(GetCurrentAbilitySpecHandle(), CurrentActorInfo, CurrentActivationInfo, EffectSpecHandle, UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(HitResult.GetActor()));
-
+		ApplyGameplayEffectSpecToTarget(GetCurrentAbilitySpecHandle(), CurrentActorInfo, CurrentActivationInfo, DamageSpecHandle, UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(HitResult.GetActor()));
 		SendGameplayCueEvent(HitResult, SkillData);
 	}
 
@@ -202,13 +206,13 @@ void UCAP_GameplayAbility::OnSpawnProjectileTagReceived(FGameplayEventData Paylo
 	TArray<ACAP_ProjectileBase*> Projectiles = SpawnProjectile(SocketLoc, SkillData);
 	if (Projectiles.Num() > 0)
 	{
-		FGameplayEffectSpecHandle EffectSpecHandle = MakeOutgoingGameplayEffectSpec(GetDamageGE(), GetAbilityLevel());
-		EffectSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->BaseDamageMultiplier);
-		
+		FGameplayEffectSpecHandle DamageSpecHandle = MakeOutgoingGameplayEffectSpec(GetDamageGE(), GetAbilityLevel());
+		DamageSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->BaseDamageMultiplier);
+		DamageSpecHandle.Data->SetSetByCallerMagnitude(ChargeMultiplierDataTag, ChargedTime);
 		for (ACAP_ProjectileBase* Projectile : Projectiles)
 		{
 			FVector LaunchDir = Projectile->GetActorForwardVector();
-			Projectile->InitStraightProjectile(LaunchDir, EffectSpecHandle,SkillData->GameplayCueTag, IsBasicAttack());
+			Projectile->InitStraightProjectile(LaunchDir, DamageSpecHandle,SkillData->GameplayCueTag, IsBasicAttack());
 		}
 	}
 }
@@ -238,7 +242,7 @@ void UCAP_GameplayAbility::SendItemTriggerEvent(bool bIsHit, FGameplayAbilityTar
 	FString TagString = TEXT("Item.Trigger.");
 	TagString += bIsHit ? TEXT("Hit.") : TEXT("Cast.");
 	TagString += IsBasicAttack() ? TEXT("Basic") : TEXT("Ability");
-	UE_LOG(LogTemp,Warning,TEXT("Trigger Tag == %s") , *TagString);
+//	UE_LOG(LogTemp,Warning,TEXT("Trigger Tag == %s") , *TagString);
 	FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName(*TagString));
 	FGameplayEventData Payload;
 	Payload.EventTag = EventTag;

@@ -32,23 +32,22 @@ void UGameplayAbility_ChargeAttack::ActivateAbility(const FGameplayAbilitySpecHa
 
 void UGameplayAbility_ChargeAttack::OnChargeStartTagReceived(FGameplayEventData Payload)
 {
-
-  	UAbilityTask_WaitDelay* MaxChargeTask = UAbilityTask_WaitDelay::WaitDelay(this,3.f);
+  	UAbilityTask_WaitDelay* MaxChargeTask = UAbilityTask_WaitDelay::WaitDelay(this,MaxChargeTime);
   	MaxChargeTask->OnFinish.AddDynamic(this, &UGameplayAbility_ChargeAttack::OnMaxCharged);
   	MaxChargeTask->ReadyForActivation();
 }
 
 void UGameplayAbility_ChargeAttack::OnInputReleased(float TimeHeld)
 {
-  	ExecuteAttack();
+  	ExecuteAttack(FMath::Max(1.f, TimeHeld));
 }
 
 void UGameplayAbility_ChargeAttack::OnMaxCharged()
 {
-  	ExecuteAttack();
+  	ExecuteAttack(MaxChargeTime);
 }
 
-void UGameplayAbility_ChargeAttack::ExecuteAttack()
+void UGameplayAbility_ChargeAttack::ExecuteAttack(float ChargeTime)
 {
   	if (bIsExecuted)
   		return;
@@ -58,7 +57,7 @@ void UGameplayAbility_ChargeAttack::ExecuteAttack()
   		TickRotTask = nullptr;
   	}
   	bIsExecuted = true;
-  	
+  	ChargedTime = ChargeTime;
   	UAnimInstance* AnimInst = GetOwnerAnimInstance();
   	if (AnimInst)
   	{

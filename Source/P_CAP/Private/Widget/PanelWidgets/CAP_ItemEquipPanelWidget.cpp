@@ -176,15 +176,27 @@ void UCAP_ItemEquipPanelWidget::HandleInteractionInput(ETriggerEvent& TriggerEve
 		
 		WeaponInst->SwapSkillOrder();
 		RefreshPanel(Player);
-					
-		if (Player->GetWeaponComponent()->GetCurrentWeaponInstance() != WeaponInst)
-			return;
+		
 		
 		if (ACAP_PlayerController* PC = GetOwningPlayer<ACAP_PlayerController>())
 		{
 			if (PC && PC->GetGameplayWidget())
 			{
-				PC->GetGameplayWidget()->HandleWeaponChanged(WeaponInst);
+				UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent();
+				UCAP_WeaponInstance* MainWeapon = WeaponComp->GetCurrentWeaponInstance();
+				UCAP_WeaponInstance* SubWeapon = nullptr;
+
+				const TArray<UCAP_WeaponInstance*>& EquippedWeapons = WeaponComp->GetEquippedWeapons();
+				for (UCAP_WeaponInstance* Weapon : EquippedWeapons)
+				{
+					if (Weapon && Weapon != MainWeapon)
+					{
+						SubWeapon = Weapon;
+						break;
+					}
+				}
+				
+				PC->GetGameplayWidget()->HandleWeaponChanged(MainWeapon, SubWeapon);
 			}
 		}
 		UCAP_ItemSlotWidget* SlotToFocus = WeaponSlots.IsValidIndex(SavedSlotNum) ? WeaponSlots[SavedSlotNum] : nullptr;

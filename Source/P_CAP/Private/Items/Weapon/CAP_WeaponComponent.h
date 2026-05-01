@@ -8,7 +8,7 @@
 #include "CAP_WeaponComponent.generated.h"
 
 // 무기 변경 했다는 것을 알리는 델리게이트
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponChanged, class UCAP_WeaponInstance*, NewWeaponInstance);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWeaponChanged, class UCAP_WeaponInstance*, NewWeaponInstance, class UCAP_WeaponInstance*, OldWeaponInstance);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class UCAP_WeaponComponent : public UActorComponent

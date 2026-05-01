@@ -185,8 +185,13 @@ void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 
 	if (OnWeaponChanged.IsBound())
 	{
+		int32 StandbyIdx = (CurrentWeaponIndex ==0) ? 1:0;
+		UCAP_WeaponInstance* StandbyWeapon = nullptr;
+		if (EquippedWeapons.IsValidIndex(StandbyIdx))
+			StandbyWeapon = EquippedWeapons[StandbyIdx];
+		
 		// 현재 변경된 무기 인스턴스를 방송
-		OnWeaponChanged.Broadcast(GetCurrentWeaponInstance());
+		OnWeaponChanged.Broadcast(WeaponInstance, StandbyWeapon);
 	}
 }
 

@@ -30,8 +30,11 @@ private:
 	UFUNCTION()
 	void OnMaxCharged();
 
-	void ExecuteAttack();
+	void ExecuteAttack(float ChargeTime=1.f);
 
 	UPROPERTY()
 	class UAbilityTask_TickRotToCursor* TickRotTask;
+
+	float ChargeStartTime = 0.f;
+	float MaxChargeTime = 3.f;
 };

@@ -3,22 +3,23 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Abilities/GameplayAbility.h"
-#include "Blueprint/IUserObjectListEntry.h"
 #include "Blueprint/UserWidget.h"
+#include "Data/CAP_WeaponDataAsset.h"
+#include "Abilities/GameplayAbility.h"
 #include "CAP_AbilitySlot.generated.h"
 
 /**
  * 스킬의 아이콘, 쿨타임 나타내는 슬롯 -> AbilityListView를 통해 리스트 형식으로 사용
  */
 UCLASS()
-class UCAP_AbilitySlot : public UUserWidget, public IUserObjectListEntry
+class UCAP_AbilitySlot : public UUserWidget
 {
 	GENERATED_BODY()
 
 public:
 	virtual void NativeConstruct() override;
-	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
+	virtual void NativeDestruct() override;
+	void InitSlot(const FWeaponSkillData& SkillData, bool bIsActive = true);
 	
 private:
 	UPROPERTY(EditDefaultsOnly, Category="Cooldown")
@@ -54,4 +55,11 @@ private:
 
 	FNumberFormattingOptions WholeNumberFormattingOptions;
 	FNumberFormattingOptions TwoDigitNumberFormattingOptions;
+
+	void CheckCurrentCooldown();
+
+	UPROPERTY(EditDefaultsOnly)
+	FVector2D SubSkillSize = FVector2D(0.f, 0.f);
+	UPROPERTY(EditDefaultsOnly)
+	FLinearColor SubSkillColor = FLinearColor(1.f,1.f,1.f,1.f);
 };

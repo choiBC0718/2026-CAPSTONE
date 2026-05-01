@@ -31,6 +31,8 @@ protected:
 	void SendGameplayCueEvent(FHitResult HitResult, const struct FWeaponSkillData* InSkillData);
 
 	FGameplayTag DamageMultiplierDataTag;
+	FGameplayTag ChargeMultiplierDataTag;
+	
 	FGameplayTag DamageTag;
 	FGameplayTag RMSTag;
 	FGameplayTag SpawnProjectileTag;
@@ -51,4 +53,6 @@ protected:
 
 	void SendItemTriggerEvent(bool bIsHit, FGameplayAbilityTargetDataHandle TargetData = FGameplayAbilityTargetDataHandle());
 	bool IsBasicAttack() const;
+
+	float ChargedTime = 1.f;
 };

@@ -12,7 +12,7 @@
 #include "Interface/CAP_MenuInterface.h"
 #include "Items/Weapon/CAP_WeaponComponent.h"
 #include "Widget/Common/CAP_ValueGauge.h"
-#include "Widget/Common/CAP_AbilityListView.h"
+#include "Widget/Common/CAP_WeaponSkillBox.h"
 #include "Widget/PanelWidgets/CAP_BuffListPanelWidget.h"
 #include "Widget/PanelWidgets/CAP_ItemSwapWidget.h"
 
@@ -159,10 +159,10 @@ void UCAP_GameplayWidget::CompleteDeactivateSwitcher()
 }
 
 // 스킬 ListView 아이콘 변경
-void UCAP_GameplayWidget::HandleWeaponChanged(class UCAP_WeaponInstance* NewWeaponInstance)
+void UCAP_GameplayWidget::HandleWeaponChanged(class UCAP_WeaponInstance* NewWeaponInst, class UCAP_WeaponInstance* OldWeaponInst)
 {
-	if (AbilityListView && NewWeaponInstance)
+	if (WeaponAbilityPanelWidget && NewWeaponInst)
 	{
-		AbilityListView->RefreshWeaponSkills(NewWeaponInstance);
+		WeaponAbilityPanelWidget->RefreshWeaponSkills(NewWeaponInst, OldWeaponInst);
 	}
 }
