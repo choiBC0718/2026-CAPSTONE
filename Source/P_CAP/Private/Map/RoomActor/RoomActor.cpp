@@ -342,6 +342,7 @@ void ARoomActor::SpawnLargeStructureMeshes(const FRoomInteriorLayout& Layout)
 		const float UniformScale = RandomStream.FRandRange(
 			SelectedVariant->UniformScaleRange.X,
 			SelectedVariant->UniformScaleRange.Y);
+		const float BaseYaw = Structure.Footprint.X < Structure.Footprint.Y ? 90.f : 0.f;
 		const float YawJitter = RandomStream.FRandRange(
 			-SelectedVariant->YawJitterDegrees,
 			SelectedVariant->YawJitterDegrees);
@@ -349,7 +350,7 @@ void ARoomActor::SpawnLargeStructureMeshes(const FRoomInteriorLayout& Layout)
 		MeshComponent->SetupAttachment(Root);
 		MeshComponent->SetStaticMesh(SelectedVariant->Mesh);
 		MeshComponent->SetRelativeLocation(LocalCenter);
-		MeshComponent->SetRelativeRotation(FRotator(0.f, YawJitter, 0.f));
+		MeshComponent->SetRelativeRotation(FRotator(0.f, BaseYaw + YawJitter, 0.f));
 		MeshComponent->SetRelativeScale3D(FVector(UniformScale));
 		MeshComponent->SetMobility(EComponentMobility::Movable);
 		MeshComponent->RegisterComponent();

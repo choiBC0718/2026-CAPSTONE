@@ -14,9 +14,26 @@ const FRoomInteriorPropRule* URoomInteriorPropSet::FindRule(
 		}
 	}
 
+	const FIntPoint SwappedFootprint(Footprint.Y, Footprint.X);
+	for (const FRoomInteriorPropRule& Rule : Rules)
+	{
+		if (Rule.Category == Category && Rule.Footprint == SwappedFootprint)
+		{
+			return &Rule;
+		}
+	}
+
 	for (const FRoomInteriorPropRule& Rule : Rules)
 	{
 		if (Rule.Category == ERoomInteriorStructureCategory::Generic && Rule.Footprint == Footprint)
+		{
+			return &Rule;
+		}
+	}
+
+	for (const FRoomInteriorPropRule& Rule : Rules)
+	{
+		if (Rule.Category == ERoomInteriorStructureCategory::Generic && Rule.Footprint == SwappedFootprint)
 		{
 			return &Rule;
 		}

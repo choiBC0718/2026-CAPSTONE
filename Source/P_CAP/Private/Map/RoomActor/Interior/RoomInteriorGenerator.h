@@ -40,6 +40,9 @@ private:
 	/* 방 연결 형태에 맞는 초기 큰 구조물 패턴을 배치 */
 	void PlaceLargeStructurePattern(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, FRandomStream& RandomStream) const;
 
+	/* 큰 골격 이후 남는 공간에 보조 구조물을 추가 배치 */
+	void PlaceSecondaryStructures(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, float RoomHalfExtent, FRandomStream& RandomStream) const;
+
 	/* 연결 형태별 패턴 적용 함수 */
 	void PlaceDeadEndPattern(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, FRandomStream& RandomStream) const;
 	void PlaceStraightPattern(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, FRandomStream& RandomStream) const;
@@ -54,6 +57,22 @@ private:
 
 	/* 큰 구조물 footprint 배치 가능 여부 검사 */
 	bool TryPlaceStructure(FRoomInteriorLayout& OutLayout, const FIntPoint& Origin, const FIntPoint& Footprint) const;
+
+	/* footprint 주변 최소 간격 영역이 비어 있는지 검사 */
+	bool HasRequiredStructureSpacing(
+		const FRoomInteriorLayout& Layout,
+		const FIntPoint& Origin,
+		const FIntPoint& Footprint,
+		int32 RequiredGapInCells) const;
+
+	/* 배치 후 연결성까지 포함해 구조물 확정 시도 */
+	bool TryPlaceStructureWithValidation(
+		FRoomInteriorLayout& OutLayout,
+		const FRoomData& RoomData,
+		float RoomHalfExtent,
+		const FIntPoint& Origin,
+		const FIntPoint& Footprint,
+		ERoomInteriorStructureCategory Category) const;
 
 	/* 현재 셀 레이아웃에서 모든 문이 서로 도달 가능한지 검사 */
 	bool AreAllDoorsReachable(const FRoomInteriorLayout& Layout, const FRoomData& RoomData, float RoomHalfExtent) const;
