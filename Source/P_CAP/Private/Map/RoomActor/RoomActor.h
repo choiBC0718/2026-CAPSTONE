@@ -8,6 +8,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Map/RoomActor/Interior/RoomInteriorGenerator.h"
 #include "Map/RoomActor/Interior/RoomInteriorData.h"
+#include "Map/RoomActor/Interior/RoomInteriorPropSet.h"
 #include "Map/RoomActor/Interior/PCG/RoomPathActor.h"
 #include "Map/RoomData.h"
 #include "Map/RoomActor/DoorDirection.h"
@@ -59,6 +60,14 @@ protected:
 	/* 방 바닥에서 경로를 띄워 그릴 높이 spline이 바닥과 겹쳐 안 보이는 것을 방지 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
 	float PathZOffset = 10.f;
+
+	/* 내부 셀 디버그 박스 표시 여부 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
+	bool bDrawInteriorCellDebug = true;
+
+	/* 큰 구조물 메쉬 후보를 담는 데이터 에셋 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
+	TObjectPtr<URoomInteriorPropSet> LargeStructurePropSet;
 	
 	UPROPERTY()
 	TArray<TObjectPtr<ADoorActor>> SpawnedDoors;
@@ -68,12 +77,20 @@ protected:
 	UPROPERTY()
 	TArray<TObjectPtr<ARoomPathActor>> SpawnedPathActors;
 
+	/* 이 방에서 동적으로 생성한 큰 구조물 메쉬 컴포넌트 */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMeshComponent>> SpawnedStructureMeshes;
+
 	UPROPERTY()
 	FRoomData CachedRoomData;
 
 	/* 내부 생성에 사용한 맵 시드 보관 */
 	UPROPERTY()
 	int32 CachedMapSeed = 0;
+
+	/* 마지막 내부 생성 결과를 캐싱 */
+	UPROPERTY()
+	FRoomInteriorLayout CachedInteriorLayout;
 
 	/* 내부 경로 생성기 */
 	UPROPERTY()
@@ -83,6 +100,8 @@ private:
 	void ClearSpawnedDoors();
 	/* 이 방이 소유하는 경로 액터들을 정리 */
 	void ClearSpawnedPathActors();
+	/* 이 방이 소유하는 큰 구조물 메쉬 컴포넌트를 정리 */
+	void ClearSpawnedStructureMeshes();
 	void SpawnConnectedDoors();
 	void SpawnDoor(EDoorDirection Direction);
 
@@ -90,6 +109,10 @@ private:
 	void GenerateAndSpawnInterior();
 	/* 생성된 경로 데이터를 바탕으로 전용 path actor를 스폰 */
 	void SpawnGuaranteedPaths(const FRoomInteriorLayout& Layout);
+	/* 큰 구조물 점유 결과를 실제 메쉬 컴포넌트로 배치 */
+	void SpawnLargeStructureMeshes(const FRoomInteriorLayout& Layout);
+	/* 셀 기반 구조 결과를 디버그 박스로 시각화 */
+	void DrawInteriorCellDebug(const FRoomInteriorLayout& Layout) const;
 	
 	FTransform GetDoorTransform(EDoorDirection Direction) const;
 	FIntPoint GetNeighborGridPos(EDoorDirection Direction) const;

@@ -4,8 +4,10 @@
 #include "Map/RoomActor/DoorActor.h"
 #include "Map/RoomActor/Interior/RoomInteriorGenerator.h"
 #include "Map/RoomActor/Interior/RoomInteriorData.h"
+#include "Map/RoomActor/Interior/RoomInteriorPropSet.h"
 #include "Map/RoomActor/Interior/PCG/RoomPathActor.h"
 #include "Engine/World.h"
+#include "DrawDebugHelpers.h"
 
 ARoomActor::ARoomActor()
 {
@@ -29,6 +31,7 @@ void ARoomActor::InitializeRoom(const FRoomData& InRoomData, int32 InMapSeed)
 	/* 재초기화 상황을 대비해 기존 문/경로 액터를 정리 */
 	ClearSpawnedDoors();
 	ClearSpawnedPathActors();
+	ClearSpawnedStructureMeshes();
 
 	/* 방 정보 기준으로 문과 경로를 다시 생성 */
 	SpawnConnectedDoors();
@@ -71,6 +74,7 @@ void ARoomActor::Destroyed()
 	/* 방이 제거될 때 함께 생성한 객체들도 정리 */
 	ClearSpawnedDoors();
 	ClearSpawnedPathActors();
+	ClearSpawnedStructureMeshes();
 	Super::Destroyed();
 }
 
@@ -100,6 +104,19 @@ void ARoomActor::ClearSpawnedPathActors()
 	}
 
 	SpawnedPathActors.Empty();
+}
+
+void ARoomActor::ClearSpawnedStructureMeshes()
+{
+	for (UStaticMeshComponent* MeshComponent : SpawnedStructureMeshes)
+	{
+		if (IsValid(MeshComponent))
+		{
+			MeshComponent->DestroyComponent();
+		}
+	}
+
+	SpawnedStructureMeshes.Empty();
 }
 
 void ARoomActor::SpawnConnectedDoors()
@@ -179,9 +196,12 @@ void ARoomActor::GenerateAndSpawnInterior()
 
 	const FRoomInteriorLayout Layout = InteriorGenerator->GenerateInteriorLayout(
 		CachedRoomData, RoomHalfExtent, InteriorCellSize, InteriorMargin, CachedMapSeed);
+	CachedInteriorLayout = Layout;
 
 	/* 생성된 경로 데이터로 실제 path actor를 생성 */
 	SpawnGuaranteedPaths(Layout);
+	SpawnLargeStructureMeshes(Layout);
+	DrawInteriorCellDebug(Layout);
 }
 
 void ARoomActor::SpawnGuaranteedPaths(const FRoomInteriorLayout& Layout)
@@ -235,6 +255,178 @@ void ARoomActor::SpawnGuaranteedPaths(const FRoomInteriorLayout& Layout)
 		/* 월드 좌표 경로를 spline으로 초기화 */
 		SpawnedPathActor->InitializePath(WorldPathPoints, Path.bClosedLoop);
 		SpawnedPathActors.Add(SpawnedPathActor);
+	}
+}
+
+void ARoomActor::SpawnLargeStructureMeshes(const FRoomInteriorLayout& Layout)
+{
+	if (!LargeStructurePropSet || Layout.CellSize <= 0.f)
+	{
+		return;
+	}
+
+	const float GridWorldSizeX = Layout.GridWidth * Layout.CellSize;
+	const float GridWorldSizeY = Layout.GridHeight * Layout.CellSize;
+	const FVector GridMin(-GridWorldSizeX * 0.5f, -GridWorldSizeY * 0.5f, 0.f);
+
+	int32 Seed = CachedMapSeed;
+	Seed = HashCombineFast(Seed, GetTypeHash(CachedRoomData.GridPos));
+	FRandomStream RandomStream(Seed);
+
+	for (const FRoomInteriorPlacedStructure& Structure : Layout.PlacedStructures)
+	{
+		const FRoomInteriorPropRule* Rule = LargeStructurePropSet->FindRule(Structure.Category, Structure.Footprint);
+		if (!Rule || Rule->Variants.IsEmpty())
+		{
+			continue;
+		}
+
+		int32 TotalWeight = 0;
+		for (const FRoomInteriorPropMeshVariant& Variant : Rule->Variants)
+		{
+			if (Variant.Mesh && Variant.Weight > 0)
+			{
+				TotalWeight += Variant.Weight;
+			}
+		}
+
+		if (TotalWeight <= 0)
+		{
+			continue;
+		}
+
+		const int32 RandomPick = RandomStream.RandRange(1, TotalWeight);
+		const FRoomInteriorPropMeshVariant* SelectedVariant = nullptr;
+		int32 RunningWeight = 0;
+
+		for (const FRoomInteriorPropMeshVariant& Variant : Rule->Variants)
+		{
+			if (!Variant.Mesh || Variant.Weight <= 0)
+			{
+				continue;
+			}
+
+			RunningWeight += Variant.Weight;
+			if (RandomPick <= RunningWeight)
+			{
+				SelectedVariant = &Variant;
+				break;
+			}
+		}
+
+		if (!SelectedVariant || !SelectedVariant->Mesh)
+		{
+			continue;
+		}
+
+		UStaticMeshComponent* MeshComponent = NewObject<UStaticMeshComponent>(this);
+		if (!MeshComponent)
+		{
+			continue;
+		}
+
+		const FVector StructureSize(
+			Structure.Footprint.X * Layout.CellSize,
+			Structure.Footprint.Y * Layout.CellSize,
+			0.f
+		);
+		FVector LocalCenter(
+			GridMin.X + (Structure.Origin.X * Layout.CellSize) + (StructureSize.X * 0.5f),
+			GridMin.Y + (Structure.Origin.Y * Layout.CellSize) + (StructureSize.Y * 0.5f),
+			0.f
+		);
+		LocalCenter.X += RandomStream.FRandRange(-SelectedVariant->LocationJitter.X, SelectedVariant->LocationJitter.X);
+		LocalCenter.Y += RandomStream.FRandRange(-SelectedVariant->LocationJitter.Y, SelectedVariant->LocationJitter.Y);
+		LocalCenter.Z += RandomStream.FRandRange(-SelectedVariant->LocationJitter.Z, SelectedVariant->LocationJitter.Z);
+
+		const float UniformScale = RandomStream.FRandRange(
+			SelectedVariant->UniformScaleRange.X,
+			SelectedVariant->UniformScaleRange.Y);
+		const float YawJitter = RandomStream.FRandRange(
+			-SelectedVariant->YawJitterDegrees,
+			SelectedVariant->YawJitterDegrees);
+
+		MeshComponent->SetupAttachment(Root);
+		MeshComponent->SetStaticMesh(SelectedVariant->Mesh);
+		MeshComponent->SetRelativeLocation(LocalCenter);
+		MeshComponent->SetRelativeRotation(FRotator(0.f, YawJitter, 0.f));
+		MeshComponent->SetRelativeScale3D(FVector(UniformScale));
+		MeshComponent->SetMobility(EComponentMobility::Movable);
+		MeshComponent->RegisterComponent();
+		AddInstanceComponent(MeshComponent);
+
+		SpawnedStructureMeshes.Add(MeshComponent);
+	}
+}
+
+void ARoomActor::DrawInteriorCellDebug(const FRoomInteriorLayout& Layout) const
+{
+	if (!bDrawInteriorCellDebug)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World || Layout.CellSize <= 0.f)
+	{
+		return;
+	}
+
+	const float CellHalfSize = Layout.CellSize * 0.5f;
+	const float GridWorldSizeX = Layout.GridWidth * Layout.CellSize;
+	const float GridWorldSizeY = Layout.GridHeight * Layout.CellSize;
+	const FVector GridMin(-GridWorldSizeX * 0.5f, -GridWorldSizeY * 0.5f, PathZOffset + 60.f);
+
+	for (const FRoomInteriorCell& Cell : Layout.Cells)
+	{
+		FColor DebugColor;
+		switch (Cell.Type)
+		{
+		case ERoomInteriorCellType::ReservedDoor:
+			DebugColor = FColor::Green;
+			break;
+
+		case ERoomInteriorCellType::ReservedPath:
+			DebugColor = FColor::Blue;
+			break;
+
+		case ERoomInteriorCellType::Blocked:
+			DebugColor = FColor::Red;
+			break;
+
+		default:
+			continue;
+		}
+
+		const FVector LocalCenter(
+			GridMin.X + (Cell.Coord.X * Layout.CellSize) + CellHalfSize,
+			GridMin.Y + (Cell.Coord.Y * Layout.CellSize) + CellHalfSize,
+			GridMin.Z
+		);
+		const FVector WorldCenter = GetActorTransform().TransformPosition(LocalCenter);
+
+		DrawDebugBox(
+			World,
+			WorldCenter,
+			FVector(CellHalfSize * 0.45f, CellHalfSize * 0.45f, 35.f),
+			GetActorQuat(),
+			DebugColor,
+			true,
+			-1.f,
+			1,
+			6.f
+		);
+
+		DrawDebugSolidBox(
+			World,
+			WorldCenter,
+			FVector(CellHalfSize * 0.42f, CellHalfSize * 0.42f, 25.f),
+			GetActorQuat(),
+			FColor(DebugColor.R, DebugColor.G, DebugColor.B, 72),
+			true,
+			-1.f,
+			1
+		);
 	}
 }
 

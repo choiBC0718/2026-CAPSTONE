@@ -8,6 +8,7 @@
 #include "GameFramework/Character.h"
 #include "Engine/World.h"
 #include "Engine/Engine.h"
+#include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
 
 AMapManager::AMapManager()
@@ -63,6 +64,11 @@ void AMapManager::GenerateMapAndSpawnRooms()
 	if (!MapGenerator)
 	{
 		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		FlushPersistentDebugLines(World);
 	}
 
 	FMapGenerationConfig Config;

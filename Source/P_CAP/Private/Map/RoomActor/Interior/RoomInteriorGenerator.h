@@ -25,6 +25,48 @@ public:
 	FRoomInteriorLayout GenerateInteriorLayout(const FRoomData& RoomData, float RoomHalfExtent, float CellSize, float Margin, int32 MapSeed) const;
 
 private:
+	/* 시드 기반 랜덤 스트림 생성 */
+	FRandomStream MakeRoomRandomStream(const FRoomData& RoomData, int32 MapSeed) const;
+
+	/* 내부 셀 그리드의 기본 정보를 초기화 */
+	void InitializeCellGrid(FRoomInteriorLayout& OutLayout, float RoomHalfExtent, float CellSize) const;
+
+	/* 문 앞 안전 구역을 셀 단위로 예약 */
+	void MarkDoorReservedCells(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, float RoomHalfExtent) const;
+
+	/* 보장 이동 경로 주변 셀을 예약 */
+	void MarkGuaranteedPathCells(FRoomInteriorLayout& OutLayout, float RoomHalfExtent) const;
+
+	/* 방 연결 형태에 맞는 초기 큰 구조물 패턴을 배치 */
+	void PlaceLargeStructurePattern(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, FRandomStream& RandomStream) const;
+
+	/* 연결 형태별 패턴 적용 함수 */
+	void PlaceDeadEndPattern(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, FRandomStream& RandomStream) const;
+	void PlaceStraightPattern(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, FRandomStream& RandomStream) const;
+	void PlaceCornerPattern(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, FRandomStream& RandomStream) const;
+	void PlaceHubPattern(FRoomInteriorLayout& OutLayout, FRandomStream& RandomStream) const;
+
+	/* 여러 후보 배치 중 가능한 조합을 순서대로 시도 */
+	void PlaceCandidateStructures(
+		FRoomInteriorLayout& OutLayout,
+		const TArray<TArray<FRoomInteriorPlacedStructure>>& CandidateGroups,
+		FRandomStream& RandomStream) const;
+
+	/* 큰 구조물 footprint 배치 가능 여부 검사 */
+	bool TryPlaceStructure(FRoomInteriorLayout& OutLayout, const FIntPoint& Origin, const FIntPoint& Footprint) const;
+
+	/* 현재 셀 레이아웃에서 모든 문이 서로 도달 가능한지 검사 */
+	bool AreAllDoorsReachable(const FRoomInteriorLayout& Layout, const FRoomData& RoomData, float RoomHalfExtent) const;
+
+	/* 로컬 좌표를 셀 좌표로 변환 */
+	FIntPoint LocalPointToCell(const FRoomInteriorLayout& Layout, const FVector& LocalPoint, float RoomHalfExtent) const;
+
+	/* 셀 상태 읽기/쓰기 보조 함수 */
+	bool IsValidCell(const FRoomInteriorLayout& Layout, const FIntPoint& Coord) const;
+	int32 GetCellIndex(const FRoomInteriorLayout& Layout, const FIntPoint& Coord) const;
+	ERoomInteriorCellType GetCellType(const FRoomInteriorLayout& Layout, const FIntPoint& Coord) const;
+	void SetCellType(FRoomInteriorLayout& OutLayout, const FIntPoint& Coord, ERoomInteriorCellType NewType) const;
+
 	/* 연결된 문 위치를 기준으로 방 내부 보장 경로를 생성
 	   - 문 1개: 문 -> 중심 + 중심 기준 원형 경로
 	   - 문 2개: 문A -> 중심 -> 문B

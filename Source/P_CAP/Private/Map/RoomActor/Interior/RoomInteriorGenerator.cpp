@@ -1,16 +1,522 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Map/RoomActor/Interior/RoomInteriorGenerator.h"
+#include "Containers/Queue.h"
 
 FRoomInteriorLayout URoomInteriorGenerator::GenerateInteriorLayout(const FRoomData& RoomData, float RoomHalfExtent, float CellSize, float Margin, int32 MapSeed) const
 {
 	/* 최종 결과를 담을 내부 레이아웃 */
 	FRoomInteriorLayout Layout;
+	(void)Margin;
+	(void)MapSeed;
 
-	/* 셀 배치 대신 연결 경로만 계산 */
+	/* 먼저 보장 경로를 계산한 뒤 이를 기준으로 셀 레이아웃을 만든다 */
 	BuildGuaranteedPaths(Layout, RoomData, RoomHalfExtent);
+	InitializeCellGrid(Layout, RoomHalfExtent, CellSize);
+	MarkDoorReservedCells(Layout, RoomData, RoomHalfExtent);
+	FRandomStream RandomStream = MakeRoomRandomStream(RoomData, MapSeed);
+	PlaceLargeStructurePattern(Layout, RoomData, RandomStream);
+
+	if (!AreAllDoorsReachable(Layout, RoomData, RoomHalfExtent))
+	{
+		for (FRoomInteriorCell& Cell : Layout.Cells)
+		{
+			if (Cell.Type == ERoomInteriorCellType::Blocked)
+			{
+				Cell.Type = ERoomInteriorCellType::Empty;
+			}
+		}
+
+		Layout.PlacedStructures.Empty();
+	}
 
 	return Layout;
+}
+
+FRandomStream URoomInteriorGenerator::MakeRoomRandomStream(const FRoomData& RoomData, int32 MapSeed) const
+{
+	int32 Seed = MapSeed;
+	Seed = HashCombineFast(Seed, GetTypeHash(RoomData.GridPos));
+	Seed = HashCombineFast(Seed, static_cast<int32>(RoomData.RoomType));
+	Seed = HashCombineFast(Seed, RoomData.GetConnectionCount());
+	return FRandomStream(Seed);
+}
+
+void URoomInteriorGenerator::InitializeCellGrid(FRoomInteriorLayout& OutLayout, float RoomHalfExtent, float CellSize) const
+{
+	const float SafeCellSize = FMath::Max(CellSize, 1.f);
+	const float RoomSize = RoomHalfExtent * 2.f;
+	const int32 GridSize = FMath::Max(FMath::FloorToInt(RoomSize / SafeCellSize), 1);
+
+	OutLayout.GridWidth = GridSize;
+	OutLayout.GridHeight = GridSize;
+	OutLayout.CellSize = SafeCellSize;
+	OutLayout.Cells.Empty();
+	OutLayout.Cells.Reserve(GridSize * GridSize);
+
+	for (int32 Y = 0; Y < GridSize; ++Y)
+	{
+		for (int32 X = 0; X < GridSize; ++X)
+		{
+			FRoomInteriorCell& NewCell = OutLayout.Cells.AddDefaulted_GetRef();
+			NewCell.Coord = FIntPoint(X, Y);
+			NewCell.Type = ERoomInteriorCellType::Empty;
+		}
+	}
+}
+
+void URoomInteriorGenerator::MarkDoorReservedCells(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, float RoomHalfExtent) const
+{
+	const TArray<FVector> DoorAnchors = GetDoorAnchors(RoomData, RoomHalfExtent);
+
+	for (const FVector& DoorAnchor : DoorAnchors)
+	{
+		const FIntPoint DoorCell = LocalPointToCell(OutLayout, DoorAnchor, RoomHalfExtent);
+		SetCellType(OutLayout, DoorCell, ERoomInteriorCellType::ReservedDoor);
+
+		const FVector DirectionToCenter = (-DoorAnchor).GetSafeNormal2D();
+		for (int32 Step = 1; Step <= 2; ++Step)
+		{
+			const FVector OffsetPoint = DoorAnchor + (DirectionToCenter * OutLayout.CellSize * Step);
+			SetCellType(OutLayout, LocalPointToCell(OutLayout, OffsetPoint, RoomHalfExtent), ERoomInteriorCellType::ReservedDoor);
+		}
+	}
+}
+
+void URoomInteriorGenerator::MarkGuaranteedPathCells(FRoomInteriorLayout& OutLayout, float RoomHalfExtent) const
+{
+	for (const FRoomInteriorPath& Path : OutLayout.GuaranteedPaths)
+	{
+		if (Path.PathPoints.Num() < 2)
+		{
+			continue;
+		}
+
+		const float ReserveRadius = FMath::Max(Path.CorridorWidth * 0.5f, OutLayout.CellSize);
+		const int32 SampleCountPerSegment = 8;
+
+		for (int32 Index = 0; Index + 1 < Path.PathPoints.Num(); ++Index)
+		{
+			const FVector Start = Path.PathPoints[Index];
+			const FVector End = Path.PathPoints[Index + 1];
+
+			for (int32 SampleIndex = 0; SampleIndex <= SampleCountPerSegment; ++SampleIndex)
+			{
+				const float Alpha = static_cast<float>(SampleIndex) / static_cast<float>(SampleCountPerSegment);
+				const FVector SamplePoint = FMath::Lerp(Start, End, Alpha);
+				const FIntPoint CenterCell = LocalPointToCell(OutLayout, SamplePoint, RoomHalfExtent);
+				const int32 RadiusInCells = FMath::Max(FMath::CeilToInt(ReserveRadius / OutLayout.CellSize), 1);
+
+				for (int32 OffsetY = -RadiusInCells; OffsetY <= RadiusInCells; ++OffsetY)
+				{
+					for (int32 OffsetX = -RadiusInCells; OffsetX <= RadiusInCells; ++OffsetX)
+					{
+						const FIntPoint TestCell = CenterCell + FIntPoint(OffsetX, OffsetY);
+						if (!IsValidCell(OutLayout, TestCell))
+						{
+							continue;
+						}
+
+						SetCellType(OutLayout, TestCell, ERoomInteriorCellType::ReservedPath);
+					}
+				}
+			}
+		}
+	}
+}
+
+void URoomInteriorGenerator::PlaceLargeStructurePattern(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, FRandomStream& RandomStream) const
+{
+	const int32 ConnectionCount = RoomData.GetConnectionCount();
+
+	if (ConnectionCount <= 0)
+	{
+		return;
+	}
+
+	if (ConnectionCount == 1)
+	{
+		PlaceDeadEndPattern(OutLayout, RoomData, RandomStream);
+		return;
+	}
+
+	const bool bVerticalStraight = RoomData.bConnectedUp && RoomData.bConnectedDown;
+	const bool bHorizontalStraight = RoomData.bConnectedLeft && RoomData.bConnectedRight;
+	if (ConnectionCount == 2 && (bVerticalStraight || bHorizontalStraight))
+	{
+		PlaceStraightPattern(OutLayout, RoomData, RandomStream);
+		return;
+	}
+
+	if (ConnectionCount == 2)
+	{
+		PlaceCornerPattern(OutLayout, RoomData, RandomStream);
+		return;
+	}
+
+	PlaceHubPattern(OutLayout, RandomStream);
+}
+
+void URoomInteriorGenerator::PlaceDeadEndPattern(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, FRandomStream& RandomStream) const
+{
+	const int32 CenterX = OutLayout.GridWidth / 2;
+	const int32 CenterY = OutLayout.GridHeight / 2;
+	TArray<TArray<FRoomInteriorPlacedStructure>> CandidateGroups;
+
+	if (RoomData.bConnectedUp)
+	{
+		CandidateGroups = {
+			{{FIntPoint(CenterX - 1, 1), FIntPoint(2, 2)}},
+			{{FIntPoint(1, 1), FIntPoint(2, 2)}},
+			{{FIntPoint(OutLayout.GridWidth - 3, 1), FIntPoint(2, 2)}},
+			{{FIntPoint(CenterX - 1, 2), FIntPoint(2, 2)}, {FIntPoint(1, 1), FIntPoint(1, 2)}}
+		};
+		PlaceCandidateStructures(OutLayout, CandidateGroups, RandomStream);
+		return;
+	}
+
+	if (RoomData.bConnectedDown)
+	{
+		CandidateGroups = {
+			{{FIntPoint(CenterX - 1, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+			{{FIntPoint(1, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+			{{FIntPoint(OutLayout.GridWidth - 3, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+			{{FIntPoint(CenterX - 1, OutLayout.GridHeight - 4), FIntPoint(2, 2)}, {FIntPoint(OutLayout.GridWidth - 2, OutLayout.GridHeight - 4), FIntPoint(1, 2)}}
+		};
+		PlaceCandidateStructures(OutLayout, CandidateGroups, RandomStream);
+		return;
+	}
+
+	if (RoomData.bConnectedLeft)
+	{
+		CandidateGroups = {
+			{{FIntPoint(OutLayout.GridWidth - 3, CenterY - 1), FIntPoint(2, 2)}},
+			{{FIntPoint(OutLayout.GridWidth - 3, 1), FIntPoint(2, 2)}},
+			{{FIntPoint(OutLayout.GridWidth - 3, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+			{{FIntPoint(OutLayout.GridWidth - 4, CenterY - 1), FIntPoint(2, 2)}, {FIntPoint(OutLayout.GridWidth - 4, 1), FIntPoint(2, 1)}}
+		};
+		PlaceCandidateStructures(OutLayout, CandidateGroups, RandomStream);
+		return;
+	}
+
+	if (RoomData.bConnectedRight)
+	{
+		CandidateGroups = {
+			{{FIntPoint(1, CenterY - 1), FIntPoint(2, 2)}},
+			{{FIntPoint(1, 1), FIntPoint(2, 2)}},
+			{{FIntPoint(1, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+			{{FIntPoint(2, CenterY - 1), FIntPoint(2, 2)}, {FIntPoint(2, OutLayout.GridHeight - 2), FIntPoint(2, 1)}}
+		};
+		PlaceCandidateStructures(OutLayout, CandidateGroups, RandomStream);
+	}
+}
+
+void URoomInteriorGenerator::PlaceStraightPattern(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, FRandomStream& RandomStream) const
+{
+	const bool bVerticalStraight = RoomData.bConnectedUp && RoomData.bConnectedDown;
+	const int32 CenterX = OutLayout.GridWidth / 2;
+	const int32 CenterY = OutLayout.GridHeight / 2;
+	TArray<TArray<FRoomInteriorPlacedStructure>> CandidateGroups;
+
+	if (bVerticalStraight)
+	{
+		CandidateGroups = {
+			{{FIntPoint(1, CenterY - 1), FIntPoint(2, 2)}, {FIntPoint(OutLayout.GridWidth - 3, CenterY - 1), FIntPoint(2, 2)}},
+			{{FIntPoint(1, 1), FIntPoint(2, 2)}, {FIntPoint(OutLayout.GridWidth - 3, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+			{{FIntPoint(1, OutLayout.GridHeight - 3), FIntPoint(2, 2)}, {FIntPoint(OutLayout.GridWidth - 3, 1), FIntPoint(2, 2)}},
+			{{FIntPoint(1, CenterY - 1), FIntPoint(1, 2)}, {FIntPoint(OutLayout.GridWidth - 2, CenterY - 1), FIntPoint(1, 2)}, {FIntPoint(CenterX - 1, 1), FIntPoint(2, 1)}}
+		};
+		PlaceCandidateStructures(OutLayout, CandidateGroups, RandomStream);
+		return;
+	}
+
+	CandidateGroups = {
+		{{FIntPoint(CenterX - 1, 1), FIntPoint(2, 2)}, {FIntPoint(CenterX - 1, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+		{{FIntPoint(1, 1), FIntPoint(2, 2)}, {FIntPoint(OutLayout.GridWidth - 3, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+		{{FIntPoint(OutLayout.GridWidth - 3, 1), FIntPoint(2, 2)}, {FIntPoint(1, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+		{{FIntPoint(CenterX - 1, 1), FIntPoint(2, 1)}, {FIntPoint(CenterX - 1, OutLayout.GridHeight - 2), FIntPoint(2, 1)}, {FIntPoint(1, CenterY - 1), FIntPoint(1, 2)}}
+	};
+	PlaceCandidateStructures(OutLayout, CandidateGroups, RandomStream);
+}
+
+void URoomInteriorGenerator::PlaceCornerPattern(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, FRandomStream& RandomStream) const
+{
+	const bool bTop = RoomData.bConnectedUp;
+	const bool bBottom = RoomData.bConnectedDown;
+	const bool bLeft = RoomData.bConnectedLeft;
+	const bool bRight = RoomData.bConnectedRight;
+	TArray<TArray<FRoomInteriorPlacedStructure>> CandidateGroups;
+
+	if (bTop && bRight)
+	{
+		CandidateGroups = {
+			{{FIntPoint(1, 1), FIntPoint(2, 2)}},
+			{{FIntPoint(1, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+			{{FIntPoint(OutLayout.GridWidth - 3, 1), FIntPoint(2, 2)}},
+			{{FIntPoint(1, 1), FIntPoint(2, 1)}, {FIntPoint(1, 2), FIntPoint(1, 2)}}
+		};
+		PlaceCandidateStructures(OutLayout, CandidateGroups, RandomStream);
+		return;
+	}
+
+	if (bTop && bLeft)
+	{
+		CandidateGroups = {
+			{{FIntPoint(OutLayout.GridWidth - 3, 1), FIntPoint(2, 2)}},
+			{{FIntPoint(OutLayout.GridWidth - 3, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+			{{FIntPoint(1, 1), FIntPoint(2, 2)}},
+			{{FIntPoint(OutLayout.GridWidth - 3, 1), FIntPoint(2, 1)}, {FIntPoint(OutLayout.GridWidth - 2, 2), FIntPoint(1, 2)}}
+		};
+		PlaceCandidateStructures(OutLayout, CandidateGroups, RandomStream);
+		return;
+	}
+
+	if (bBottom && bRight)
+	{
+		CandidateGroups = {
+			{{FIntPoint(1, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+			{{FIntPoint(1, 1), FIntPoint(2, 2)}},
+			{{FIntPoint(OutLayout.GridWidth - 3, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+			{{FIntPoint(1, OutLayout.GridHeight - 3), FIntPoint(2, 1)}, {FIntPoint(1, OutLayout.GridHeight - 4), FIntPoint(1, 2)}}
+		};
+		PlaceCandidateStructures(OutLayout, CandidateGroups, RandomStream);
+		return;
+	}
+
+	if (bBottom && bLeft)
+	{
+		CandidateGroups = {
+			{{FIntPoint(OutLayout.GridWidth - 3, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+			{{FIntPoint(OutLayout.GridWidth - 3, 1), FIntPoint(2, 2)}},
+			{{FIntPoint(1, OutLayout.GridHeight - 3), FIntPoint(2, 2)}},
+			{{FIntPoint(OutLayout.GridWidth - 3, OutLayout.GridHeight - 3), FIntPoint(2, 1)}, {FIntPoint(OutLayout.GridWidth - 2, OutLayout.GridHeight - 4), FIntPoint(1, 2)}}
+		};
+		PlaceCandidateStructures(OutLayout, CandidateGroups, RandomStream);
+	}
+}
+
+void URoomInteriorGenerator::PlaceHubPattern(FRoomInteriorLayout& OutLayout, FRandomStream& RandomStream) const
+{
+	const int32 MidX = OutLayout.GridWidth / 2;
+	const int32 MidY = OutLayout.GridHeight / 2;
+	TArray<TArray<FRoomInteriorPlacedStructure>> CandidateGroups = {
+		{
+			{FIntPoint(1, MidY - 1), FIntPoint(2, 2)},
+			{FIntPoint(OutLayout.GridWidth - 3, MidY - 1), FIntPoint(2, 2)},
+			{FIntPoint(MidX - 1, 1), FIntPoint(2, 2)},
+			{FIntPoint(MidX - 1, OutLayout.GridHeight - 3), FIntPoint(2, 2)}
+		},
+		{
+			{FIntPoint(1, 1), FIntPoint(2, 2)},
+			{FIntPoint(OutLayout.GridWidth - 3, 1), FIntPoint(2, 2)},
+			{FIntPoint(1, OutLayout.GridHeight - 3), FIntPoint(2, 2)},
+			{FIntPoint(OutLayout.GridWidth - 3, OutLayout.GridHeight - 3), FIntPoint(2, 2)}
+		},
+		{
+			{FIntPoint(MidX - 1, 1), FIntPoint(2, 1)},
+			{FIntPoint(MidX - 1, OutLayout.GridHeight - 2), FIntPoint(2, 1)},
+			{FIntPoint(1, MidY - 1), FIntPoint(1, 2)},
+			{FIntPoint(OutLayout.GridWidth - 2, MidY - 1), FIntPoint(1, 2)}
+		}
+	};
+	PlaceCandidateStructures(OutLayout, CandidateGroups, RandomStream);
+}
+
+void URoomInteriorGenerator::PlaceCandidateStructures(
+	FRoomInteriorLayout& OutLayout,
+	const TArray<TArray<FRoomInteriorPlacedStructure>>& CandidateGroups,
+	FRandomStream& RandomStream) const
+{
+	if (CandidateGroups.IsEmpty())
+	{
+		return;
+	}
+
+	TArray<int32> CandidateIndices;
+	CandidateIndices.Reserve(CandidateGroups.Num());
+	for (int32 Index = 0; Index < CandidateGroups.Num(); ++Index)
+	{
+		CandidateIndices.Add(Index);
+	}
+
+	for (int32 Index = CandidateIndices.Num() - 1; Index > 0; --Index)
+	{
+		const int32 SwapIndex = RandomStream.RandRange(0, Index);
+		CandidateIndices.Swap(Index, SwapIndex);
+	}
+
+	for (const int32 CandidateIndex : CandidateIndices)
+	{
+		const TArray<FRoomInteriorPlacedStructure>& Candidate = CandidateGroups[CandidateIndex];
+		FRoomInteriorLayout CandidateLayout = OutLayout;
+		bool bAllPlaced = true;
+
+		for (const FRoomInteriorPlacedStructure& Structure : Candidate)
+		{
+			if (!TryPlaceStructure(CandidateLayout, Structure.Origin, Structure.Footprint))
+			{
+				bAllPlaced = false;
+				break;
+			}
+		}
+
+		if (bAllPlaced)
+		{
+			OutLayout = CandidateLayout;
+			return;
+		}
+	}
+}
+
+bool URoomInteriorGenerator::TryPlaceStructure(FRoomInteriorLayout& OutLayout, const FIntPoint& Origin, const FIntPoint& Footprint) const
+{
+	for (int32 Y = 0; Y < Footprint.Y; ++Y)
+	{
+		for (int32 X = 0; X < Footprint.X; ++X)
+		{
+			const FIntPoint Coord = Origin + FIntPoint(X, Y);
+			if (!IsValidCell(OutLayout, Coord))
+			{
+				return false;
+			}
+
+			const ERoomInteriorCellType CellType = GetCellType(OutLayout, Coord);
+			if (CellType != ERoomInteriorCellType::Empty)
+			{
+				return false;
+			}
+		}
+	}
+
+	for (int32 Y = 0; Y < Footprint.Y; ++Y)
+	{
+		for (int32 X = 0; X < Footprint.X; ++X)
+		{
+			SetCellType(OutLayout, Origin + FIntPoint(X, Y), ERoomInteriorCellType::Blocked);
+		}
+	}
+
+	FRoomInteriorPlacedStructure& NewStructure = OutLayout.PlacedStructures.AddDefaulted_GetRef();
+	NewStructure.Origin = Origin;
+	NewStructure.Footprint = Footprint;
+	return true;
+}
+
+bool URoomInteriorGenerator::AreAllDoorsReachable(const FRoomInteriorLayout& Layout, const FRoomData& RoomData, float RoomHalfExtent) const
+{
+	TArray<FIntPoint> DoorCells;
+	const TArray<FVector> DoorAnchors = GetDoorAnchors(RoomData, RoomHalfExtent);
+	DoorCells.Reserve(DoorAnchors.Num());
+
+	for (const FVector& DoorAnchor : DoorAnchors)
+	{
+		const FIntPoint DoorCell = LocalPointToCell(Layout, DoorAnchor, RoomHalfExtent);
+		if (IsValidCell(Layout, DoorCell))
+		{
+			DoorCells.Add(DoorCell);
+		}
+	}
+
+	if (DoorCells.Num() <= 1)
+	{
+		return true;
+	}
+
+	TSet<FIntPoint> Visited;
+	TQueue<FIntPoint> Queue;
+	Queue.Enqueue(DoorCells[0]);
+	Visited.Add(DoorCells[0]);
+
+	while (!Queue.IsEmpty())
+	{
+		FIntPoint Current;
+		Queue.Dequeue(Current);
+
+		static const FIntPoint Directions[] =
+		{
+			FIntPoint(1, 0),
+			FIntPoint(-1, 0),
+			FIntPoint(0, 1),
+			FIntPoint(0, -1)
+		};
+
+		for (const FIntPoint& Direction : Directions)
+		{
+			const FIntPoint Next = Current + Direction;
+			if (!IsValidCell(Layout, Next) || Visited.Contains(Next))
+			{
+				continue;
+			}
+
+			const ERoomInteriorCellType CellType = GetCellType(Layout, Next);
+			if (CellType == ERoomInteriorCellType::Blocked)
+			{
+				continue;
+			}
+
+			Visited.Add(Next);
+			Queue.Enqueue(Next);
+		}
+	}
+
+	for (const FIntPoint& DoorCell : DoorCells)
+	{
+		if (!Visited.Contains(DoorCell))
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+FIntPoint URoomInteriorGenerator::LocalPointToCell(const FRoomInteriorLayout& Layout, const FVector& LocalPoint, float RoomHalfExtent) const
+{
+	const float ShiftedX = (LocalPoint.X + RoomHalfExtent) / Layout.CellSize;
+	const float ShiftedY = (LocalPoint.Y + RoomHalfExtent) / Layout.CellSize;
+
+	const int32 CellX = FMath::Clamp(FMath::FloorToInt(ShiftedX), 0, Layout.GridWidth - 1);
+	const int32 CellY = FMath::Clamp(FMath::FloorToInt(ShiftedY), 0, Layout.GridHeight - 1);
+	return FIntPoint(CellX, CellY);
+}
+
+bool URoomInteriorGenerator::IsValidCell(const FRoomInteriorLayout& Layout, const FIntPoint& Coord) const
+{
+	return Coord.X >= 0 && Coord.X < Layout.GridWidth
+		&& Coord.Y >= 0 && Coord.Y < Layout.GridHeight;
+}
+
+int32 URoomInteriorGenerator::GetCellIndex(const FRoomInteriorLayout& Layout, const FIntPoint& Coord) const
+{
+	return Coord.Y * Layout.GridWidth + Coord.X;
+}
+
+ERoomInteriorCellType URoomInteriorGenerator::GetCellType(const FRoomInteriorLayout& Layout, const FIntPoint& Coord) const
+{
+	if (!IsValidCell(Layout, Coord))
+	{
+		return ERoomInteriorCellType::Blocked;
+	}
+
+	return Layout.Cells[GetCellIndex(Layout, Coord)].Type;
+}
+
+void URoomInteriorGenerator::SetCellType(FRoomInteriorLayout& OutLayout, const FIntPoint& Coord, ERoomInteriorCellType NewType) const
+{
+	if (!IsValidCell(OutLayout, Coord))
+	{
+		return;
+	}
+
+	FRoomInteriorCell& Cell = OutLayout.Cells[GetCellIndex(OutLayout, Coord)];
+
+	/* 문 앞 예약은 다른 예약보다 우선순위를 가진다 */
+	if (Cell.Type == ERoomInteriorCellType::ReservedDoor && NewType != ERoomInteriorCellType::ReservedDoor)
+	{
+		return;
+	}
+
+	Cell.Type = NewType;
 }
 
 void URoomInteriorGenerator::BuildGuaranteedPaths(FRoomInteriorLayout& OutLayout, const FRoomData& RoomData, float RoomHalfExtent) const
