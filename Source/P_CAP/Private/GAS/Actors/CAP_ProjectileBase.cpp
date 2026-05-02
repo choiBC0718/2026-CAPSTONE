@@ -83,8 +83,7 @@ void ACAP_ProjectileBase::OnOverlapBegin(UPrimitiveComponent* OverlappedComponen
 	FString TagString = TEXT("Item.Trigger.Hit.");
 	TagString += bIsBasicAttack ? TEXT("Basic") : TEXT("Ability");
 	FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName(*TagString));
-	UE_LOG(LogTemp,Warning,TEXT("Trigger Tag == %s") , *TagString);
-
+	//UE_LOG(LogTemp,Warning,TEXT("Trigger Tag == %s") , *TagString);
 	
 	FHitResult Hit;
 	Hit.ImpactPoint = GetActorLocation();

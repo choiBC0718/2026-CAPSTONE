@@ -30,6 +30,7 @@ protected:
 	FVector GetMuzzleSocketLocation(FName SocketName);
 	void SendGameplayCueEvent(FHitResult HitResult, const struct FWeaponSkillData* InSkillData);
 
+	FGameplayTag BaseDamageDataTag;
 	FGameplayTag DamageMultiplierDataTag;
 	FGameplayTag ChargeMultiplierDataTag;
 	

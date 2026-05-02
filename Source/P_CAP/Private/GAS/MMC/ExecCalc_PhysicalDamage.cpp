@@ -29,7 +29,8 @@ UExecCalc_PhysicalDamage::UExecCalc_PhysicalDamage()
 	RelevantAttributesToCapture.Add(CriticalChanceCapture);
 	RelevantAttributesToCapture.Add(CriticalDamageCapture);
 
-	DamageMultiplierDataTag = UCAP_AbilitySystemStatics::GetDataDamageMultiplierDataTag();
+	DamageMultiplierDataTag = UCAP_AbilitySystemStatics::GetDataDamageMultiplierTag();
+	DamageBaseDataTag = UCAP_AbilitySystemStatics::GetDataDamageBaseTag();
 	ChargeMultiplierDataTag = UCAP_AbilitySystemStatics::GetAbilityChargeTimeTag();
 }
 
@@ -56,23 +57,26 @@ void UExecCalc_PhysicalDamage::Execute_Implementation(const FGameplayEffectCusto
 	PhysicalDamage = FMath::Max<float>(0.f, PhysicalDamage);
 	CriticalDamage = FMath::Max<float>(1.0f, CriticalDamage);
 
-	// 기본 데미지 연산
-	float Diff = PhysicalPen - PhysicalArmor;
-	float DamageMultiplier = (Diff >= 0.0f) ? (1.0f + (Diff / 100.0f)) : (100.0f / (100.0f - Diff));
-	float FinalDamage = PhysicalDamage * DamageMultiplier;
-
-	// 스킬 계수 연산
-	float SkillMultiplier = Spec.GetSetByCallerMagnitude(DamageMultiplierDataTag, false, 1.0f);
-	FinalDamage *= SkillMultiplier;
+	// 설정한 데미지 기본 값 가져오기 (덧셈 연산)
+	float BaseDamage = Spec.GetSetByCallerMagnitude(DamageBaseDataTag, false, 0.f);
+	// 설정한 데미지 배율 값 가져오기 (곱 연산)
+	float DamageMultiplier = Spec.GetSetByCallerMagnitude(DamageMultiplierDataTag, false, 1.0f);
+	// 차징 로직에서 보낸 차징 시간 값 가져오기 (곱 연산)
 	float ChargeMultiplier = Spec.GetSetByCallerMagnitude(ChargeMultiplierDataTag, false, 1.0f);
-	FinalDamage *= ChargeMultiplier;
+
+	// 기초 공격력 계산
+	float TotalAttackPow = (PhysicalDamage * DamageMultiplier * ChargeMultiplier) + BaseDamage;
 	
-	bool bCriticalHit = false;
+	// 방어력 경감 계산 
+	float Diff = PhysicalPen - PhysicalArmor;
+	float DiffAmp = (Diff >= 0.0f) ? (1.0f + (Diff / 100.0f)) : (100.0f / (100.0f - Diff));
+	float FinalDamage = TotalAttackPow * DiffAmp;
+	
+	// 크리티컬 계산
 	if (CriticalChance > 0.0f)
 	{
 		if (FMath::RandRange(0.0f, 100.0f) <= CriticalChance)
 		{
-			bCriticalHit = true;
 			FinalDamage *= CriticalDamage;
 		}
 	}

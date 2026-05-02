@@ -28,9 +28,12 @@ public:
 	static FGameplayTag GetSpawnProjectileTag();
 	static FGameplayTag GetAbilityChargeTimeTag();
 
-	static FGameplayTag GetDataDamageMultiplierDataTag();
+	static FGameplayTag GetDataDamageMultiplierTag();
+	static FGameplayTag GetDataDamageBaseTag();
+	static FGameplayTag GetDataDamageTag();
 	static FGameplayTag GetDataCooldownTag();
-	static FGameplayTag GetDataItemEffectDurationTag();
+	static FGameplayTag GetDataEffectDurationTag();
+	static FGameplayTag GetDataStackTag();
 
 	static FGameplayTag GetItemTriggerCastBasic();
 	static FGameplayTag GetItemTriggerCastAbility();

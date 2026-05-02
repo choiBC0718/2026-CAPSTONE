@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Data/CAP_WeaponDataAsset.h"
 #include "Items/ItemBehavior/CAP_ItemBehaviorBase.h"
 #include "ItemBehavior_ApplyStackBurst.generated.h"
 
@@ -29,11 +30,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, meta=(Categories="State.Debuff"), Category="Effect")
 	FGameplayTag DynamicTag;
 	
+	UPROPERTY(EditDefaultsOnly, Category="Value")
+	ESkillDamageType DamageType = ESkillDamageType::Physical;
 	// 최종 버프 계산 값 = BaseValue + (ScaleAttribute의 수치 * Magnitude)
 	UPROPERTY(EditDefaultsOnly, Category="Value")
 	float BaseValue=0.f;
-	UPROPERTY(EditDefaultsOnly, Category="Value")
-	FGameplayAttribute ScaleAttribute;
 	// 스탯의 비례 계수 (10% = 0.1)
 	UPROPERTY(EditDefaultsOnly, Category="Value")
 	float Magnitude=0.f;

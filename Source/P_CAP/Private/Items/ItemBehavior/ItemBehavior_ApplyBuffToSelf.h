@@ -32,9 +32,6 @@ public:
 	// 버프로 스탯 올릴 태그
 	UPROPERTY(EditDefaultsOnly, meta=(Categories="Data.ItemStat"), Category="Effect")
 	FGameplayTag TargetStatTag;
-	// 최종 버프 계산 값 = BaseValue + (ScaleAttribute의 수치 * Magnitude)
-	UPROPERTY(EditDefaultsOnly, Category="Value")
-	float BaseValue=0.f;
 	UPROPERTY(EditDefaultsOnly, Category="Value")
 	FGameplayAttribute ScaleAttribute;
 	// 스탯의 비례 계수 (10% = 0.1)
@@ -52,7 +49,6 @@ protected:
 
 private:
 	bool CheckTriggerCondition(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
-	int32 GetExistingStackCount(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, FActiveGameplayEffectHandle& OutHandle) const;
 	void ApplyBuffWithStack(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, int32 TargetStackCount) const;
-
+	int32 GetExistingStackCount(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, FActiveGameplayEffectHandle& OutHandle) const;
 };

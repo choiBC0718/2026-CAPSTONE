@@ -3,14 +3,27 @@
 
 #include "Data/CAP_AbilitySystemGenerics.h"
 
-TSubclassOf<UGameplayEffect> UCAP_AbilitySystemGenerics::GetDamageGE(ESkillDamageType Type) const
+TSubclassOf<UGameplayEffect> UCAP_AbilitySystemGenerics::GetInstantDamageGE(ESkillDamageType Type) const
 {
 	switch (Type)
 	{
 		case ESkillDamageType::Physical:
-			return MasterPhysicalDamageGE;
+			return MasterPhysicalInstantDamageGE;
 		case ESkillDamageType::Magical:
-			return MasterMagicalDamageGE;
+			return MasterMagicalInstantDamageGE;
+		default:
+			return nullptr;
+	}
+}
+
+TSubclassOf<UGameplayEffect> UCAP_AbilitySystemGenerics::GetDurationDamageGE(ESkillDamageType Type) const
+{
+	switch (Type)
+	{
+		case ESkillDamageType::Physical:
+			return MasterPhysicalDurationDamageGE;
+		case ESkillDamageType::Magical:
+			return MasterMagicalDurationDamageGE;
 		default:
 			return nullptr;
 	}

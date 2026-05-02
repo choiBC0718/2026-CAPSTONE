@@ -5,7 +5,16 @@
 
 #include "AbilitySystemComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
+#include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "Items/Item/CAP_ItemInstance.h"
+
+UCAP_ItemBehaviorBase::UCAP_ItemBehaviorBase()
+{
+	BaseDamageTag = UCAP_AbilitySystemStatics::GetDataDamageBaseTag();
+	DamageMultiplierTag = UCAP_AbilitySystemStatics::GetDataDamageMultiplierTag();
+	StackTag = UCAP_AbilitySystemStatics::GetDataStackTag();
+	DurationTag = UCAP_AbilitySystemStatics::GetDataEffectDurationTag();
+}
 
 void UCAP_ItemBehaviorBase::OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
 {
@@ -60,10 +69,11 @@ bool UCAP_ItemBehaviorBase::CheckAndConsumeCooldown(UCAP_ItemInstance* ItemInst,
 {
 	if (Cooldown<=0.f)
 		return true;
-	if (!ItemInst || !ASC || !ASC->GetWorld())
+	UWorld* World = ASC->GetAvatarActor()->GetWorld();
+	if (!ItemInst || !ASC || !World)
 		return false;
 
-	float CurrentTime = ASC->GetWorld()->GetTimeSeconds();
+	float CurrentTime = World->GetTimeSeconds();
 	// 해당 모듈로 저장된 값이 있으면 가져오고, 없으면 -999로 초기화
 	float& LastTime = ItemInst->BehaviorLastTriggerTimes.FindOrAdd(this,-999.f);
 	// 마지막 발동 시간부터 쿨타임만큼 시간이 흘렀는지 체크

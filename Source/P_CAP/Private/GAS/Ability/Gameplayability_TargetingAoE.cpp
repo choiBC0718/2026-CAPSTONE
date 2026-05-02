@@ -123,7 +123,7 @@ void UGameplayability_TargetingAoE::ProjectileTargetingConfirmed()
 	if (Projectiles.Num() > 0)
 	{
 		FGameplayEffectSpecHandle EffectSpecHandle = MakeOutgoingGameplayEffectSpec(GetDamageGE(), GetAbilityLevel());
-		EffectSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->BaseDamageMultiplier);
+		EffectSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->DamageMultiplier);
 		
 		for (ACAP_ProjectileBase* Projectile : Projectiles)
 			Projectile->InitArcProjectile(CachedTargetLocation,0.5f,SkillData->TargetAreaRadius,EffectSpecHandle, SkillData->GameplayCueTag, IsBasicAttack());

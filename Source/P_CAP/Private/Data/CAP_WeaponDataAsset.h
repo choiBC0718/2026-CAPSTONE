@@ -22,7 +22,6 @@ enum class ESkillDamageType : uint8
 {
 	Physical,
 	Magical,
-	Fixed,
 };
 
 /** 무기 데이터 에셋에서 무기마다 설정할 Ability 구조체 */
@@ -48,9 +47,12 @@ struct FWeaponSkillData : public FTableRowBase
 	/** 스킬 데미지 타입 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data")
 	ESkillDamageType DamageType = ESkillDamageType::Physical;
+	/** 스킬이 보장할 기본 데미지 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data")
+	float BaseDamage =0.f;
 	/** 스킬 데미지 배수*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data")
-	float BaseDamageMultiplier = 1.f;
+	float DamageMultiplier = 1.f;
 	/** 스킬 쿨타임*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data")
 	float CooldownTime = 1.f;

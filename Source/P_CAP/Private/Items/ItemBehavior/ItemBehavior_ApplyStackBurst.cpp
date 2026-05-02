@@ -58,25 +58,17 @@ void UItemBehavior_ApplyStackBurst::ApplyBurstLogicToSingleTarget(UCAP_ItemInsta
 		return;
 	
 	TSubclassOf<UGameplayEffect> MasterMarkGE = CAP_ASC->GetGenerics()->GetItemMarkGE();
-	TSubclassOf<UGameplayEffect> MasterInstantDamageGE = CAP_ASC->GetGenerics()->GetInstantDamageEffect();
+	TSubclassOf<UGameplayEffect> MasterInstantDamageGE = CAP_ASC->GetGenerics()->GetInstantDamageGE(DamageType);
 	if (!MasterMarkGE || !MasterInstantDamageGE)
 		return;
 
 	FActiveGameplayEffectHandle ExistingHandle;
 	int32 CurrentItemStack = GetExistingMarkStackCount(ItemInst,TargetASC,MasterMarkGE,ExistingHandle);
-	FGameplayTag StackTag = FGameplayTag::RequestGameplayTag("Data.StackCount");
 	
 	if (CurrentItemStack +1 >= BurstStackCount)
 	{
 		if (ExistingHandle.IsValid())
 			TargetASC->RemoveActiveGameplayEffect(ExistingHandle);
-
-		float FinalMagnitude = BaseValue;
-		if (ScaleAttribute.IsValid())
-		{
-			float CleanStatVal = SourceASC->GetNumericAttribute(ScaleAttribute);
-			FinalMagnitude += (CleanStatVal * Magnitude);
-		}
 
 		FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
 		Context.AddSourceObject(ItemInst);
@@ -84,8 +76,8 @@ void UItemBehavior_ApplyStackBurst::ApplyBurstLogicToSingleTarget(UCAP_ItemInsta
 
 		if (SpecHandle.IsValid())
 		{
-			FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag("Data.Damage");
-			SpecHandle.Data->SetSetByCallerMagnitude(DamageTag, FinalMagnitude);
+			SpecHandle.Data->SetSetByCallerMagnitude(BaseDamageTag, BaseValue);
+			SpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierTag, Magnitude);
 			SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 		}
 	}
@@ -115,7 +107,6 @@ int32 UItemBehavior_ApplyStackBurst::GetExistingMarkStackCount(UCAP_ItemInstance
 	UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> MarkGE,FActiveGameplayEffectHandle& OutHandle) const
 {
 	int32 FoundStack = 0;
-	FGameplayTag StackTag = FGameplayTag::RequestGameplayTag("Data.StackCount");
 
 	FGameplayEffectQuery Query;
 	Query.EffectDefinition = MarkGE;

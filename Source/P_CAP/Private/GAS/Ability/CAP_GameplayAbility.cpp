@@ -25,7 +25,9 @@ UCAP_GameplayAbility::UCAP_GameplayAbility()
 	DamageTag = UCAP_AbilitySystemStatics::GetDamageTag();
 	RMSTag = UCAP_AbilitySystemStatics::GetRMSTag();
 	SpawnProjectileTag = UCAP_AbilitySystemStatics::GetSpawnProjectileTag();
-	DamageMultiplierDataTag = UCAP_AbilitySystemStatics::GetDataDamageMultiplierDataTag();
+
+	BaseDamageDataTag = UCAP_AbilitySystemStatics::GetDataDamageBaseTag();
+	DamageMultiplierDataTag = UCAP_AbilitySystemStatics::GetDataDamageMultiplierTag();
 	ChargeMultiplierDataTag = UCAP_AbilitySystemStatics::GetAbilityChargeTimeTag();
 	DataCooldownTag = UCAP_AbilitySystemStatics::GetDataCooldownTag();
 	
@@ -152,8 +154,9 @@ void UCAP_GameplayAbility::OnDamageTagReceived(FGameplayEventData Payload)
 	int HitResultCount = UAbilitySystemBlueprintLibrary::GetDataCountFromTargetData(Payload.TargetData);
 	FGameplayEffectContextHandle EffectContext = MakeEffectContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
 	FGameplayEffectSpecHandle DamageSpecHandle = MakeOutgoingGameplayEffectSpec(GetDamageGE(), GetAbilityLevel(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo()));
-	
-	DamageSpecHandle.Data -> SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->BaseDamageMultiplier);
+
+	DamageSpecHandle.Data->SetSetByCallerMagnitude(BaseDamageDataTag, SkillData->BaseDamage);
+	DamageSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->DamageMultiplier);
 	DamageSpecHandle.Data->SetSetByCallerMagnitude(ChargeMultiplierDataTag, ChargedTime);
 
 	for (int i =0; i<HitResultCount; i++)
@@ -207,7 +210,8 @@ void UCAP_GameplayAbility::OnSpawnProjectileTagReceived(FGameplayEventData Paylo
 	if (Projectiles.Num() > 0)
 	{
 		FGameplayEffectSpecHandle DamageSpecHandle = MakeOutgoingGameplayEffectSpec(GetDamageGE(), GetAbilityLevel());
-		DamageSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->BaseDamageMultiplier);
+		DamageSpecHandle.Data->SetSetByCallerMagnitude(BaseDamageDataTag, SkillData->BaseDamage);
+		DamageSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->DamageMultiplier);
 		DamageSpecHandle.Data->SetSetByCallerMagnitude(ChargeMultiplierDataTag, ChargedTime);
 		for (ACAP_ProjectileBase* Projectile : Projectiles)
 		{
@@ -231,10 +235,10 @@ TSubclassOf<UGameplayEffect> UCAP_GameplayAbility::GetDamageGE() const
 	
 	ESkillDamageType DamageType = SkillData->DamageType;
 	UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponentFromActorInfo());
-	if (!ASC || !ASC->GetGenerics()->GetDamageGE(DamageType))
+	if (!ASC || !ASC->GetGenerics()->GetInstantDamageGE(DamageType))
 		return nullptr;
 	
-	return ASC->GetGenerics()->GetDamageGE(DamageType);
+	return ASC->GetGenerics()->GetInstantDamageGE(DamageType);
 }
 
 void UCAP_GameplayAbility::SendItemTriggerEvent(bool bIsHit, FGameplayAbilityTargetDataHandle TargetData)

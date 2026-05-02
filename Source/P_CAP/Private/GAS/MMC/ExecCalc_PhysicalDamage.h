@@ -26,5 +26,6 @@ private:
 	FGameplayEffectAttributeCaptureDefinition CriticalDamageCapture;
 
 	FGameplayTag DamageMultiplierDataTag;
+	FGameplayTag DamageBaseDataTag;
 	FGameplayTag ChargeMultiplierDataTag;
 };

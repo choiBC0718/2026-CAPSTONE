@@ -9,7 +9,6 @@
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
-#include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "Items/Item/CAP_ItemInstance.h"
 
 void UItemBehavior_ApplyBuffToSelf::OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
@@ -73,6 +72,42 @@ bool UItemBehavior_ApplyBuffToSelf::CheckTriggerCondition(UCAP_ItemInstance* Ite
 	return true;
 }
 
+void UItemBehavior_ApplyBuffToSelf::ApplyBuffWithStack(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, int32 TargetStackCount) const
+{
+	UCAP_AbilitySystemComponent* CAP_ASC = ItemInst->GetCachedASC();
+	if (!CAP_ASC || !CAP_ASC->GetGenerics())	return;
+	TSubclassOf<UGameplayEffect> DurationBuffGE = CAP_ASC->GetGenerics()->GetItemStatDurationEffect();
+	if (!DurationBuffGE)	return;
+	if (!ScaleAttribute.IsValid())
+	{
+		UE_LOG(LogTemp,Warning,TEXT("어떤 스탯에 영향을 받아 감소시킬지 설정해(ScaleAttribute)"));
+		return;
+	}
+	
+	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+	Context.AddSourceObject(ItemInst);
+
+	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DurationBuffGE, 1.f, Context);
+	if (!SpecHandle.IsValid())
+		return;
+	
+	InitGameplayEffectToZero(SpecHandle, DurationBuffGE);
+	
+	SpecHandle.Data->SetSetByCallerMagnitude(StackTag, TargetStackCount);
+	
+	float CleanStatValue = ASC->GetNumericAttribute(ScaleAttribute);
+	float FinalMagnitude = Magnitude * CleanStatValue;
+	
+	SpecHandle.Data->SetSetByCallerMagnitude(TargetStatTag, FinalMagnitude*TargetStackCount);
+
+	if (Duration>0.f)
+	{
+		SpecHandle.Data->SetSetByCallerMagnitude(DurationTag, Duration);
+	}
+	
+	ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+}
+
 int32 UItemBehavior_ApplyBuffToSelf::GetExistingStackCount(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC,FActiveGameplayEffectHandle& OutHandle) const
 {
 	UCAP_AbilitySystemComponent* CAP_ASC = ItemInst->GetCachedASC();
@@ -81,7 +116,6 @@ int32 UItemBehavior_ApplyBuffToSelf::GetExistingStackCount(UCAP_ItemInstance* It
 	if (!DurationBuffGE)	return 0;
 	
 	int32 FoundStack =0;
-	FGameplayTag StackTag = FGameplayTag::RequestGameplayTag("Data.StackCount");
 
 	FGameplayEffectQuery Query;
 	Query.EffectDefinition = DurationBuffGE;
@@ -99,40 +133,4 @@ int32 UItemBehavior_ApplyBuffToSelf::GetExistingStackCount(UCAP_ItemInstance* It
 		}
 	}
 	return FoundStack;
-}
-
-void UItemBehavior_ApplyBuffToSelf::ApplyBuffWithStack(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, int32 TargetStackCount) const
-{
-	UCAP_AbilitySystemComponent* CAP_ASC = ItemInst->GetCachedASC();
-	if (!CAP_ASC || !CAP_ASC->GetGenerics())	return;
-	TSubclassOf<UGameplayEffect> DurationBuffGE = CAP_ASC->GetGenerics()->GetItemStatDurationEffect();
-	if (!DurationBuffGE)	return;
-	
-	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
-	Context.AddSourceObject(ItemInst);
-
-	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DurationBuffGE, 1.f, Context);
-	if (!SpecHandle.IsValid())
-		return;
-	
-	InitGameplayEffectToZero(SpecHandle, DurationBuffGE);
-
-	FGameplayTag StackTag = FGameplayTag::RequestGameplayTag("Data.StackCount");
-	SpecHandle.Data->SetSetByCallerMagnitude(StackTag, TargetStackCount);
-	
-	float FinalMagnitude = BaseValue;
-	if (ScaleAttribute.IsValid())
-	{
-		float CleanStatValue = ASC->GetNumericAttribute(ScaleAttribute);
-		FinalMagnitude += (CleanStatValue * Magnitude);
-	}
-	SpecHandle.Data->SetSetByCallerMagnitude(TargetStatTag, FinalMagnitude*TargetStackCount);
-
-	if (Duration>0.f)
-	{
-		FGameplayTag DurationTag = UCAP_AbilitySystemStatics::GetDataItemEffectDurationTag();
-		SpecHandle.Data->SetSetByCallerMagnitude(DurationTag, Duration);
-	}
-	
-	ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 }

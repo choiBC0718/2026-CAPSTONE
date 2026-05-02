@@ -21,6 +21,7 @@ class UCAP_ItemBehaviorBase : public UObject
 	GENERATED_BODY()
 
 public:
+	UCAP_ItemBehaviorBase();
 	//아이템 장착 시 호출  
 	virtual void OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
 	//아이템 해제 시 호출
@@ -42,6 +43,11 @@ protected:
 
 	void InitGameplayEffectToZero(const FGameplayEffectSpecHandle& SpecHandle, TSubclassOf<UGameplayEffect> BuffGE) const;
 
+	FGameplayTag BaseDamageTag;
+	FGameplayTag DamageMultiplierTag;
+	FGameplayTag StackTag;
+	FGameplayTag DurationTag;
+	
 private:
 	// ASC 델리게이트와 연결될 내부 콜백 함수
 	void InternalEventCallback(const struct FGameplayEventData* Payload, UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;

@@ -27,15 +27,11 @@ public:
 	// n번의 트리거를 발동시킨 뒤에 효과 발동
 	UPROPERTY(EditDefaultsOnly, meta=(ClampMin="1"), Category="Trigger")
 	int32 RequiredTriggerCount = 1;
-	// 최대 스택 수
-	UPROPERTY(EditDefaultsOnly, meta=(ClampMin="1"), Category="Effect")
-	int32 MaxStackCount = 1;
+
 	// 깎아낼 몬스터의 스탯 태그
 	UPROPERTY(EditDefaultsOnly, meta=(Categories="Data.ItemStat"), Category="Effect")
 	FGameplayTag TargetStatTag;
-	// 최종 버프 계산 값 = BaseValue + (ScaleAttribute의 수치 * Magnitude)
-	UPROPERTY(EditDefaultsOnly, Category="Value")
-	float BaseValue=0.f;
+	// 타격 대상의 스탯의 몇 % 감소시킬까
 	UPROPERTY(EditDefaultsOnly, Category="Value")
 	FGameplayAttribute ScaleAttribute;
 	// 스탯의 비례 계수 (10% = 0.1)
@@ -54,5 +50,5 @@ protected:
 private:
 	bool CheckTriggerCondition(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
 	void ApplyDebuffToSingleTarget(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC) const;
-	int32 GetExistingStackCountOnTarget(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> MasterGE, FActiveGameplayEffectHandle& OutHandle) const;
+	FActiveGameplayEffectHandle GetExistingDebuffHandle(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> MasterGE) const;
 };

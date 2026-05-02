@@ -53,34 +53,24 @@ void UItemBehavior_ApplyDot::ApplyDoTToSingleTarget(UCAP_ItemInstance* ItemInst,
 	UCAP_AbilitySystemComponent* CAP_ASC = ItemInst->GetCachedASC();
 	if (!CAP_ASC || !CAP_ASC->GetGenerics())
 		return;
-	TSubclassOf<UGameplayEffect> MasterDotEffect = CAP_ASC->GetGenerics()->GetDotEffect();
+	TSubclassOf<UGameplayEffect> MasterDotEffect = CAP_ASC->GetGenerics()->GetDurationDamageGE(DamageType);
 	if (!MasterDotEffect)
 		return;
 
+	// 현재 적용중인 GE핸들 확인 먼저
 	FActiveGameplayEffectHandle ExistingHandle;
 	int32 CurrentItemStack = GetExistingDoTStackCount(ItemInst, TargetASC, MasterDotEffect, ExistingHandle);
 	int32 TargetStackCount = FMath::Min(CurrentItemStack+1, MaxStackCount);
-
-	
-	FGameplayTag StackTag = FGameplayTag::RequestGameplayTag("Data.StackCount");
-	FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag("Data.Damage");
-
-	float FinalMagnitude = BaseValue;
-	if (ScaleAttribute.IsValid())
-	{
-		float CleanStatValue = SourceASC->GetNumericAttribute(ScaleAttribute);
-		FinalMagnitude += (CleanStatValue * Magnitude);
-	}
 
 	// 기존 핸들 있으면 수치만 덮어씌워
 	if (ExistingHandle.IsValid())
 	{
 		TargetASC->UpdateActiveGameplayEffectSetByCallerMagnitude(ExistingHandle, StackTag,TargetStackCount);
-		TargetASC->UpdateActiveGameplayEffectSetByCallerMagnitude(ExistingHandle, DamageTag,FinalMagnitude * TargetStackCount);
+		TargetASC->UpdateActiveGameplayEffectSetByCallerMagnitude(ExistingHandle, BaseDamageTag,BaseTickDamage * TargetStackCount);
+		TargetASC->UpdateActiveGameplayEffectSetByCallerMagnitude(ExistingHandle, DamageMultiplierTag,Magnitude);
 
 		if (Duration > 0.f)
 		{
-			FGameplayTag DurationTag = FGameplayTag::RequestGameplayTag("Data.ItemEffect.Duration");
 			TargetASC->UpdateActiveGameplayEffectSetByCallerMagnitude(ExistingHandle, DurationTag, Duration);
 		}
 		return;
@@ -99,10 +89,10 @@ void UItemBehavior_ApplyDot::ApplyDoTToSingleTarget(UCAP_ItemInstance* ItemInst,
 	}
 	
 	SpecHandle.Data->SetSetByCallerMagnitude(StackTag, TargetStackCount);
-	SpecHandle.Data->SetSetByCallerMagnitude(DamageTag, FinalMagnitude * TargetStackCount);
+	SpecHandle.Data->SetSetByCallerMagnitude(BaseDamageTag, BaseTickDamage * TargetStackCount);
+	SpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierTag, Magnitude);
 	if (Duration > 0.f)
 	{
-		FGameplayTag DurationTag = FGameplayTag::RequestGameplayTag("Data.ItemEffect.Duration");
 		SpecHandle.Data->SetSetByCallerMagnitude(DurationTag, Duration);
 	}
 	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
@@ -111,7 +101,6 @@ void UItemBehavior_ApplyDot::ApplyDoTToSingleTarget(UCAP_ItemInstance* ItemInst,
 int32 UItemBehavior_ApplyDot::GetExistingDoTStackCount(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* TargetASC,	TSubclassOf<UGameplayEffect> MasterGE, FActiveGameplayEffectHandle& OutHandle) const
 {
 	int32 FoundStack = 0;
-	FGameplayTag StackTag = FGameplayTag::RequestGameplayTag("Data.StackCount");
 
 	FGameplayEffectQuery Query;
 	Query.EffectDefinition = MasterGE;

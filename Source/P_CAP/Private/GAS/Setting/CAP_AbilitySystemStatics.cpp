@@ -53,9 +53,19 @@ FGameplayTag UCAP_AbilitySystemStatics::GetAbilityChargeTimeTag()
 	return FGameplayTag::RequestGameplayTag("Ability.Event.Charge.Time");
 }
 
-FGameplayTag UCAP_AbilitySystemStatics::GetDataDamageMultiplierDataTag()
+FGameplayTag UCAP_AbilitySystemStatics::GetDataDamageMultiplierTag()
 {
-	return FGameplayTag::RequestGameplayTag("Data.Ability.Multiplier");
+	return FGameplayTag::RequestGameplayTag("Data.Damage.Multiplier");
+}
+
+FGameplayTag UCAP_AbilitySystemStatics::GetDataDamageBaseTag()
+{
+	return FGameplayTag::RequestGameplayTag("Data.Damage.Base");
+}
+
+FGameplayTag UCAP_AbilitySystemStatics::GetDataDamageTag()
+{
+	return FGameplayTag::RequestGameplayTag("Data.Damage");
 }
 
 FGameplayTag UCAP_AbilitySystemStatics::GetDataCooldownTag()
@@ -63,9 +73,14 @@ FGameplayTag UCAP_AbilitySystemStatics::GetDataCooldownTag()
 	return FGameplayTag::RequestGameplayTag("Data.Cooldown");
 }
 
-FGameplayTag UCAP_AbilitySystemStatics::GetDataItemEffectDurationTag()
+FGameplayTag UCAP_AbilitySystemStatics::GetDataEffectDurationTag()
 {
 	return FGameplayTag::RequestGameplayTag("Data.ItemEffect.Duration");
+}
+
+FGameplayTag UCAP_AbilitySystemStatics::GetDataStackTag()
+{
+	return FGameplayTag::RequestGameplayTag("Data.StackCount");
 }
 
 FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerCastBasic()

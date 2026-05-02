@@ -63,18 +63,22 @@ void UItemBehavior_ApplyDebuffToTarget::ApplyDebuffToSingleTarget(UCAP_ItemInsta
 	UCAP_AbilitySystemComponent* CAP_ASC = ItemInst->GetCachedASC();
 	if (!CAP_ASC || !CAP_ASC->GetGenerics())
 		return;
+	
 	TSubclassOf<UGameplayEffect> DurationDebuffGE = CAP_ASC->GetGenerics()->GetItemStatDurationEffect();
 	if (!DurationDebuffGE)
 		return;
+	if (!ScaleAttribute.IsValid())
+	{
+		UE_LOG(LogTemp,Warning,TEXT("어떤 스탯에 영향을 받아 감소시킬지 설정해(ScaleAttribute)"));
+		return;
+	}
 
-	FActiveGameplayEffectHandle ExistingHandle;
-	int32 CurrentItemStack = GetExistingStackCountOnTarget(ItemInst, TargetASC, DurationDebuffGE, ExistingHandle);
-
-	int32 TargetStackCount = FMath::Min(CurrentItemStack + 1, MaxStackCount);
-
+	// 타겟에게 적용되던 GE가 있으면 삭제하고 새로운 GE 부여
+	FActiveGameplayEffectHandle ExistingHandle = GetExistingDebuffHandle(ItemInst,TargetASC,DurationDebuffGE);
 	if (ExistingHandle.IsValid())
+	{
 		TargetASC->RemoveActiveGameplayEffect(ExistingHandle);
-	
+	}
 	
 	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
 	Context.AddSourceObject(ItemInst);
@@ -84,31 +88,22 @@ void UItemBehavior_ApplyDebuffToTarget::ApplyDebuffToSingleTarget(UCAP_ItemInsta
 	
 	InitGameplayEffectToZero(SpecHandle, DurationDebuffGE);
 	
-	FGameplayTag StackTag = FGameplayTag::RequestGameplayTag("Data.StackCount");
-	SpecHandle.Data->SetSetByCallerMagnitude(StackTag, TargetStackCount);
-
-	float FinalMagnitude = BaseValue;
-	if (ScaleAttribute.IsValid())
-	{
-		float CleanStatValue = TargetASC->GetNumericAttribute(ScaleAttribute);
-		FinalMagnitude += (CleanStatValue * Magnitude);
-	}
-	SpecHandle.Data->SetSetByCallerMagnitude(TargetStatTag, -FinalMagnitude * TargetStackCount);
+	float CleanStatValue = TargetASC->GetNumericAttribute(ScaleAttribute);
+	float FinalMagnitude = Magnitude * CleanStatValue;
+	
+	SpecHandle.Data->SetSetByCallerMagnitude(TargetStatTag, -FinalMagnitude);
 
 	if (Duration > 0.f)
 	{
-		FGameplayTag DurationTag = FGameplayTag::RequestGameplayTag("Data.ItemEffect.Duration");
 		SpecHandle.Data->SetSetByCallerMagnitude(DurationTag, Duration);
 	}
 	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 }
 
-int32 UItemBehavior_ApplyDebuffToTarget::GetExistingStackCountOnTarget(UCAP_ItemInstance* ItemInst,
-	UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> MasterGE,FActiveGameplayEffectHandle& OutHandle) const
+FActiveGameplayEffectHandle UItemBehavior_ApplyDebuffToTarget::GetExistingDebuffHandle(UCAP_ItemInstance* ItemInst,
+	UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> MasterGE) const
 {
-	int32 FoundStack =0;
-	FGameplayTag StackTag = FGameplayTag::RequestGameplayTag("Data.StackCount");
-
+	FActiveGameplayEffectHandle FoundHandle;
 	FGameplayEffectQuery Query;
 	Query.EffectDefinition = MasterGE;
 	TArray<FActiveGameplayEffectHandle> ActiveEffects = TargetASC->GetActiveEffects(Query);
@@ -118,10 +113,9 @@ int32 UItemBehavior_ApplyDebuffToTarget::GetExistingStackCountOnTarget(UCAP_Item
 		const FActiveGameplayEffect* ActiveGE = TargetASC->GetActiveGameplayEffect(Handle);
 		if (ActiveGE && ActiveGE->Spec.GetEffectContext().GetSourceObject() == ItemInst)
 		{
-			OutHandle = Handle;
-			FoundStack = static_cast<int32>(ActiveGE->Spec.GetSetByCallerMagnitude(StackTag,false,0.f));
+			FoundHandle = Handle;
 			break;
 		}
 	}
-	return FoundStack;
+	return FoundHandle;
 }
