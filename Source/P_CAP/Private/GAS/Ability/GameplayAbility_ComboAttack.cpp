@@ -49,8 +49,8 @@ void UGameplayAbility_ComboAttack::OnNextComboTagReceived(FGameplayEventData Pay
 	if (ComboNotify)
 	{
 		NextComboSectionName = ComboNotify->NextSectionName;
-		if (NextComboSectionName != FName("Combo02"))
-			SendItemTriggerEvent(false);
+		if (NextComboSectionName != TEXT("Combo02"))
+			BroadcastTriggerEvent(IsBasicAttack()?TriggerCastBasicTag:TriggerCastAbilityTag);
 	}
 }
 

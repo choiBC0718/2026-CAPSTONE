@@ -26,10 +26,15 @@ protected:
 	class ACAP_PlayerCharacter* GetPlayerCharacterFromActorInfo() const;
 	const struct FWeaponSkillData* GetSkillDataFromContext(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const;
 
-	TArray<class ACAP_ProjectileBase*> SpawnProjectile(FVector SpawnLocation, const struct FWeaponSkillData* InSkillData);
+	TArray<class ACAP_ProjectileBase*> SpawnProjectile(FVector SpawnLocation, const struct FSkillLogicDataBase* InProjectileData);
 	FVector GetMuzzleSocketLocation(FName SocketName);
 	void SendGameplayCueEvent(FHitResult HitResult, const struct FWeaponSkillData* InSkillData);
 
+	FGameplayTag TriggerCastBasicTag;
+	FGameplayTag TriggerCastAbilityTag;
+	FGameplayTag TriggerHitBasicTag;
+	FGameplayTag TriggerHitAbilityTag;
+	
 	FGameplayTag BaseDamageDataTag;
 	FGameplayTag DamageMultiplierDataTag;
 	FGameplayTag ChargeMultiplierDataTag;
@@ -51,9 +56,9 @@ protected:
 	virtual void OnMontageInterrupted();
 
 	TSubclassOf<UGameplayEffect> GetDamageGE() const;
-
-	void SendItemTriggerEvent(bool bIsHit, FGameplayAbilityTargetDataHandle TargetData = FGameplayAbilityTargetDataHandle());
+	
 	bool IsBasicAttack() const;
+	void BroadcastTriggerEvent(FGameplayTag EventTag, FGameplayAbilityTargetDataHandle TargetData = FGameplayAbilityTargetDataHandle()) const;
 
 	float ChargedTime = 1.f;
 };

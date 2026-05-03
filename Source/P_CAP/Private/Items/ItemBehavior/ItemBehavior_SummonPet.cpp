@@ -5,6 +5,8 @@
 
 #include "AbilitySystemComponent.h"
 #include "Character/Pet/CAP_FlyingPetPawn.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
+#include "Items/Item/CAP_InventoryComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 void UItemBehavior_SummonPet::OnEquipped(class UCAP_ItemInstance* ItemInst, class UAbilitySystemComponent* ASC) const
@@ -37,6 +39,13 @@ void UItemBehavior_SummonPet::OnEquipped(class UCAP_ItemInstance* ItemInst, clas
 		NewPet->SetStats(DamageType, BaseDamage, DamageMultiplier);
 		NewPet->FinishSpawning(SpawnTrans);
 		SpawnedPet = NewPet;
+	}
+	if (ACAP_PlayerCharacter* PlayerChar = Cast<ACAP_PlayerCharacter>(OwnerActor))
+	{
+		if (UCAP_InventoryComponent* InvComp = PlayerChar->GetInventoryComponent())
+		{
+			InvComp->OnItemEffectTriggered.Broadcast(ItemInst, FGameplayTag::EmptyTag, 0.f, -1.f, 0);
+		}
 	}
 }
 

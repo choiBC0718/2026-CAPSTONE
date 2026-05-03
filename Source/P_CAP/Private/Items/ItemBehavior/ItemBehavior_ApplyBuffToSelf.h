@@ -20,12 +20,12 @@ public:
 	// 효과를 발동시킬 조건의 트리거 태그
 	UPROPERTY(EditDefaultsOnly, meta=(Categories="Item.Trigger"), Category="Trigger")
 	FGameplayTag TriggerEventTag;
-	// 효과를 발동시킬 확률
-	UPROPERTY(EditDefaultsOnly, meta=(ClampMin="0.0", ClampMax="100.0"), Category="Trigger")
-	float TriggerChance = 100.f;
 	// n번의 트리거를 발동시킨 뒤에 효과 발동
 	UPROPERTY(EditDefaultsOnly, meta=(ClampMin="1"), Category="Trigger")
 	int32 RequiredTriggerCount = 1;
+	// RequiredTriggerCount를 증가시킬 확률
+	UPROPERTY(EditDefaultsOnly, meta=(ClampMin="0.0", ClampMax="100.0"), Category="Trigger")
+	float TriggerChance = 100.f;
 	// 최대 스택 수
 	UPROPERTY(EditDefaultsOnly, meta=(ClampMin="1"), Category="Effect")
 	int32 MaxStackCount = 1;

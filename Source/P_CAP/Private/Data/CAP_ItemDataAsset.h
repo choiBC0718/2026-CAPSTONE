@@ -23,10 +23,7 @@ public:
 	// 아이템 아이콘
 	UPROPERTY(EditDefaultsOnly, Category="Widget Data")
 	TSoftObjectPtr<class UTexture2D> ItemIcon;
-
-	// 아이템 타입
-	UPROPERTY(EditDefaultsOnly, Category="Data", meta=(Categories="Item.Type"))
-	FGameplayTagContainer ItemTypeTag;
+	
 	// 아이템 등급
 	UPROPERTY(EditDefaultsOnly, Category="Data")
 	EItemGrade ItemGrade = EItemGrade::Normal;

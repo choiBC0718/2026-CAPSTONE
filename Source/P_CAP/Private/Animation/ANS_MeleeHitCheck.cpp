@@ -6,6 +6,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Abilities/GameplayAbilityTypes.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "P_CAP/P_CAP.h"
 
 UANS_MeleeHitCheck::UANS_MeleeHitCheck()
 {
@@ -37,17 +38,6 @@ void UANS_MeleeHitCheck::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequ
 		{
 			// 메쉬의 소켓의 위치를 PrevSocketLocationMap의 Value에 추가
 			PrevLocs.Add(TargetMesh->GetSocketLocation(SocketName));
-		}
-	}
-
-	// 테스트 용 코드
-	if (AActor* OwnerActor = MeshComp->GetOwner())
-	{
-		if (UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OwnerActor))
-		{
-			FGameplayEventData TestPayload;
-			TestPayload.Instigator = OwnerActor;
-			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(OwnerActor, EventTag, TestPayload);
 		}
 	}
 }
@@ -83,7 +73,7 @@ void UANS_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSeque
 	IgnoreActors.Add(OwnerActor);
 
 	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
-	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Hitbox));
 
 	EDrawDebugTrace::Type DrawDebugType = bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None;
 

@@ -63,36 +63,36 @@ void UCAP_WeaponInstance::LoadWeaponAssets(FStreamableDelegate OnLoaded)
 		if (!VisualInfo.WeaponMesh.IsNull())
 			AssetsToLoad.AddUnique(VisualInfo.WeaponMesh.ToSoftObjectPath());
 	}
-	
-	// 기본 공격 에셋의 주소
-	if (!BasicAttackData.AbilityClass.IsNull())
-		AssetsToLoad.AddUnique(BasicAttackData.AbilityClass.ToSoftObjectPath());
-	if (!BasicAttackData.AbilityMontage.IsNull())
-		AssetsToLoad.AddUnique(BasicAttackData.AbilityMontage.ToSoftObjectPath());
-	if (!BasicAttackData.ProjectileClass.IsNull())
-		AssetsToLoad.AddUnique(BasicAttackData.ProjectileClass.ToSoftObjectPath());
-	if (!BasicAttackData.CastMontage.IsNull())
-		AssetsToLoad.AddUnique(BasicAttackData.CastMontage.ToSoftObjectPath());
-	if (!BasicAttackData.TargetActorClass.IsNull())
-		AssetsToLoad.AddUnique(BasicAttackData.TargetActorClass.ToSoftObjectPath());
-	if (!BasicAttackData.RangeIndicatorClass.IsNull())
-		AssetsToLoad.AddUnique(BasicAttackData.RangeIndicatorClass.ToSoftObjectPath());
 
+	auto ExtractAssetsFromSkill = [&](const FWeaponSkillData& SkillData)
+	{
+		if (!SkillData.AbilityClass.IsNull())
+			AssetsToLoad.AddUnique(SkillData.AbilityClass.ToSoftObjectPath());
+		if (!SkillData.AbilityMontage.IsNull())
+			AssetsToLoad.AddUnique(SkillData.AbilityMontage.ToSoftObjectPath());
+
+		if (const FTargetingLogicData* TargetingData = SkillData.LogicData.GetPtr<FTargetingLogicData>())
+		{
+			if (!TargetingData->CastMontage.IsNull())
+				AssetsToLoad.AddUnique(TargetingData->CastMontage.ToSoftObjectPath());
+			if (!TargetingData->TargetActorClass.IsNull())
+				AssetsToLoad.AddUnique(TargetingData->TargetActorClass.ToSoftObjectPath());
+			if (!TargetingData->RangeIndicatorClass.IsNull())
+				AssetsToLoad.AddUnique(TargetingData->RangeIndicatorClass.ToSoftObjectPath());
+			if (!TargetingData->ProjectileClass.IsNull())
+				AssetsToLoad.AddUnique(TargetingData->ProjectileClass.ToSoftObjectPath());
+		}
+		else if (const FProjectileLogicData* ProjData = SkillData.LogicData.GetPtr<FProjectileLogicData>())
+		{
+			if (!ProjData->ProjectileClass.IsNull())
+				AssetsToLoad.AddUnique(ProjData->ProjectileClass.ToSoftObjectPath());
+		}
+	};
 	
+	ExtractAssetsFromSkill(BasicAttackData);
 	for (const FWeaponSkillData& Skill : GrantedActiveSkills)
-	{	// 부여받은 스킬 에셋의 주소
-		if (!Skill.AbilityClass.IsNull())
-			AssetsToLoad.AddUnique(Skill.AbilityClass.ToSoftObjectPath());
-		if (!Skill.AbilityMontage.IsNull())
-			AssetsToLoad.AddUnique(Skill.AbilityMontage.ToSoftObjectPath());
-		if (!Skill.ProjectileClass.IsNull())
-			AssetsToLoad.AddUnique(Skill.ProjectileClass.ToSoftObjectPath());
-		if (!Skill.CastMontage.IsNull())
-			AssetsToLoad.AddUnique(Skill.CastMontage.ToSoftObjectPath());
-		if (!Skill.TargetActorClass.IsNull())
-			AssetsToLoad.AddUnique(Skill.TargetActorClass.ToSoftObjectPath());
-		if (!Skill.RangeIndicatorClass.IsNull())
-			AssetsToLoad.AddUnique(Skill.RangeIndicatorClass.ToSoftObjectPath());
+	{
+		ExtractAssetsFromSkill(Skill);
 	}
 
 	// 수집한 주소들에 핸들 붙여주기

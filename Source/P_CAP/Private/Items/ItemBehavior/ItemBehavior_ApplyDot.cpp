@@ -4,7 +4,9 @@
 #include "Items/ItemBehavior/ItemBehavior_ApplyDot.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
+#include "Items/Item/CAP_InventoryComponent.h"
 #include "Items/Item/CAP_ItemInstance.h"
 
 void UItemBehavior_ApplyDot::OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
@@ -34,17 +36,22 @@ void UItemBehavior_ApplyDot::OnEventReceived(UCAP_ItemInstance* ItemInst, UAbili
 		if (!TargetASC || TargetASC == ASC)
 			continue;
 		ApplyDoTToSingleTarget(ItemInst, ASC, TargetASC);
-	}	
+	}
+	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(ASC->GetAvatarActor()))
+	{
+		if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
+			InvComp->OnItemEffectTriggered.Broadcast(ItemInst,TriggerEventTag,Cooldown,0.f,0);
+	}
 }
 
 bool UItemBehavior_ApplyDot::CheckTriggerCondition(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
 {
-	if (!CheckAndConsumeCooldown(ItemInst,ASC))
+	if (IsOnCooldown(ItemInst,ASC))
 		return false;
-
 	if (FMath::RandRange(0.f,100.f)>TriggerChance)
 		return false;
-	
+
+	ConsumeCooldown(ItemInst, ASC);
 	return true;
 }
 

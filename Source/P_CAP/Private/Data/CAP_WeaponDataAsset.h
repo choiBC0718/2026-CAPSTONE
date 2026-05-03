@@ -4,10 +4,81 @@
 
 #include "CoreMinimal.h"
 #include "CAP_ItemDataAsset.h"
-#include "Engine/DataAsset.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
+#include "InstancedStruct.h"
 #include "CAP_WeaponDataAsset.generated.h"
 
+
+USTRUCT(BlueprintType)
+struct FSkillLogicDataBase
+{
+	GENERATED_BODY()
+	virtual ~FSkillLogicDataBase() = default;
+
+	virtual int32 GetNumOfProjectiles() const {return 1;}
+	virtual int32 GetMaxHitCount() const {return 1;}
+	virtual float GetSpreadAngle() const {return 0.f;}
+	virtual TSoftClassPtr<class ACAP_ProjectileBase> GetProjectileClass() const {return nullptr;}
+};
+// 투사체 전용 데이터
+USTRUCT(BlueprintType)
+struct FProjectileLogicData: public FSkillLogicDataBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSoftClassPtr<class ACAP_ProjectileBase> ProjectileClass = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "1"))
+	int32 NumOfProjectiles = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "1"))
+	int32 MaxHitCount = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition = "NumOfProjectiles > 1"))
+	float SpreadAngle = 30.f;
+
+	virtual int32 GetNumOfProjectiles() const override {return NumOfProjectiles;}
+	virtual int32 GetMaxHitCount() const override {return MaxHitCount;}
+	virtual float GetSpreadAngle() const override {return SpreadAngle;}
+	virtual TSoftClassPtr<class ACAP_ProjectileBase> GetProjectileClass() const override {return ProjectileClass;}
+};
+// 타게팅 전용 데이터
+USTRUCT(BlueprintType)
+struct FTargetingLogicData : public FSkillLogicDataBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSoftObjectPtr<class UAnimMontage> CastMontage = nullptr;
+	// 스킬이 시전될 타겟 액터
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSoftClassPtr<class ACAP_TargetActor> TargetActorClass = nullptr;
+	// 스킬 시전 가능한 최대 사거리 인디케이터
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSoftClassPtr<class ACAP_TargetRangeIndicator> RangeIndicatorClass = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	float MaxTargetingRange = 1000.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	float TargetAreaRadius = 300.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSoftClassPtr<class ACAP_ProjectileBase> ProjectileClass = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
+	float FallingSpawnHeight = 1000.f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FName ProjectileSocketName = NAME_None;
+	/*
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "1"))
+	int32 NumOfProjectiles = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "1"))
+	int32 MaxHitCount = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	float SpreadAngle = 30.f;
+
+	virtual int32 GetNumOfProjectiles() const override {return NumOfProjectiles;}
+	virtual int32 GetMaxHitCount() const override {return MaxHitCount;}
+	virtual float GetSpreadAngle() const override {return SpreadAngle;}
+	*/
+	virtual TSoftClassPtr<class ACAP_ProjectileBase> GetProjectileClass() const override {return ProjectileClass;}
+};
 
 UENUM(BlueprintType)
 enum class ESkillLogicType : uint8
@@ -41,7 +112,7 @@ struct FWeaponSkillData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Animation")
 	TSoftObjectPtr<class UAnimMontage> AbilityMontage = nullptr;
 
-	// 게임플레이 큐 태그
+	// 타격 대상에게 적용시킬 이펙트 큐 태그
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data", meta=(Categories="GameplayCue.Hit"))
 	FGameplayTag GameplayCueTag;
 	/** 스킬 데미지 타입 */
@@ -70,7 +141,10 @@ struct FWeaponSkillData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill UI")
 	TSoftObjectPtr<class UTexture2D> SkillIcon = nullptr;
 
-	
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Logic", meta=(BaseStruct="/Script/P_CAP.SkillLogicDataBase", ExcludeBaseStruct))
+	FInstancedStruct LogicData;
+	/*
 	// 투사체 클래스 (Targeting 로직에 넣을 시 타게팅 + 투사체로 실행)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs", meta = (EditCondition = "LogicType == ESkillLogicType::Projectile || LogicType == ESkillLogicType::Targeting"))
 	TSoftClassPtr<class ACAP_ProjectileBase> ProjectileClass = nullptr;
@@ -100,6 +174,7 @@ struct FWeaponSkillData : public FTableRowBase
 	// 투사체 퍼짐 각도
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Projectile", meta = (EditCondition = "LogicType == ESkillLogicType::Projectile && NumOfProjectiles>=2"))
 	float SpreadAngle = 30.f;
+	*/
 };
 
 UENUM(BlueprintType)

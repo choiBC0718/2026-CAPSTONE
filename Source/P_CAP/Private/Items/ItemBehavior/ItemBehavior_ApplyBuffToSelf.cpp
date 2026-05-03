@@ -57,18 +57,18 @@ void UItemBehavior_ApplyBuffToSelf::OnEventReceived(UCAP_ItemInstance* ItemInst,
 
 bool UItemBehavior_ApplyBuffToSelf::CheckTriggerCondition(UCAP_ItemInstance* ItemInst,UAbilitySystemComponent* ASC) const
 {
+	if (IsOnCooldown(ItemInst,ASC))
+		return false;
+	if (FMath::RandRange(0.f,100.f)>TriggerChance)
+		return false;
+	
 	int32& CurrentCount = ItemInst->BehaviorCounters.FindOrAdd(this);
 	CurrentCount++;
 	if (CurrentCount < RequiredTriggerCount)
 		return false;
 
-	if (!CheckAndConsumeCooldown(ItemInst,ASC))
-		return false;
-	
+	ConsumeCooldown(ItemInst, ASC);
 	CurrentCount=0;
-	if (FMath::RandRange(0.f,100.f)>TriggerChance)
-		return false;
-	
 	return true;
 }
 

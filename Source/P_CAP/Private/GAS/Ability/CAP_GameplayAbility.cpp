@@ -30,6 +30,11 @@ UCAP_GameplayAbility::UCAP_GameplayAbility()
 	DamageMultiplierDataTag = UCAP_AbilitySystemStatics::GetDataDamageMultiplierTag();
 	ChargeMultiplierDataTag = UCAP_AbilitySystemStatics::GetAbilityChargeTimeTag();
 	DataCooldownTag = UCAP_AbilitySystemStatics::GetDataCooldownTag();
+
+	TriggerCastBasicTag = UCAP_AbilitySystemStatics::GetItemTriggerCastBasic();
+	TriggerCastAbilityTag = UCAP_AbilitySystemStatics::GetItemTriggerCastAbility();
+	TriggerHitBasicTag = UCAP_AbilitySystemStatics::GetItemTriggerHitBasic();
+	TriggerHitAbilityTag = UCAP_AbilitySystemStatics::GetItemTriggerHitAbility();
 	
 	ActivationOwnedTags.AddTag(UCAP_AbilitySystemStatics::GetMovementBlockStateTag());
 }
@@ -91,8 +96,8 @@ void UCAP_GameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 		SpawnProjectileTask->EventReceived.AddDynamic(this, &UCAP_GameplayAbility::OnSpawnProjectileTagReceived);
 		SpawnProjectileTask->ReadyForActivation();
 	}
-
-	SendItemTriggerEvent(false);
+	
+	BroadcastTriggerEvent(IsBasicAttack()?TriggerCastBasicTag:TriggerCastAbilityTag);
 }
 
 void UCAP_GameplayAbility::ApplyCooldown(const FGameplayAbilitySpecHandle Handle,
@@ -172,7 +177,7 @@ void UCAP_GameplayAbility::OnDamageTagReceived(FGameplayEventData Payload)
 
 	if (HitResultCount > 0)
 	{
-		SendItemTriggerEvent(true, Payload.TargetData);
+		BroadcastTriggerEvent(IsBasicAttack()?TriggerHitBasicTag:TriggerHitAbilityTag, Payload.TargetData);
 	}
 }
 
@@ -196,9 +201,12 @@ void UCAP_GameplayAbility::OnRMSTagReceived(FGameplayEventData Payload)
 void UCAP_GameplayAbility::OnSpawnProjectileTagReceived(FGameplayEventData Payload)
 {
 	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
-	if (!SkillData || !SkillData->ProjectileClass.Get())
+	if (!SkillData)
 		return;
-
+	const FProjectileLogicData* ProjectileData = SkillData->LogicData.GetPtr<FProjectileLogicData>();
+	if (!ProjectileData)
+		return;
+	
 	const UAN_SendBasicTagEvent* EventNotify = Cast<UAN_SendBasicTagEvent>(Payload.OptionalObject);
 	FVector SocketLoc = FVector();
 	if (EventNotify && EventNotify->ProjectileMuzzleName!=NAME_None)
@@ -206,17 +214,19 @@ void UCAP_GameplayAbility::OnSpawnProjectileTagReceived(FGameplayEventData Paylo
 		SocketLoc = GetMuzzleSocketLocation(EventNotify->ProjectileMuzzleName);
 	}
 
-	TArray<ACAP_ProjectileBase*> Projectiles = SpawnProjectile(SocketLoc, SkillData);
+	TArray<ACAP_ProjectileBase*> Projectiles = SpawnProjectile(SocketLoc, ProjectileData);
 	if (Projectiles.Num() > 0)
 	{
 		FGameplayEffectSpecHandle DamageSpecHandle = MakeOutgoingGameplayEffectSpec(GetDamageGE(), GetAbilityLevel());
 		DamageSpecHandle.Data->SetSetByCallerMagnitude(BaseDamageDataTag, SkillData->BaseDamage);
 		DamageSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->DamageMultiplier);
 		DamageSpecHandle.Data->SetSetByCallerMagnitude(ChargeMultiplierDataTag, ChargedTime);
+		
+		FGameplayTag HitTag = IsBasicAttack() ? TriggerHitBasicTag : TriggerHitAbilityTag;
 		for (ACAP_ProjectileBase* Projectile : Projectiles)
 		{
 			FVector LaunchDir = Projectile->GetActorForwardVector();
-			Projectile->InitStraightProjectile(LaunchDir, DamageSpecHandle,SkillData->GameplayCueTag, IsBasicAttack());
+			Projectile->InitProjectile(LaunchDir, 0.f,0.f,DamageSpecHandle,SkillData->GameplayCueTag, HitTag,nullptr);
 		}
 	}
 }
@@ -241,25 +251,21 @@ TSubclassOf<UGameplayEffect> UCAP_GameplayAbility::GetDamageGE() const
 	return ASC->GetGenerics()->GetInstantDamageGE(DamageType);
 }
 
-void UCAP_GameplayAbility::SendItemTriggerEvent(bool bIsHit, FGameplayAbilityTargetDataHandle TargetData)
-{
-	FString TagString = TEXT("Item.Trigger.");
-	TagString += bIsHit ? TEXT("Hit.") : TEXT("Cast.");
-	TagString += IsBasicAttack() ? TEXT("Basic") : TEXT("Ability");
-//	UE_LOG(LogTemp,Warning,TEXT("Trigger Tag == %s") , *TagString);
-	FGameplayTag EventTag = FGameplayTag::RequestGameplayTag(FName(*TagString));
-	FGameplayEventData Payload;
-	Payload.EventTag = EventTag;
-	Payload.Instigator = GetAvatarActorFromActorInfo();
-	Payload.TargetData = TargetData;
-
-	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetAvatarActorFromActorInfo(), EventTag, Payload);
-}
-
 bool UCAP_GameplayAbility::IsBasicAttack() const
 {
 	FGameplayAbilitySpec* Spec = GetCurrentAbilitySpec();
 	return Spec && Spec->InputID == static_cast<int32>(EAbilityInputID::BasicAttack);
+}
+
+void UCAP_GameplayAbility::BroadcastTriggerEvent(FGameplayTag EventTag,	FGameplayAbilityTargetDataHandle TargetData) const
+{
+	if (!EventTag.IsValid()) return;
+
+	FGameplayEventData Payload;
+	Payload.Instigator = GetAvatarActorFromActorInfo();
+	Payload.TargetData = TargetData;
+	//UE_LOG(LogTemp,Warning,TEXT("트리거 발생 태그 = %s [브로드캐스트 트리거 이벤트]"),*EventTag.ToString());
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetAvatarActorFromActorInfo(), EventTag, Payload);
 }
 
 class ACAP_PlayerCharacter* UCAP_GameplayAbility::GetPlayerCharacterFromActorInfo() const
@@ -277,10 +283,10 @@ UAnimInstance* UCAP_GameplayAbility::GetOwnerAnimInstance() const
 	return nullptr;
 }
 
-TArray<class ACAP_ProjectileBase*> UCAP_GameplayAbility::SpawnProjectile(FVector SpawnLoc, const struct FWeaponSkillData* InSkillData)
+TArray<class ACAP_ProjectileBase*> UCAP_GameplayAbility::SpawnProjectile(FVector SpawnLoc, const struct FSkillLogicDataBase* InProjectileData)
 {
 	TArray<ACAP_ProjectileBase*> SpawnedProjectiles;
-	if (!InSkillData)
+	if (!InProjectileData)
 		return SpawnedProjectiles;
 	
 	AActor* OwnerAvatarActor = GetAvatarActorFromActorInfo();
@@ -289,7 +295,7 @@ TArray<class ACAP_ProjectileBase*> UCAP_GameplayAbility::SpawnProjectile(FVector
 	SpawnParams.Instigator = Cast<APawn>(OwnerAvatarActor);
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	int32 ProjNums = FMath::Max(1, InSkillData->NumOfProjectiles);
+	int32 ProjNums = FMath::Max(1, InProjectileData->GetNumOfProjectiles());
 	FRotator BaseRot = OwnerAvatarActor->GetActorRotation();
 	
 	for (int32 i=0 ; i<ProjNums ; i++)
@@ -297,16 +303,19 @@ TArray<class ACAP_ProjectileBase*> UCAP_GameplayAbility::SpawnProjectile(FVector
 		float CurrentAngle = 0.f;
 		if (ProjNums > 1)
 		{
-			float HalfAngle = InSkillData->SpreadAngle / 2.f;
-			float Step = InSkillData->SpreadAngle / (ProjNums - 1);
+			float HalfAngle = InProjectileData->GetSpreadAngle() / 2.f;
+			float Step = InProjectileData->GetSpreadAngle() / (ProjNums - 1);
 			CurrentAngle = -HalfAngle + (i*Step);
 		}
 		FRotator SpawnRot = BaseRot;
 		SpawnRot.Yaw += CurrentAngle;
 
-		ACAP_ProjectileBase* Projectile = GetWorld()->SpawnActor<ACAP_ProjectileBase>(InSkillData->ProjectileClass.Get(),SpawnLoc,SpawnRot, SpawnParams);
+		ACAP_ProjectileBase* Projectile = GetWorld()->SpawnActor<ACAP_ProjectileBase>(InProjectileData->GetProjectileClass().Get(),SpawnLoc,SpawnRot, SpawnParams);
 		if (Projectile)
+		{
+			Projectile->MaxHitCount = InProjectileData->GetMaxHitCount();
 			SpawnedProjectiles.Add(Projectile);
+		}
 	}
 	
 	return SpawnedProjectiles;

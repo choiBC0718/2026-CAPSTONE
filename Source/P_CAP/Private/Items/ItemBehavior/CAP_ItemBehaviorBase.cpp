@@ -65,24 +65,31 @@ void UCAP_ItemBehaviorBase::UnbindGameplayEvents(UCAP_ItemInstance* ItemInst, UA
 	}
 }
 
-bool UCAP_ItemBehaviorBase::CheckAndConsumeCooldown(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+bool UCAP_ItemBehaviorBase::IsOnCooldown(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
 {
-	if (Cooldown<=0.f)
-		return true;
+	if (Cooldown <= 0.f)
+		return false;
+	
 	UWorld* World = ASC->GetAvatarActor()->GetWorld();
 	if (!ItemInst || !ASC || !World)
 		return false;
 
 	float CurrentTime = World->GetTimeSeconds();
-	// 해당 모듈로 저장된 값이 있으면 가져오고, 없으면 -999로 초기화
-	float& LastTime = ItemInst->BehaviorLastTriggerTimes.FindOrAdd(this,-999.f);
-	// 마지막 발동 시간부터 쿨타임만큼 시간이 흘렀는지 체크
-	if (CurrentTime - LastTime >= Cooldown)
-	{
-		LastTime = CurrentTime;
-		return true;
-	}
-	return false;
+	const float* LastTimePtr = ItemInst->BehaviorLastTriggerTimes.Find(this);
+	float LastTriggerTime = LastTimePtr ? *LastTimePtr : -999.f;
+
+	return (CurrentTime - LastTriggerTime < Cooldown);
+}
+
+void UCAP_ItemBehaviorBase::ConsumeCooldown(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+{
+	if (Cooldown<=0.f)
+		return;
+	UWorld* World = ASC->GetAvatarActor()->GetWorld();
+	if (!ItemInst || !ASC || !World)
+		return;
+
+	ItemInst->BehaviorLastTriggerTimes.FindOrAdd(this) = World->GetTimeSeconds();
 }
 
 void UCAP_ItemBehaviorBase::InitGameplayEffectToZero(const FGameplayEffectSpecHandle& SpecHandle,TSubclassOf<UGameplayEffect> BuffGE) const

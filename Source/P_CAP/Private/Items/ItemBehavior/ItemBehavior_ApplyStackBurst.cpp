@@ -38,16 +38,17 @@ void UItemBehavior_ApplyStackBurst::OnEventReceived(UCAP_ItemInstance* ItemInst,
 			continue;
 		ApplyBurstLogicToSingleTarget(ItemInst, ASC, TargetASC);
 	}
+
+	
 }
 
 bool UItemBehavior_ApplyStackBurst::CheckTriggerCondition(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
 {
-	if (!CheckAndConsumeCooldown(ItemInst,ASC))
+	if (IsOnCooldown(ItemInst,ASC))
 		return false;
-
 	if (FMath::RandRange(0.f,100.f)>TriggerChance)
 		return false;
-	
+	ConsumeCooldown(ItemInst,ASC);
 	return true;
 }
 

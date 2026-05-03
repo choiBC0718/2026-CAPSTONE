@@ -20,6 +20,9 @@ public:
 	void InitializeWidget(class ACAP_PlayerCharacter* InPlayerCharacter);
 
 protected:
+	// 영구적인 꺼지지 않을 아이템 효과를 나타내는 WrapBox
+	UPROPERTY(meta = (BindWidget))
+	class UWrapBox* PassiveWrapBox;
 	UPROPERTY(meta = (BindWidget))
 	class UWrapBox* BuffWrapBox;
 	UPROPERTY(EditDefaultsOnly, Category="UI")

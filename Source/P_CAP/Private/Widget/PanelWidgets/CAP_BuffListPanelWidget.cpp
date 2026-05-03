@@ -13,6 +13,7 @@ void UCAP_BuffListPanelWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	BuffWrapBox->ClearChildren();
+	PassiveWrapBox->ClearChildren();
 }
 
 void UCAP_BuffListPanelWidget::InitializeWidget(class ACAP_PlayerCharacter* InPlayerCharacter)
@@ -34,19 +35,21 @@ void UCAP_BuffListPanelWidget::OnEffectTriggered(class UCAP_ItemInstance* ItemIn
 
 	CleanUpInvalidSlots();
 	UCAP_ItemEffectSlot* TargetSlot = FindExistingSlot(ItemInst, DynamicTag);
-	if (TargetSlot)
-	{
-		TargetSlot->InitSlot(ItemInst, DynamicTag, Cooldown,Duration,Stacks);
-	}
-	else
+	if (!TargetSlot)
 	{
 		TargetSlot = CreateWidget<UCAP_ItemEffectSlot>(this, EffectSlotClass);
 		if (TargetSlot)
 		{
-			TargetSlot->InitSlot(ItemInst, DynamicTag, Cooldown,Duration,Stacks);
-			BuffWrapBox->AddChildToWrapBox(TargetSlot);
 			ActiveSlots.Add(TargetSlot);
+			if (Duration<=0.f)
+				PassiveWrapBox->AddChild(TargetSlot);
+			else
+				BuffWrapBox->AddChild(TargetSlot);
 		}
+	}
+	if (TargetSlot)
+	{
+		TargetSlot->InitSlot(ItemInst, DynamicTag, Cooldown, Duration, Stacks);
 	}
 }
 
@@ -57,27 +60,9 @@ void UCAP_BuffListPanelWidget::HandleInventoryChanged(class UCAP_ItemInstance* C
 		return;
 	CleanUpInvalidSlots();
 
-	if (bIsAdded)
+	if (!bIsAdded)
 	{
-		bool bIsPassiveOrSummon = false;
-		if (UCAP_ItemDataBase* ItemDA = ChangedItem->GetItemDA())
-		{
-			bIsPassiveOrSummon = ItemDA->ItemTypeTag.HasTagExact(FGameplayTag::RequestGameplayTag("Item.Type.Summon"));
-		}
-		if (bIsPassiveOrSummon)
-		{
-			UCAP_ItemEffectSlot* NewSlot = CreateWidget<UCAP_ItemEffectSlot>(this, EffectSlotClass);
-			if (NewSlot)
-			{
-				NewSlot->InitSlot(ChangedItem, FGameplayTag::EmptyTag, 0.f, -1.0f, 0);
-				BuffWrapBox->AddChildToWrapBox(NewSlot);
-				ActiveSlots.Add(NewSlot);
-			}
-		}
-	}
-	else
-	{
-		for (int32 i = ActiveSlots.Num() - 1; i >= 0; --i)
+		for (int32 i=ActiveSlots.Num()-1; i>=0; --i)
 		{
 			UCAP_ItemEffectSlot* EffectSlot = ActiveSlots[i];
 			if (EffectSlot && EffectSlot->GetItemInstance() == ChangedItem)

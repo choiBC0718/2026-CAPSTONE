@@ -39,8 +39,9 @@ protected:
 	// 자식 클래스에서 실제 효과 로직을 구현
 	virtual void OnEventReceived(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, const struct FGameplayEventData* Payload) const {}
 	// 쿨타임 체크, 통과 시 최근 발동 시간 갱신
-	bool CheckAndConsumeCooldown(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
-
+	bool IsOnCooldown(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
+	void ConsumeCooldown(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
+	
 	void InitGameplayEffectToZero(const FGameplayEffectSpecHandle& SpecHandle, TSubclassOf<UGameplayEffect> BuffGE) const;
 
 	FGameplayTag BaseDamageTag;

@@ -26,20 +26,26 @@ void UGameplayability_TargetingAoE::ActivateAbility(const FGameplayAbilitySpecHa
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
 	const FWeaponSkillData* SkillData = GetSkillDataFromContext(Handle, ActorInfo);
-   	if (SkillData->RangeIndicatorClass)
+	if (!SkillData)
+		return;
+	const FTargetingLogicData* TargetingLogic = SkillData->LogicData.GetPtr<FTargetingLogicData>();
+	if (!TargetingLogic)
+		return;
+	
+   	if (TargetingLogic->RangeIndicatorClass)
    	{
    		FVector SpawnLoc = GetAvatarActorFromActorInfo()->GetActorLocation();
-   		SpawnedRangeIndicator = GetWorld()->SpawnActor<ACAP_TargetRangeIndicator>(SkillData->RangeIndicatorClass.Get(), SpawnLoc, FRotator::ZeroRotator);
+   		SpawnedRangeIndicator = GetWorld()->SpawnActor<ACAP_TargetRangeIndicator>(TargetingLogic->RangeIndicatorClass.Get(), SpawnLoc, FRotator::ZeroRotator);
    		if (SpawnedRangeIndicator)
    		{
    			SpawnedRangeIndicator->AttachToActor(GetAvatarActorFromActorInfo(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-   			SpawnedRangeIndicator->Initialize(SkillData->MaxTargetingRange);
+   			SpawnedRangeIndicator->Initialize(TargetingLogic->MaxTargetingRange);
    		}
    	}
 
-   	if (SkillData->TargetActorClass)
+   	if (TargetingLogic->TargetActorClass)
    	{
-   		TargetActorClass = SkillData->TargetActorClass.Get();
+   		TargetActorClass = TargetingLogic->TargetActorClass.Get();
    	}
 
    	UAbilityTask_TickRotToCursor* RotToCursor = UAbilityTask_TickRotToCursor::TickRotToCursor(this, 500.f);
@@ -55,7 +61,7 @@ void UGameplayability_TargetingAoE::ActivateAbility(const FGameplayAbilitySpecHa
 	ACAP_TargetActor* GroundPick = Cast<ACAP_TargetActor>(TargetActor);
    	if (GroundPick)
    	{
-   		GroundPick->Initialize(SkillData->MaxTargetingRange, SkillData->TargetAreaRadius);
+   		GroundPick->Initialize(TargetingLogic->MaxTargetingRange, TargetingLogic->TargetAreaRadius);
    	}
    	WaitTargetData->FinishSpawningActor(this, TargetActor);
 }
@@ -75,11 +81,14 @@ void UGameplayability_TargetingAoE::EndAbility(const FGameplayAbilitySpecHandle 
    		SpawnedRangeIndicator->Destroy();
 	
 	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());   	
-   	if (!SkillData || !SkillData->CastMontage.Get())
+   	if (!SkillData)
    	{
    		K2_EndAbility();
    		return;
    	}
+	const FTargetingLogicData* TargetingLogic = SkillData->LogicData.GetPtr<FTargetingLogicData>();
+	if (!TargetingLogic || !TargetingLogic->CastMontage.Get())
+		return;
 
 	bIsCasting = true;
    	if (Data.Data.IsValidIndex(0))
@@ -90,7 +99,7 @@ void UGameplayability_TargetingAoE::EndAbility(const FGameplayAbilitySpecHandle 
    	}
    	
    	// 포물선 투사체 타게팅
-   	if (SkillData->ProjectileClass.Get())
+   	if (TargetingLogic->ProjectileClass.Get())
    	{
    		ProjectileTargetingConfirmed();
    	}
@@ -99,7 +108,7 @@ void UGameplayability_TargetingAoE::EndAbility(const FGameplayAbilitySpecHandle 
    		InstantTargetingConfirmed(Data);
    	}
 	
-   	UAbilityTask_PlayMontageAndWait* CastMontage = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, SkillData->CastMontage.Get());
+   	UAbilityTask_PlayMontageAndWait* CastMontage = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, TargetingLogic->CastMontage.Get());
    	CastMontage->OnCancelled.AddDynamic(this, &UGameplayability_TargetingAoE::K2_EndAbility);
    	CastMontage->OnCompleted.AddDynamic(this, &UGameplayability_TargetingAoE::K2_EndAbility);
    	CastMontage->OnBlendOut.AddDynamic(this, &UGameplayability_TargetingAoE::K2_EndAbility);
@@ -117,16 +126,36 @@ void UGameplayability_TargetingAoE::ProjectileTargetingConfirmed()
 	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
 	if (!SkillData)
 		return;
+	const FTargetingLogicData* TargetingLogic = SkillData->LogicData.GetPtr<FTargetingLogicData>();
+	if (!TargetingLogic)
+		return;
 	
-	FVector SpawnLoc = GetMuzzleSocketLocation(SkillData->ProjectileSocketName);
-	TArray<ACAP_ProjectileBase*> Projectiles = SpawnProjectile(SpawnLoc, SkillData);
+	FVector SpawnLoc = GetMuzzleSocketLocation(TargetingLogic->ProjectileSocketName);
+	if (TargetingLogic->FallingSpawnHeight > 0.f)
+	{
+		FVector TraceStart = CachedTargetLocation;
+		FVector TraceEnd = CachedTargetLocation + FVector(0.f,0.f, TargetingLogic->FallingSpawnHeight);
+
+		FHitResult Hit;
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(GetAvatarActorFromActorInfo());
+
+		bool bHit = GetWorld()->LineTraceSingleByChannel(Hit,TraceStart,TraceEnd,ECC_Visibility, Params);
+		if (bHit)
+		{
+			SpawnLoc = TraceEnd;
+		}
+	}
+	
+	TArray<ACAP_ProjectileBase*> Projectiles = SpawnProjectile(SpawnLoc, TargetingLogic);
 	if (Projectiles.Num() > 0)
 	{
 		FGameplayEffectSpecHandle EffectSpecHandle = MakeOutgoingGameplayEffectSpec(GetDamageGE(), GetAbilityLevel());
 		EffectSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->DamageMultiplier);
-		
+
+		FGameplayTag HitTag = IsBasicAttack() ? TriggerHitBasicTag : TriggerHitAbilityTag;
 		for (ACAP_ProjectileBase* Projectile : Projectiles)
-			Projectile->InitArcProjectile(CachedTargetLocation,0.5f,SkillData->TargetAreaRadius,EffectSpecHandle, SkillData->GameplayCueTag, IsBasicAttack());
+			Projectile->InitProjectile(CachedTargetLocation,TargetingLogic->TargetAreaRadius,0.5f,EffectSpecHandle, SkillData->GameplayCueTag, HitTag);
 	}
 }
 
@@ -134,6 +163,9 @@ void UGameplayability_TargetingAoE::InstantTargetingConfirmed(const FGameplayAbi
 {
 	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
 	if (!SkillData)
+		return;
+	const FTargetingLogicData* TargetingLogic = SkillData->LogicData.GetPtr<FTargetingLogicData>();
+	if (!TargetingLogic)
 		return;
 	
 	if (Data.Data.IsValidIndex(0))
@@ -145,11 +177,12 @@ void UGameplayability_TargetingAoE::InstantTargetingConfirmed(const FGameplayAbi
 			TArray<FOverlapResult> Overlaps;
 			FCollisionObjectQueryParams ObjQueryParams;
 			ObjQueryParams.AddObjectTypesToQuery(ECC_Pawn);
-			FCollisionShape SphereShape = FCollisionShape::MakeSphere(SkillData->TargetAreaRadius);
+			FCollisionShape SphereShape = FCollisionShape::MakeSphere(TargetingLogic->TargetAreaRadius);
 
 			bool bHit = GetWorld()->OverlapMultiByObjectType(Overlaps, Hit->ImpactPoint,FQuat::Identity, ObjQueryParams, SphereShape);
 			if (bHit)
 			{
+				FGameplayAbilityTargetDataHandle AggregatedTargetData;
 				for (const FOverlapResult& Overlap : Overlaps)
 				{
 					AActor* OverlapActor = Overlap.GetActor();
@@ -157,8 +190,11 @@ void UGameplayability_TargetingAoE::InstantTargetingConfirmed(const FGameplayAbi
 					{
 						FGameplayAbilityTargetDataHandle TargetData = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(OverlapActor);
 						BP_ApplyGameplayEffectToTarget(TargetData, GetDamageGE(), GetAbilityLevel());
+						AggregatedTargetData.Append(TargetData);
 					}
 				}
+				if (AggregatedTargetData.Num() > 0)
+					BroadcastTriggerEvent(IsBasicAttack()?TriggerHitBasicTag:TriggerHitAbilityTag, AggregatedTargetData);
 			}
 		}
 	}

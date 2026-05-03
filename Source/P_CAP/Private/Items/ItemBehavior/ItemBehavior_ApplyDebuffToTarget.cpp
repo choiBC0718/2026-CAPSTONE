@@ -4,6 +4,7 @@
 #include "Items/ItemBehavior/ItemBehavior_ApplyDebuffToTarget.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "Items/Item/CAP_ItemInstance.h"
@@ -39,22 +40,27 @@ void UItemBehavior_ApplyDebuffToTarget::OnEventReceived(UCAP_ItemInstance* ItemI
 			continue;
 		ApplyDebuffToSingleTarget(ItemInst,ASC,TargetASC);
 	}
+	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(ASC->GetAvatarActor()))
+	{
+		if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
+			InvComp->OnItemEffectTriggered.Broadcast(ItemInst,TriggerEventTag,Cooldown,0.f,0);
+	}
 }
 
 bool UItemBehavior_ApplyDebuffToTarget::CheckTriggerCondition(UCAP_ItemInstance* ItemInst,UAbilitySystemComponent* ASC) const
 {
+	if (IsOnCooldown(ItemInst,ASC))
+		return false;
+	if (FMath::RandRange(0.f,100.f)>TriggerChance)
+		return false;
+	
 	int32& CurrentCount = ItemInst->BehaviorCounters.FindOrAdd(this);
 	CurrentCount++;
 	if (CurrentCount < RequiredTriggerCount)
 		return false;
 
-	if (!CheckAndConsumeCooldown(ItemInst,ASC))
-		return false;
-	
+	ConsumeCooldown(ItemInst,ASC);
 	CurrentCount=0;
-	if (FMath::RandRange(0.f,100.f)>TriggerChance)
-		return false;
-	
 	return true;
 }
 
