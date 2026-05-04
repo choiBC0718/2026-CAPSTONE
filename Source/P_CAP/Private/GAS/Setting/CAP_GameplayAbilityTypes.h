@@ -29,6 +29,15 @@ enum class EItemGrade : uint8
 	Legendary		UMETA(DisplayName = "레전더리")
 };
 
+
+UENUM(BlueprintType)
+enum class ECurrencyType : uint8
+{
+	Gold			UMETA(DisplayName = "Gold (골드)"),
+	WeaponMaterial	UMETA(DisplayName = "WeaponMaterial (무기 강화재료)"),
+	MagicStone		UMETA(DisplayName = "MagicStone (마석)"),
+};
+
 USTRUCT(BlueprintType)
 struct FBaseStatRow : public FTableRowBase
 {

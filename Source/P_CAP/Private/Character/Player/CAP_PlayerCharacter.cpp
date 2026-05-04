@@ -8,12 +8,15 @@
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
+#include "Framework/CAP_GameInstance.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
+#include "Items/Curreny/CAP_CurrencyComponent.h"
 #include "Items/Item/CAP_InventoryComponent.h"
 #include "Items/Weapon/CAP_WeaponComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 {
@@ -28,6 +31,7 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 
 	WeaponComponent = CreateDefaultSubobject<UCAP_WeaponComponent>("Weapon Component");
 	InventoryComponent = CreateDefaultSubobject<UCAP_InventoryComponent>("Inventory Component");
+	CurrencyComponent = CreateDefaultSubobject<UCAP_CurrencyComponent>("Currency Component");
 	
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
@@ -100,6 +104,13 @@ void ACAP_PlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 void ACAP_PlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (UCAP_GameInstance* GI = Cast<UCAP_GameInstance>(UGameplayStatics::GetGameInstance(this)))
+	{
+		int32 SavedStone = GI->GetSavedMagicStone();
+		CurrencyComponent->SetCurrencyOverride(ECurrencyType::MagicStone,SavedStone);
+		CurrencyComponent->OnCurrencyChanged.AddUniqueDynamic(GI,&UCAP_GameInstance::OnCurrencyChanged);
+	}
 }
 
 

@@ -7,6 +7,7 @@
 #include "InputActionValue.h"
 #include "Character/CAP_Character.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
+#include "Items/Curreny/CAP_CurrencyComponent.h"
 #include "Items/Item/CAP_InventoryComponent.h"
 #include "Items/Weapon/CAP_WeaponComponent.h"
 #include "CAP_PlayerCharacter.generated.h"
@@ -31,6 +32,7 @@ public:
 	
 	UCAP_WeaponComponent* GetWeaponComponent() const {return WeaponComponent;}
 	UCAP_InventoryComponent* GetInventoryComponent() const {return InventoryComponent;}
+	UCAP_CurrencyComponent* GetCurrencyComponent() const {return CurrencyComponent;}
 
 	FString GetInteractKeyName() const;
 	
@@ -44,6 +46,8 @@ private:
 	class UCAP_WeaponComponent* WeaponComponent;
 	UPROPERTY(VisibleAnywhere, Category="Inventory")
 	class UCAP_InventoryComponent* InventoryComponent;
+	UPROPERTY(VisibleAnywhere, Category="Currency")
+	class UCAP_CurrencyComponent* CurrencyComponent;
 	UPROPERTY(VisibleAnywhere, Category="AI|Tracker")
 	class UPlayerTrackerComponent* PlayerTracker;
 
