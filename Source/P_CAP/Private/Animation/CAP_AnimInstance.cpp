@@ -3,9 +3,9 @@
 
 #include "Animation/CAP_AnimInstance.h"
 
-#include "Character/Player/CAP_PlayerCharacter.h"
 #include "GameFramework/Character.h"
-#include "Items/Weapon/CAP_WeaponInstance.h"
+#include "Interactables/Weapon/CAP_WeaponInstance.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
 
 void UCAP_AnimInstance::NativeInitializeAnimation()
 {

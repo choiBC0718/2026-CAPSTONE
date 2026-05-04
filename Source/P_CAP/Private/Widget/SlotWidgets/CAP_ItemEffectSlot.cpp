@@ -6,7 +6,7 @@
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Data/CAP_ItemDataAsset.h"
-#include "Items/Item/CAP_ItemInstance.h"
+#include "Interactables/Item/CAP_ItemInstance.h"
 
 void UCAP_ItemEffectSlot::NativeConstruct()
 {

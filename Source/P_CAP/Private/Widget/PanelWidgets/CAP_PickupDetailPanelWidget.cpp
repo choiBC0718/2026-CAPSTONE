@@ -3,10 +3,27 @@
 
 #include "Widget/PanelWidgets/CAP_PickupDetailPanelWidget.h"
 
+#include "Character/Player/CAP_PlayerCharacter.h"
+#include "Component/CAP_InteractionComponent.h"
 #include "Components/TextBlock.h"
-#include "Items/Weapon/CAP_WeaponInstance.h"
+#include "Interactables/Weapon/CAP_WeaponInstance.h"
+#include "Interface/CAP_InteractInterface.h"
 #include "Widget/Common/CAP_ItemInteraction.h"
 
+void UCAP_PickupDetailPanelWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+	Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
+	
+	if (Player)
+	{
+		if (UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent())
+		{
+			InteractionComp->OnInteractProgressUpdated.AddDynamic(this, &UCAP_PickupDetailPanelWidget::HandleUpdateInteractProgress);
+			InteractionComp->OnInteractableChanged.AddDynamic(this, &UCAP_PickupDetailPanelWidget::HandleInteractableChanged);
+		}
+	}
+}
 
 void UCAP_PickupDetailPanelWidget::UpdateDetailInfo(UObject* ItemData)
 {
@@ -41,9 +58,29 @@ void UCAP_PickupDetailPanelWidget::UpdateInteractionUI(bool bVisible, UObject* I
 	}
 }
 
-void UCAP_PickupDetailPanelWidget::UpdateInteractProgress(float Progress)
+void UCAP_PickupDetailPanelWidget::HandleUpdateInteractProgress(float Progress)
 {
 	if (InteractTextWidget)
 		InteractTextWidget->UpdateInteractProgress(Progress);
+}
+
+void UCAP_PickupDetailPanelWidget::HandleInteractableChanged(AActor* InteractableActor)
+{
+	if (!Player)
+		return;
+	
+	if (InteractableActor)
+	{
+		if (ICAP_InteractInterface* Interface = Cast<ICAP_InteractInterface>(InteractableActor))
+		{
+			FInteractionPayload Payload= Interface->GetInteractionPayload();
+			FString KeyName = Player->GetInteractKeyName();
+			UpdateInteractionUI(true,Payload.DetailData,KeyName);
+		}
+	}
+	else
+	{
+		UpdateInteractionUI(false,nullptr,"");
+	}
 }
 

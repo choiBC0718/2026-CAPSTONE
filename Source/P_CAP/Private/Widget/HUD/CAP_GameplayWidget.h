@@ -29,14 +29,12 @@ public:
 	void ActivateSwitcher();		// 인벤토리 메뉴 열기 (MenuSwitch 켜기)
 	void DeactivateSwitcher();		// MenuSwitch 끄기
 	void SwitchCharacterMenuTab();	
-	void OpenItemSwapMenu(class UCAP_ItemInstance* NewItem);	// 인벤토리 꽉 찼을 때 변경을 위한 위젯 활성화
-
-	void UpdateInteractProgress(float Progress);				// 키 누르는 동안 게이지 증가
-	void UpdateInteractionUI(bool bVisible, UObject* ItemData, const FString& KeyName);	//상호작용 할 아이템으로 UI 업데이트
+	
+	void RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime);
 
 	UFUNCTION()
-	void HandleWeaponChanged(class UCAP_WeaponInstance* NewWeaponInstance, class UCAP_WeaponInstance* OldWeaponInst);
-	
+	void HandleInventoryFull(class UCAP_ItemInstance* NewItem);	// 인벤토리 꽉 찼을 때 변경을 위한 위젯 활성화
+
 protected:
 	// Hp 바
 	UPROPERTY(meta = (BindWidget))

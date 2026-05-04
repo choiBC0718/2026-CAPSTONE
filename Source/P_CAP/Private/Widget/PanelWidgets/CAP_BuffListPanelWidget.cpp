@@ -5,8 +5,8 @@
 
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Components/WrapBox.h"
-#include "Items/Item/CAP_InventoryComponent.h"
-#include "Items/Item/CAP_ItemInstance.h"
+#include "Component/CAP_InventoryComponent.h"
+#include "Interactables/Item/CAP_ItemInstance.h"
 #include "Widget/SlotWidgets/CAP_ItemEffectSlot.h"
 
 void UCAP_BuffListPanelWidget::NativeConstruct()

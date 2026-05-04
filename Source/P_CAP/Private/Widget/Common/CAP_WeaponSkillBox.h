@@ -16,10 +16,16 @@ class UCAP_WeaponSkillBox : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	// 무기 데이터 새로고침 (무기 변경 시 호출)
-	void RefreshWeaponSkills(class UCAP_WeaponInstance* MainWeaponInst, class UCAP_WeaponInstance* SubWeaponInst);
+	virtual void NativeConstruct() override;
 
 private:
+	// 무기 데이터 새로고침 (무기 변경 시 호출)
+	UFUNCTION()
+	void HandleWeaponChanged(class UCAP_WeaponInstance* MainWeaponInst, class UCAP_WeaponInstance* SubWeaponInst);
+	UFUNCTION()
+	void HandleWeaponSkillChanged(class UCAP_WeaponInstance* WeaponInst);
+
+	
 	// 부여된 스킬 아이콘 WrapBox
 	UPROPERTY(meta = (BindWidget))
 	class UWrapBox* MainAbilityWrapBox;

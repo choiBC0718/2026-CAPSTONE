@@ -6,10 +6,11 @@
 #include "InputAction.h"
 #include "InputActionValue.h"
 #include "Character/CAP_Character.h"
+#include "Component/CAP_CurrencyComponent.h"
+#include "Component/CAP_InteractionComponent.h"
+#include "Component/CAP_InventoryComponent.h"
+#include "Component/CAP_WeaponComponent.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
-#include "Items/Curreny/CAP_CurrencyComponent.h"
-#include "Items/Item/CAP_InventoryComponent.h"
-#include "Items/Weapon/CAP_WeaponComponent.h"
 #include "CAP_PlayerCharacter.generated.h"
 
 /**
@@ -27,12 +28,10 @@ public:
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void BeginPlay() override;
 	
-	void UpdateInteractUI(bool bVisible);
-	void UpdateInteractProgress(float Progress);
-	
 	UCAP_WeaponComponent* GetWeaponComponent() const {return WeaponComponent;}
 	UCAP_InventoryComponent* GetInventoryComponent() const {return InventoryComponent;}
 	UCAP_CurrencyComponent* GetCurrencyComponent() const {return CurrencyComponent;}
+	UCAP_InteractionComponent* GetInteractionComponent() const {return InteractionComponent;}
 
 	FString GetInteractKeyName() const;
 	
@@ -48,6 +47,8 @@ private:
 	class UCAP_InventoryComponent* InventoryComponent;
 	UPROPERTY(VisibleAnywhere, Category="Currency")
 	class UCAP_CurrencyComponent* CurrencyComponent;
+	UPROPERTY(VisibleAnywhere, Category="Interaction")
+	class UCAP_InteractionComponent* InteractionComponent;
 	UPROPERTY(VisibleAnywhere, Category="AI|Tracker")
 	class UPlayerTrackerComponent* PlayerTracker;
 

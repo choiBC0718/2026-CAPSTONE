@@ -13,9 +13,10 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
-#include "Items/Curreny/CAP_CurrencyComponent.h"
-#include "Items/Item/CAP_InventoryComponent.h"
-#include "Items/Weapon/CAP_WeaponComponent.h"
+#include "Component/CAP_CurrencyComponent.h"
+#include "Component/CAP_InteractionComponent.h"
+#include "Component/CAP_InventoryComponent.h"
+#include "Component/CAP_WeaponComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
@@ -32,6 +33,7 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 	WeaponComponent = CreateDefaultSubobject<UCAP_WeaponComponent>("Weapon Component");
 	InventoryComponent = CreateDefaultSubobject<UCAP_InventoryComponent>("Inventory Component");
 	CurrencyComponent = CreateDefaultSubobject<UCAP_CurrencyComponent>("Currency Component");
+	InteractionComponent = CreateDefaultSubobject<UCAP_InteractionComponent>("Interaction Component");
 	
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
@@ -46,12 +48,11 @@ void ACAP_PlayerCharacter::PawnClientRestart()
 	if (PlayerController)
 	{
 		PlayerController->bShowMouseCursor = true;
-		PlayerController->bEnableClickEvents = true;
-		PlayerController->bEnableMouseOverEvents = true;
+		PlayerController->bEnableClickEvents = false;
+		PlayerController->bEnableMouseOverEvents = false;
 
-		FInputModeGameAndUI InputMode;
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		InputMode.SetHideCursorDuringCapture(false);
+		FInputModeGameOnly InputMode;
+		InputMode.SetConsumeCaptureMouseDown(false);
 		PlayerController->SetInputMode(InputMode);
 		
 		UEnhancedInputLocalPlayerSubsystem* InputSubsystem = PlayerController->GetLocalPlayer()->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
@@ -113,24 +114,6 @@ void ACAP_PlayerCharacter::BeginPlay()
 	}
 }
 
-
-void ACAP_PlayerCharacter::UpdateInteractUI(bool bVisible)
-{
-	ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(GetController());
-	if (!PC)
-		return;
-	
-	PC->UpdateInteractUI(bVisible, GetInteractKeyName());
-}
-
-void ACAP_PlayerCharacter::UpdateInteractProgress(float Progress)
-{
-	ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(GetController());
-	if (PC)
-	{
-		PC->UpdateInteractProgressUI(Progress);
-	}
-}
 
 FString ACAP_PlayerCharacter::GetInteractKeyName() const
 {
@@ -194,8 +177,8 @@ void ACAP_PlayerCharacter::AbilityInputHandle(const FInputActionValue& InputActi
 
 void ACAP_PlayerCharacter::InteractInputHandle(const FInputActionInstance& Instance)
 {
-	if (InventoryComponent)
-		InventoryComponent->ProcessInteractInput(Instance.GetTriggerEvent(), Instance.GetElapsedTime());
+	if (InteractionComponent)
+		InteractionComponent->ProcessInteractInput(Instance.GetTriggerEvent(), Instance.GetElapsedTime());
 }
 
 void ACAP_PlayerCharacter::SwapWeapon()

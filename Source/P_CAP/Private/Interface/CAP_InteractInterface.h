@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "UObject/Interface.h"
 #include "CAP_InteractInterface.generated.h"
 
@@ -21,7 +22,6 @@ class ICAP_InteractInterface
 	GENERATED_BODY()
 
 public:
-	virtual void InteractEquip(class ACAP_PlayerCharacter* PlayerCharacter) =0;
-	virtual void InteractDisassemble(class ACAP_PlayerCharacter* PlayerCharacter) =0;
-	virtual UObject* GetInteractData() const =0;
+	virtual void Interact(AActor* InsActor, EInteractAction ActionType) = 0;
+	virtual FInteractionPayload GetInteractionPayload() const = 0;
 };

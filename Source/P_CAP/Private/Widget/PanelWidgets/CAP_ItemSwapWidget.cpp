@@ -8,7 +8,6 @@
 #include "Widget/SlotWidgets/CAP_ItemSlotWidget.h"
 #include "Widget/SlotWidgets/CAP_SynergySimulSlotWidget.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
-#include "Character/Player/CAP_PlayerController.h"
 #include "Components/Image.h"
 #include "Components/ScrollBox.h"
 #include "Components/ScrollBoxSlot.h"
@@ -16,9 +15,9 @@
 #include "Components/VerticalBox.h"
 #include "Components/WrapBox.h"
 #include "Components/WrapBoxSlot.h"
-#include "Items/Item/CAP_InventoryComponent.h"
-#include "Items/Item/CAP_ItemBase.h"
-#include "Items/Item/CAP_ItemInstance.h"
+#include "Component/CAP_InventoryComponent.h"
+#include "Interactables/Item/CAP_WorldItem.h"
+#include "Interactables/Item/CAP_ItemInstance.h"
 
 void UCAP_ItemSwapWidget::NativeConstruct()
 {
@@ -101,14 +100,14 @@ void UCAP_ItemSwapWidget::MoveSelection(FVector2D InputVal)
 void UCAP_ItemSwapWidget::ConfirmSwap()
 {
 	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn());
-	ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(GetOwningPlayer());
 	if (CurrentSelectedSlot && CurrentSelectedSlot->SlotItemData && NewItemToSwap && Player)
 	{
 		UCAP_ItemInstance* OldItem = Cast<UCAP_ItemInstance>(CurrentSelectedSlot->SlotItemData);
-		AActor* InteractActor = Player->GetInventoryComponent()->GetNearbyInteractable();
+		AActor* InteractActor = Player->GetInteractionComponent()->GetNearbyInteractable();
 
 		UCAP_InventoryComponent* InventoryComp = Player->GetInventoryComponent();
-		if (!InventoryComp)
+		UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent();
+		if (!InventoryComp || !InteractionComp)
 			return;
 		
 		if (InventoryComp->SwapItem(OldItem, NewItemToSwap))
@@ -116,13 +115,12 @@ void UCAP_ItemSwapWidget::ConfirmSwap()
 			if (InteractActor)
 			{
 				InteractActor->Destroy();
-				InventoryComp->SetNearbyInteractable(nullptr);
-				Player->UpdateInteractUI(false);
+				InteractionComp->SetNearbyInteractable(nullptr);
 			}
-			FVector SpawnLoc = Player->GetActorLocation() + FVector(0.f,0.f,50.f);
+			FVector SpawnLoc = Player->GetActorLocation();
 			FTransform SpawnTransform(FRotator::ZeroRotator, SpawnLoc);
 			
-			ACAP_ItemBase* DroppedItem = GetWorld()->SpawnActorDeferred<ACAP_ItemBase>(ACAP_ItemBase::StaticClass(), SpawnTransform);
+			ACAP_WorldItem* DroppedItem = GetWorld()->SpawnActorDeferred<ACAP_WorldItem>(ACAP_WorldItem::StaticClass(), SpawnTransform);
 			if (DroppedItem)
 			{
 				DroppedItem->ItemInstance = OldItem;
@@ -131,12 +129,7 @@ void UCAP_ItemSwapWidget::ConfirmSwap()
 				DroppedItem->DropItem();
 			}
 		}
-
-		if (PC && PC->GetGameplayWidget())
-		{
-			PC->GetGameplayWidget()->DeactivateSwitcher();
-			PC->SetPause(false);
-		}
+		NativeCloseMenu();
 	}
 }
 

@@ -10,7 +10,6 @@
 #include "Components/WidgetSwitcher.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
 #include "Interface/CAP_MenuInterface.h"
-#include "Items/Weapon/CAP_WeaponComponent.h"
 #include "Widget/Common/CAP_ValueGauge.h"
 #include "Widget/Common/CAP_WeaponSkillBox.h"
 #include "Widget/PanelWidgets/CAP_BuffListPanelWidget.h"
@@ -23,12 +22,15 @@ void UCAP_GameplayWidget::NativeConstruct()
 	if (!Player)
 		return;
 	
-	if (UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent())
+	if (CharacterMenuWidget)
 	{
-		// 무기 변경 델리게이트 연결
-		WeaponComp->OnWeaponChanged.AddDynamic(this, &UCAP_GameplayWidget::HandleWeaponChanged);
+		// 위젯 닫힘 델리게이트 연결
+		CharacterMenuWidget->OnMenuClosed.AddDynamic(this, &UCAP_GameplayWidget::CompleteDeactivateSwitcher);
 	}
-	
+	if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
+	{
+		InvComp->OnInventoryFull.AddDynamic(this, &UCAP_GameplayWidget::HandleInventoryFull);
+	}	
 	OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
 		
 	if (OwnerASC && HealthBar)
@@ -42,11 +44,6 @@ void UCAP_GameplayWidget::NativeConstruct()
 	if (MenuSwitcher)
 	{
 		MenuSwitcher->SetVisibility(ESlateVisibility::Collapsed);
-	}
-	if (CharacterMenuWidget)
-	{
-		// 위젯 닫힘 델리게이트 연결
-		CharacterMenuWidget->OnMenuClosed.AddDynamic(this, &UCAP_GameplayWidget::CompleteDeactivateSwitcher);
 	}
 	if (BuffListPanel)
 	{
@@ -75,9 +72,18 @@ void UCAP_GameplayWidget::ActivateSwitcher()
 		{
 			Menu->NativeOpenMenu();
 		}
+		if (PickupItemDetailWidget)
+			PickupItemDetailWidget->SetVisibility(ESlateVisibility::Collapsed);
+
+		if (APlayerController* PC= GetOwningPlayer())
+		{
+			PC->SetPause(true);
+			FInputModeGameAndUI InputMode;
+			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			InputMode.SetHideCursorDuringCapture(false);
+			PC->SetInputMode(InputMode);
+		}
 	}
-	if (PickupItemDetailWidget)
-		PickupItemDetailWidget->SetVisibility(ESlateVisibility::Collapsed);
 }
 // WidgetSwitcher 비활성화, UI 닫히는 애니메이션 재생
 void UCAP_GameplayWidget::DeactivateSwitcher()
@@ -104,7 +110,7 @@ void UCAP_GameplayWidget::SwitchCharacterMenuTab()
 		CharacterMenuWidget->SwitchCharacterMenuTab();
 }
 
-void UCAP_GameplayWidget::OpenItemSwapMenu(class UCAP_ItemInstance* NewItem)
+void UCAP_GameplayWidget::HandleInventoryFull(class UCAP_ItemInstance* NewItem)
 {
 	if (PickupItemDetailWidget && MenuSwitcher && ItemSwapWidget && Player)
 	{
@@ -117,24 +123,30 @@ void UCAP_GameplayWidget::OpenItemSwapMenu(class UCAP_ItemInstance* NewItem)
 		{
 			Menu->NativeOpenMenu();
 		}
+		if (APlayerController* PC = GetOwningPlayer())
+		{
+			PC->SetPause(true);
+			FInputModeGameAndUI InputMode;
+			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			InputMode.SetHideCursorDuringCapture(false);
+			PC->SetInputMode(InputMode);
+		}
 	}
 }
 
-// 아이템 상호작용 게이지 업데이트
-void UCAP_GameplayWidget::UpdateInteractProgress(float Progress)
-{
-	if (PickupItemDetailWidget)
-	{
-		PickupItemDetailWidget->UpdateInteractProgress(Progress);
-	}
-}
 
-// 아이템 상호작용 위젯 정보 업데이트
-void UCAP_GameplayWidget::UpdateInteractionUI(bool bVisible, UObject* ItemData, const FString& KeyName)
+void UCAP_GameplayWidget::RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime)
 {
-	if (PickupItemDetailWidget)
+	if (IsItemSwapMenuOpen() && ItemSwapWidget)
 	{
-		PickupItemDetailWidget->UpdateInteractionUI(bVisible, ItemData, KeyName);
+		if (TriggerEvent == ETriggerEvent::Triggered || TriggerEvent == ETriggerEvent::Completed)
+		{
+			ItemSwapWidget->ConfirmSwap();
+		}
+	}
+	else if (IsCharacterMenuOpen() && CharacterMenuWidget)
+	{
+		CharacterMenuWidget->RouteUIConfirmInput(TriggerEvent, ElapsedTime);
 	}
 }
 
@@ -150,19 +162,21 @@ void UCAP_GameplayWidget::CompleteDeactivateSwitcher()
 		}
 		MenuSwitcher->SetVisibility(ESlateVisibility::Collapsed);
 	}
-	if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
+	if (APlayerController* PC = GetOwningPlayer())
 	{
-		if (InvComp->GetNearbyInteractable()!=nullptr)
-			if (PickupItemDetailWidget)
-				PickupItemDetailWidget->SetVisibility(ESlateVisibility::Visible);
+		PC->SetPause(false);
+		FInputModeGameOnly InputMode;
+		InputMode.SetConsumeCaptureMouseDown(false);
+		PC->SetInputMode(InputMode);
+	}
+	if (Player)
+	{
+		if (UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent())
+		{
+			if (InteractionComp->GetNearbyInteractable()!=nullptr)
+				if (PickupItemDetailWidget)
+					PickupItemDetailWidget->SetVisibility(ESlateVisibility::Visible);
+		}
 	}
 }
 
-// 스킬 ListView 아이콘 변경
-void UCAP_GameplayWidget::HandleWeaponChanged(class UCAP_WeaponInstance* NewWeaponInst, class UCAP_WeaponInstance* OldWeaponInst)
-{
-	if (WeaponAbilityPanelWidget && NewWeaponInst)
-	{
-		WeaponAbilityPanelWidget->RefreshWeaponSkills(NewWeaponInst, OldWeaponInst);
-	}
-}

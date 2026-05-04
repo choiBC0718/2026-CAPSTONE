@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "EnhancedInputComponent.h"
 #include "Blueprint/UserWidget.h"
 #include "Interface/CAP_MenuInterface.h"
 #include "CAP_CharacterMenuWidget.generated.h"
@@ -30,7 +31,8 @@ public:
 	void NavigationInput(FVector2D InputVal);
 	void RefreshMenu();
 	void SwitchCharacterMenuTab();
-
+	void RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime);
+	
 	UPROPERTY()
 	FOnMenuClosedSignature OnMenuClosed;
 
@@ -53,4 +55,7 @@ private:
 	bool bIsAttributeTabOpen = false;
 	
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+	UFUNCTION()
+	void HandleInventoryChanged(class UCAP_ItemInstance* ChangedItem, bool bIsAdded);
 };

@@ -5,24 +5,23 @@
 
 #include "Widget/SlotWidgets/CAP_ItemSlotWidget.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
-#include "Character/Player/CAP_PlayerController.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/WidgetSwitcher.h"
 #include "Components/WrapBox.h"
 #include "Components/WrapBoxSlot.h"
-#include "Items/Item/CAP_InventoryComponent.h"
-#include "Items/Item/CAP_ItemInstance.h"
-#include "Items/Weapon/CAP_WeaponComponent.h"
-#include "Items/Weapon/CAP_WeaponInstance.h"
+#include "Component/CAP_InventoryComponent.h"
+#include "Interactables/Item/CAP_ItemInstance.h"
+#include "Component/CAP_WeaponComponent.h"
+#include "Interactables/Weapon/CAP_WeaponInstance.h"
 #include "Widget/Common/CAP_ItemInteraction.h"
-#include "Widget/HUD/CAP_GameplayWidget.h"
 
 class ACAP_PlayerController;
 
 void UCAP_ItemEquipPanelWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	
 	if (WeaponList)
 	{
 		WeaponList->ClearChildren();
@@ -176,29 +175,11 @@ void UCAP_ItemEquipPanelWidget::HandleInteractionInput(ETriggerEvent& TriggerEve
 		
 		WeaponInst->SwapSkillOrder();
 		RefreshPanel(Player);
-		
-		
-		if (ACAP_PlayerController* PC = GetOwningPlayer<ACAP_PlayerController>())
+		if (UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent())
 		{
-			if (PC && PC->GetGameplayWidget())
-			{
-				UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent();
-				UCAP_WeaponInstance* MainWeapon = WeaponComp->GetCurrentWeaponInstance();
-				UCAP_WeaponInstance* SubWeapon = nullptr;
-
-				const TArray<UCAP_WeaponInstance*>& EquippedWeapons = WeaponComp->GetEquippedWeapons();
-				for (UCAP_WeaponInstance* Weapon : EquippedWeapons)
-				{
-					if (Weapon && Weapon != MainWeapon)
-					{
-						SubWeapon = Weapon;
-						break;
-					}
-				}
-				
-				PC->GetGameplayWidget()->HandleWeaponChanged(MainWeapon, SubWeapon);
-			}
+			WeaponComp->OnWeaponSkillChanged.Broadcast(WeaponInst);
 		}
+		
 		UCAP_ItemSlotWidget* SlotToFocus = WeaponSlots.IsValidIndex(SavedSlotNum) ? WeaponSlots[SavedSlotNum] : nullptr;
 		if (SlotToFocus)
 			HandleSlotLeftClicked(SlotToFocus);
@@ -248,7 +229,7 @@ void UCAP_ItemEquipPanelWidget::HandleSlotRightClicked(class UCAP_ItemSlotWidget
 }
 
 void UCAP_ItemEquipPanelWidget::CreateAndAddSlot(UWrapBox* TargetBox, TArray<UCAP_ItemSlotWidget*>& TargetArray,
-	ESlotItemType SlotType, int32 Index, UObject* ItemData, UTexture2D* Icon)
+                                                 ESlotItemType SlotType, int32 Index, UObject* ItemData, UTexture2D* Icon)
 {
 	if (UCAP_ItemSlotWidget* NewSlot = CreateWidget<UCAP_ItemSlotWidget>(GetOwningPlayer(), ItemSlotWidgetClass))
 	{

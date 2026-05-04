@@ -7,7 +7,7 @@
 #include "AbilitySystemComponent.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_ItemDataAsset.h"
-#include "Items/Item/CAP_ItemInstance.h"
+#include "Interactables/Item/CAP_ItemInstance.h"
 
 UCAP_ItemGameplayAbility::UCAP_ItemGameplayAbility()
 {

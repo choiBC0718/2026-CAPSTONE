@@ -40,4 +40,5 @@ private:
 	FVector2D SkillSynergyIconSize = FVector2D(125.f);
 
 	void AddFeatureIconToBox(TSoftObjectPtr<class UTexture2D> IconPtr);
+	void SetupUIContents(class UCAP_ItemDataBase* ItemDA);
 };

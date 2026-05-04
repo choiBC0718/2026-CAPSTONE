@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
-#include "Items/ItemBehavior/CAP_ItemBehaviorBase.h"
+#include "GAS/ItemBehavior/CAP_ItemBehaviorBase.h"
 #include "CAP_ItemDataAsset.generated.h"
 
 

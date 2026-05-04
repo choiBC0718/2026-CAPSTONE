@@ -7,9 +7,6 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Blueprint/UserWidget.h"
-#include "Items/CAP_DropItemBase.h"
-#include "Widget/PanelWidgets/CAP_InventoryTabWidget.h"
-#include "Widget/PanelWidgets/CAP_ItemEquipPanelWidget.h"
 
 void ACAP_PlayerController::OnPossess(APawn* InPawn)
 {
@@ -19,12 +16,6 @@ void ACAP_PlayerController::OnPossess(APawn* InPawn)
 	if (PlayerCharacter)
 	{
 		SpawnGameplayWidget();
-
-		if (UCAP_InventoryComponent* InvComp = PlayerCharacter->GetInventoryComponent())
-		{
-			InvComp->OnInventoryFull.AddUniqueDynamic(this, &ACAP_PlayerController::OpenItemSwapMenu);
-			InvComp->OnInventoryChanged.AddUniqueDynamic(this, &ACAP_PlayerController::HandleInventoryChanged);
-		}
 	}
 }
 
@@ -54,32 +45,6 @@ void ACAP_PlayerController::SetupInputComponent()
 	}
 }
 
-void ACAP_PlayerController::UpdateInteractUI(bool bVisible, const FString& KeyName)
-{
-	if (!GameplayWidget || !PlayerCharacter)
-		return;
-
-	UObject* ItemData = nullptr;
-	if (bVisible)
-	{
-		if (UCAP_InventoryComponent* InvComp = PlayerCharacter->GetInventoryComponent())
-		{
-			if (ICAP_InteractInterface* InteractInterface = Cast<ICAP_InteractInterface>(InvComp->GetNearbyInteractable()))
-			{
-				ItemData = InteractInterface->GetInteractData();
-			}
-		}
-	}
-	GameplayWidget->UpdateInteractionUI(bVisible, ItemData, KeyName);
-}
-
-void ACAP_PlayerController::UpdateInteractProgressUI(float Progress)
-{
-	if (GameplayWidget)
-	{
-		GameplayWidget->UpdateInteractProgress(Progress);
-	}
-}
 
 void ACAP_PlayerController::SpawnGameplayWidget()
 {
@@ -98,7 +63,6 @@ void ACAP_PlayerController::ToggleCharacterMenu()
 		if (!GameplayWidget->IsCharacterMenuOpen())
 		{
 			GameplayWidget->ActivateSwitcher();
-			SetPause(true);
 		}
 		// 열려있다면 탭 전환
 		else
@@ -132,16 +96,7 @@ void ACAP_PlayerController::UIConfirmHandle(const struct FInputActionInstance& I
 	ETriggerEvent TriggerEvent = Instance.GetTriggerEvent();
 	float ElapsedTime = Instance.GetElapsedTime();
 
-	// 아이템 스왑 위젯에 대해 키 입력 (단순 1회)
-	if (GameplayWidget->IsItemSwapMenuOpen())
-	{
-		if (TriggerEvent == ETriggerEvent::Triggered || TriggerEvent == ETriggerEvent::Completed)
-		GameplayWidget->GetItemSwapWidget()->ConfirmSwap();
-	}
-	else if (GameplayWidget->IsCharacterMenuOpen())
-	{
-		GameplayWidget->GetCharacterMenuWidget()->GetInventoryTab()->GetItemEquipPanel()->HandleInteractionInput(TriggerEvent, ElapsedTime);
-	}
+	GameplayWidget->RouteUIConfirmInput(TriggerEvent, ElapsedTime);
 }
 
 void ACAP_PlayerController::UICloseHandle(const FInputActionValue& InputActionValue)
@@ -151,22 +106,5 @@ void ACAP_PlayerController::UICloseHandle(const FInputActionValue& InputActionVa
 	if (GameplayWidget->IsItemSwapMenuOpen() || GameplayWidget->IsCharacterMenuOpen())
 	{
 		GameplayWidget->DeactivateSwitcher();
-		SetPause(false);
 	}
-}
-
-
-void ACAP_PlayerController::OpenItemSwapMenu(class UCAP_ItemInstance* NewItem)
-{
-	if (GameplayWidget)
-	{
-		GameplayWidget->OpenItemSwapMenu(NewItem);
-		SetPause(true);
-	}
-}
-
-void ACAP_PlayerController::HandleInventoryChanged(class UCAP_ItemInstance* ChangedItem, bool bIsAdded)
-{
-	if (UCAP_CharacterMenuWidget* CharacterMenu = GameplayWidget->GetCharacterMenuWidget())
-		CharacterMenu->RefreshMenu();
 }

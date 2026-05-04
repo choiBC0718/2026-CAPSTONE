@@ -11,13 +11,14 @@
 #include "Animation/AN_SendBasicTagEvent.h"
 #include "Animation/AN_SendRMSEvent.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "Component/CAP_WeaponComponent.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Actors/CAP_ProjectileBase.h"
 #include "GAS/Tasks/AbilityTask_RotateToCursor.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
-#include "Items/Weapon/CAP_WeaponInstance.h"
+#include "Interactables/Weapon/CAP_WeaponInstance.h"
 
 
 UCAP_GameplayAbility::UCAP_GameplayAbility()

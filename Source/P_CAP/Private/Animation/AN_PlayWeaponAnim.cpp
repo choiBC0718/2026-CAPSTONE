@@ -3,7 +3,7 @@
 
 #include "Animation/AN_PlayWeaponAnim.h"
 
-#include "Items/Weapon/CAP_WeaponComponent.h"
+#include "Component/CAP_WeaponComponent.h"
 
 
 static TMap<TWeakObjectPtr<USkeletalMeshComponent>, int32> WeaponNotifyCountMap;

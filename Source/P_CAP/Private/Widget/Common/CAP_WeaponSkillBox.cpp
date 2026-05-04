@@ -3,13 +3,29 @@
 
 #include "Widget/Common/CAP_WeaponSkillBox.h"
 
+#include "Character/Player/CAP_PlayerCharacter.h"
+#include "Component/CAP_WeaponComponent.h"
 #include "Components/WrapBox.h"
 #include "Data/CAP_WeaponDataAsset.h"
-#include "Items/Weapon/CAP_WeaponInstance.h"
+#include "Interactables/Weapon/CAP_WeaponInstance.h"
 #include "Widget/SlotWidgets/CAP_AbilitySlot.h"
 
 
-void UCAP_WeaponSkillBox::RefreshWeaponSkills(class UCAP_WeaponInstance* MainWeaponInst, class UCAP_WeaponInstance* SubWeaponInst)
+void UCAP_WeaponSkillBox::NativeConstruct()
+{
+	Super::NativeConstruct();
+	if (ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>())
+	{
+		if (UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent())
+		{
+			// 무기 변경 델리게이트 연결
+			WeaponComp->OnWeaponChanged.AddDynamic(this, &UCAP_WeaponSkillBox::HandleWeaponChanged);
+			WeaponComp->OnWeaponSkillChanged.AddDynamic(this, &UCAP_WeaponSkillBox::HandleWeaponSkillChanged);
+		}
+	}
+}
+
+void UCAP_WeaponSkillBox::HandleWeaponChanged(class UCAP_WeaponInstance* MainWeaponInst, class UCAP_WeaponInstance* SubWeaponInst)
 {
 	if (!AbilitySlotClass)
 		return;
@@ -48,4 +64,25 @@ void UCAP_WeaponSkillBox::RefreshWeaponSkills(class UCAP_WeaponInstance* MainWea
 			}
 		}
 	}
+}
+
+void UCAP_WeaponSkillBox::HandleWeaponSkillChanged(class UCAP_WeaponInstance* WeaponInst)
+{
+	ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
+	if (!Player)
+		return;
+	
+	UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent();
+	UCAP_WeaponInstance* MainWeapon = WeaponComp->GetCurrentWeaponInstance();
+	UCAP_WeaponInstance* SubWeapon = nullptr;
+	
+	for (UCAP_WeaponInstance* Weapon : WeaponComp->GetEquippedWeapons())
+	{
+		if (Weapon && Weapon != MainWeapon)
+		{
+			SubWeapon = Weapon;
+			break;
+		}
+	}
+	HandleWeaponChanged(MainWeapon, SubWeapon);
 }

@@ -4,13 +4,14 @@
 #include "Widget/PanelWidgets/CAP_ItemDetailPanelWidget.h"
 
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "Component/CAP_InventoryComponent.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
-#include "Data/CAP_SynergyTypes.h"
-#include "Items/Item/CAP_ItemInstance.h"
-#include "Items/Weapon/CAP_WeaponInstance.h"
+#include "Data/CAP_EquipItemEffectTypes.h"
+#include "Interactables/Item/CAP_ItemInstance.h"
+#include "Interactables/Weapon/CAP_WeaponInstance.h"
 
 void UCAP_ItemDetailPanelWidget::NativeConstruct()
 {
@@ -20,10 +21,7 @@ void UCAP_ItemDetailPanelWidget::NativeConstruct()
 
 void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemType ItemType)
 {
-	if (FeatureIconBox)
-	{
-		FeatureIconBox->ClearChildren();
-	}
+	FeatureIconBox->ClearChildren();
 
 	if (!ItemData)
 	{
@@ -39,16 +37,9 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 	{
 		if (UCAP_WeaponInstance* WeaponInst = Cast<UCAP_WeaponInstance>(ItemData))
 		{
-			if (UCAP_WeaponDataAsset* WeaponDA = WeaponInst->GetWeaponDA())
+			if (UCAP_ItemDataBase* WeaponDA = WeaponInst->GetWeaponDA())
 			{
-				NameText->SetText(WeaponDA->ItemName);
-				GradeText->SetText(GetGradeText(WeaponDA->ItemGrade));
-				DescriptionText->SetText(WeaponDA->ItemDescription);
-
-				if (UTexture2D* LoadedIcon = WeaponDA->ItemIcon.LoadSynchronous())
-				{
-					Icon->SetBrushFromTexture(LoadedIcon);
-				}
+				SetupUIContents(WeaponDA);
 				for (const FWeaponSkillData SkillData : WeaponInst->GetGrantedSkills())
 				{
 					AddFeatureIconToBox(SkillData.SkillIcon);
@@ -62,14 +53,7 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 		{
 			if (UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA())
 			{
-				NameText->SetText(ItemDA->ItemName);
-				GradeText->SetText(GetGradeText(ItemDA->ItemGrade));
-				DescriptionText->SetText(ItemDA->ItemDescription);
-
-				if (UTexture2D* LoadedIcon = ItemDA->ItemIcon.LoadSynchronous())
-				{
-					Icon->SetBrushFromTexture(LoadedIcon);
-				}
+				SetupUIContents(ItemDA);
 
 				ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn());
 				if (!Player || !Player->GetInventoryComponent())
@@ -120,5 +104,20 @@ void UCAP_ItemDetailPanelWidget::AddFeatureIconToBox(TSoftObjectPtr<class UTextu
 		HBoxSlot->SetPadding(FMargin(50.f, 0.f, 50.f, 0.f));
 		HBoxSlot->SetHorizontalAlignment(HAlign_Fill);
 		HBoxSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+}
+
+void UCAP_ItemDetailPanelWidget::SetupUIContents(class UCAP_ItemDataBase* ItemDA)
+{
+	if (!ItemDA)
+		return;
+
+	NameText->SetText(ItemDA->ItemName);
+	GradeText->SetText(GetGradeText(ItemDA->ItemGrade));
+	DescriptionText->SetText(ItemDA->ItemDescription);
+
+	if (UTexture2D* LoadedIcon = ItemDA->ItemIcon.LoadSynchronous())
+	{
+		Icon->SetBrushFromTexture(LoadedIcon);
 	}
 }
