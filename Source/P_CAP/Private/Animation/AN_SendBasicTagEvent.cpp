@@ -15,7 +15,11 @@ void UAN_SendBasicTagEvent::Notify(USkeletalMeshComponent* MeshComp, UAnimSequen
 	if (!MeshComp -> GetOwner() || !OwnerASC)
 		return;
 
-	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(MeshComp -> GetOwner(), EventTag, FGameplayEventData());
+	FGameplayEventData Payload;
+	Payload.EventTag = EventTag;
+	Payload.OptionalObject = this;
+	
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(MeshComp -> GetOwner(), Payload.EventTag, Payload);
 }
 
 FString UAN_SendBasicTagEvent::GetNotifyName_Implementation() const

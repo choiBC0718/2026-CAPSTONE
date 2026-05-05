@@ -6,7 +6,7 @@
 #include "Widget/Common/CAP_SynergyListView.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_SynergySlotData.h"
-#include "Data/CAP_SynergyTypes.h"
+#include "Data/CAP_EquipItemEffectTypes.h"
 
 void UCAP_ItemSynergyPanelWidget::RefreshSynergyList(const TMap<FGameplayTag, int32>& CurrentCounts, const TMap<FGameplayTag, FSynergyDataTable*>& SynergyCache)
 {

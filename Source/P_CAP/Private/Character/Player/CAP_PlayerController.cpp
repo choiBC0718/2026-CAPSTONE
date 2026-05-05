@@ -7,7 +7,6 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Blueprint/UserWidget.h"
-#include "Items/CAP_DropItemBase.h"
 
 void ACAP_PlayerController::OnPossess(APawn* InPawn)
 {
@@ -17,11 +16,6 @@ void ACAP_PlayerController::OnPossess(APawn* InPawn)
 	if (PlayerCharacter)
 	{
 		SpawnGameplayWidget();
-
-		if (UCAP_InventoryComponent* InvComp = PlayerCharacter->GetInventoryComponent())
-		{
-			InvComp->OnInventoryFull.AddDynamic(this, &ACAP_PlayerController::OpenItemSwapMenu);
-		}
 	}
 }
 
@@ -42,36 +36,15 @@ void ACAP_PlayerController::SetupInputComponent()
 		EnhancedInputComp->BindAction(InventoryToggleIA, ETriggerEvent::Started, this, &ACAP_PlayerController::ToggleCharacterMenu);
 		EnhancedInputComp->BindAction(UICloseIA, ETriggerEvent::Started, this, &ACAP_PlayerController::UICloseHandle);
 		EnhancedInputComp->BindAction(UINavigation, ETriggerEvent::Started, this, &ACAP_PlayerController::UINavigationHandle);
-		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Started, this, &ACAP_PlayerController::UIConfirmHandle);
+		
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Started, this, &ACAP_PlayerController::HandleUIConfirmStarted);
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Ongoing, this, &ACAP_PlayerController::HandleUIConfirmOngoing);
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Triggered, this, &ACAP_PlayerController::HandleUIConfirmTriggered);
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Completed, this, &ACAP_PlayerController::HandleUIConfirmCompleted);
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Canceled, this, &ACAP_PlayerController::HandleUIConfirmCanceled);
 	}
 }
 
-void ACAP_PlayerController::UpdateInteractUI(bool bVisible, const FString& KeyName)
-{
-	if (!GameplayWidget || !PlayerCharacter)
-		return;
-
-	UObject* ItemData = nullptr;
-	if (bVisible)
-	{
-		if (UCAP_InventoryComponent* InvComp = PlayerCharacter->GetInventoryComponent())
-		{
-			if (ICAP_InteractInterface* InteractInterface = Cast<ICAP_InteractInterface>(InvComp->GetNearbyInteractable()))
-			{
-				ItemData = InteractInterface->GetInteractData();
-			}
-		}
-	}
-	GameplayWidget->UpdateInteractionUI(bVisible, ItemData, KeyName);
-}
-
-void ACAP_PlayerController::UpdateInteractProgressUI(float Progress)
-{
-	if (GameplayWidget)
-	{
-		GameplayWidget->UpdateInteractProgress(Progress);
-	}
-}
 
 void ACAP_PlayerController::SpawnGameplayWidget()
 {
@@ -90,7 +63,6 @@ void ACAP_PlayerController::ToggleCharacterMenu()
 		if (!GameplayWidget->IsCharacterMenuOpen())
 		{
 			GameplayWidget->ActivateSwitcher();
-			SetPause(true);
 		}
 		// 열려있다면 탭 전환
 		else
@@ -116,16 +88,6 @@ void ACAP_PlayerController::UINavigationHandle(const FInputActionValue& InputAct
 	}
 }
 
-void ACAP_PlayerController::UIConfirmHandle(const FInputActionValue& InputActionValue)
-{
-	if (!GameplayWidget)
-		return;
-	if (GameplayWidget->IsItemSwapMenuOpen())
-	{
-		GameplayWidget->GetItemSwapWidget()->ConfirmSwap();
-	}
-}
-
 void ACAP_PlayerController::UICloseHandle(const FInputActionValue& InputActionValue)
 {
 	if (!GameplayWidget) return;
@@ -133,16 +95,45 @@ void ACAP_PlayerController::UICloseHandle(const FInputActionValue& InputActionVa
 	if (GameplayWidget->IsItemSwapMenuOpen() || GameplayWidget->IsCharacterMenuOpen())
 	{
 		GameplayWidget->DeactivateSwitcher();
-		SetPause(false);
 	}
 }
 
-
-void ACAP_PlayerController::OpenItemSwapMenu(class UCAP_ItemInstance* NewItem)
+void ACAP_PlayerController::HandleUIConfirmStarted(const FInputActionInstance& InputInst)
 {
 	if (GameplayWidget)
 	{
-		GameplayWidget->OpenItemSwapMenu(NewItem);
-		SetPause(true);
+		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Started, InputInst.GetElapsedTime());
+	}
+}
+
+void ACAP_PlayerController::HandleUIConfirmOngoing(const FInputActionInstance& InputInst)
+{
+	if (GameplayWidget)
+	{
+		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Ongoing, InputInst.GetElapsedTime());
+	}
+}
+
+void ACAP_PlayerController::HandleUIConfirmTriggered(const FInputActionInstance& InputInst)
+{
+	if (GameplayWidget)
+	{
+		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Triggered, InputInst.GetElapsedTime());
+	}
+}
+
+void ACAP_PlayerController::HandleUIConfirmCompleted(const FInputActionInstance& InputInst)
+{
+	if (GameplayWidget)
+	{
+		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Completed, InputInst.GetElapsedTime());
+	}
+}
+
+void ACAP_PlayerController::HandleUIConfirmCanceled(const FInputActionInstance& InputInst)
+{
+	if (GameplayWidget)
+	{
+		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Canceled, InputInst.GetElapsedTime());
 	}
 }

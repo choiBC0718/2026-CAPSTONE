@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "EnhancedInputComponent.h"
 #include "Widget/SlotWidgets/CAP_ItemSlotWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "CAP_ItemEquipPanelWidget.generated.h"
@@ -27,13 +28,26 @@ public:
 	void MoveSelection(FVector2D InputVal);
 	
 	FOnEquipPanelSlotClicked OnPanelSlotClicked;
+
+	void UpdateInteractProgress(float Progress);
+	void SetInteractKeyText(const FString& KeyName);
+
+	void HandleInteractionInput(ETriggerEvent& TriggerEvent, float ElapsedTime);
 	
 private:
 	UPROPERTY(meta = (BindWidget))
 	class UWrapBox* WeaponList;
 	UPROPERTY(meta = (BindWidget))
 	class UWrapBox* PassiveItemList;
-
+	UPROPERTY(meta = (BindWidget))
+	class UWidgetSwitcher* InformationSwitcher;
+	UPROPERTY(meta = (BindWidget))
+	class UProgressBar* ProgressBar;
+	UPROPERTY(meta = (BindWidget))
+	class UImage* SwapKeyIconImg;
+	UPROPERTY(meta = (BindWidget))
+	class UImage* DisassembleKeyIconImg;
+	
 	UPROPERTY(EditDefaultsOnly, Category="Inventory")
 	TSubclassOf<UCAP_ItemSlotWidget> ItemSlotWidgetClass;
 	
@@ -50,4 +64,7 @@ private:
 
 	void CreateAndAddSlot(UWrapBox* TargetBox, TArray<UCAP_ItemSlotWidget*>& TargetArray, ESlotItemType SlotType, int32 Index, UObject* ItemData, UTexture2D* Icon);
 	void InitNearbySlot();
+
+	UPROPERTY(EditDefaultsOnly, Category="Data")
+	class UDataTable* KeyIconDataTable;
 };

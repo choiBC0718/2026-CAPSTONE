@@ -27,4 +27,6 @@ private:
 	// 맵에서 찾은 옥트리 매니저를 기억할 포인터
 	UPROPERTY()
 	AQuadtreeManager* CachedQuadtreeManager;
+	UPROPERTY(EditAnywhere)
+	bool bDrawDebug = false;
 };

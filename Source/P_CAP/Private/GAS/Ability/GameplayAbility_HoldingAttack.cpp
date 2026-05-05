@@ -9,28 +9,33 @@
 
 UGameplayAbility_HoldingAttack::UGameplayAbility_HoldingAttack()
 {
-	JogLoopTag = FGameplayTag::RequestGameplayTag("Ability.Event.JogFwdLoop");
+	JogLoopTag = FGameplayTag::RequestGameplayTag("Ability.Event.Hold.StartLoop");
+	MoveToCursor = nullptr;
+	MaxHoldTask = nullptr;
+	InputReleaseTask = nullptr;
 }
 
 void UGameplayAbility_HoldingAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle,const FGameplayAbilityActorInfo* ActorInfo,
                                                      const FGameplayAbilityActivationInfo ActivationInfo,const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	if (!K2_CommitAbility())
-	{
-		K2_EndAbility();
+	if (!IsActive())
 		return;
-	}
-
+	
 	bIsExecuted=false;
-
-	UAbilityTask_WaitInputRelease* InputReleaseTask = UAbilityTask_WaitInputRelease::WaitInputRelease(this);
-	InputReleaseTask->OnRelease.AddDynamic(this, &UGameplayAbility_HoldingAttack::OnInputReleased);
-	InputReleaseTask->ReadyForActivation();
+	if (MoveToCursor)
+	{
+		MoveToCursor->EndTask();
+		MoveToCursor = nullptr;
+	}
 
 	UAbilityTask_WaitGameplayEvent* JogFwdTagTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this,JogLoopTag);
 	JogFwdTagTask->EventReceived.AddDynamic(this, &UGameplayAbility_HoldingAttack::OnJogFwdTagReceived);
 	JogFwdTagTask->ReadyForActivation();
+
+	InputReleaseTask = UAbilityTask_WaitInputRelease::WaitInputRelease(this);
+	InputReleaseTask->OnRelease.AddDynamic(this, &UGameplayAbility_HoldingAttack::OnInputReleased);
+	InputReleaseTask->ReadyForActivation();
 }
 
 void UGameplayAbility_HoldingAttack::OnInputReleased(float TimeHeld)
@@ -47,27 +52,44 @@ void UGameplayAbility_HoldingAttack::ExecuteAttack()
 {
 	if (bIsExecuted)
 		return;
-	if (MoveToCursor)
-	{
-		MoveToCursor->EndTask();
-		MoveToCursor=nullptr;
-	}
+	
+	ClearTasks();
 	bIsExecuted=true;
 
 	UAnimInstance* AnimInst = GetOwnerAnimInstance();
-	if (AnimInst && AbilityMontage)
+	if (AnimInst)
 	{
-		AnimInst->Montage_JumpToSection(FName("Attack"), AbilityMontage);
+		if (UAnimMontage* AbilityMontage = AnimInst->GetCurrentActiveMontage())
+			AnimInst->Montage_JumpToSection(FName("Attack"), AbilityMontage);
 	}
 }
 
 void UGameplayAbility_HoldingAttack::OnJogFwdTagReceived(FGameplayEventData Payload)
 {
-	UAbilityTask_WaitDelay* MaxHoldTask = UAbilityTask_WaitDelay::WaitDelay(this,2.f);
+	MaxHoldTask = UAbilityTask_WaitDelay::WaitDelay(this,2.f);
 	MaxHoldTask->OnFinish.AddDynamic(this, &UGameplayAbility_HoldingAttack::OnMaxHeld);
 	MaxHoldTask->ReadyForActivation();
 	
 	MoveToCursor = UAbilityTask_TickMoveToCursor::MoveToCursor(this);
 	MoveToCursor->ReadyForActivation();
+}
+
+void UGameplayAbility_HoldingAttack::ClearTasks()
+{
+	if (MoveToCursor)
+	{
+		MoveToCursor->EndTask();
+		MoveToCursor=nullptr;
+	}
+	if (MaxHoldTask)
+	{
+		MaxHoldTask->EndTask();
+		MaxHoldTask=nullptr;
+	}
+	if (InputReleaseTask)
+	{
+		InputReleaseTask->EndTask();
+		InputReleaseTask=nullptr;
+	}
 }
 

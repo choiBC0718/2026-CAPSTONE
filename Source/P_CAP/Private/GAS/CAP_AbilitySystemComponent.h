@@ -19,6 +19,8 @@ public:
 	UCAP_AbilitySystemComponent();
 	void InitComponent(FName StatRowName);
 	void ApplyFullStatEffect();
+
+	FORCEINLINE const class UCAP_AbilitySystemGenerics* GetGenerics() const {return AbilitySystemGenerics;}
 	
 private:
 	void ApplyInitialEffects();

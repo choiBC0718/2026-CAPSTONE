@@ -5,7 +5,9 @@
 
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
+#include "Components/TextBlock.h"
 #include "Components/WidgetComponent.h"
+#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 
 
 void UCAP_ItemInteraction::NativeConstruct()
@@ -54,5 +56,22 @@ void UCAP_ItemInteraction::SetInteractKeyText(const FString& KeyName)
 				DisassembleIconImg->SetVisibility(ESlateVisibility::Visible);
 			}
 		}
+	}
+}
+
+void UCAP_ItemInteraction::UpdateActionTexts(const FInteractionPayload& Payload, int32 FinalCurrencyAmount)
+{
+	if (EquipText)
+	{
+		EquipText->SetText(FText::FromString(Payload.ActionData.ShortActionText));
+	}
+	if (DisassembleText)
+	{
+		FString LongText = Payload.ActionData.LongActionText;
+		if (Payload.ActionData.bShowCurrency)
+		{
+			LongText=FString::Printf(TEXT("%s (+%d)"), *LongText, FinalCurrencyAmount);
+		}
+		DisassembleText->SetText(FText::FromString(LongText));
 	}
 }

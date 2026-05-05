@@ -29,7 +29,6 @@ void UAbilityTask_RotateToCursor::TickTask(float DeltaTime)
 	if (CurrentRot.Equals(TargetRotation, 1.f))
 	{
 		bIsFinished = true;
-		OnComplete.Broadcast();
 		EndTask();
 	}
 }

@@ -7,7 +7,6 @@
 #include "AbilityTask_RotateToCursor.generated.h"
 
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnRotateComplete);
 /**
  * 
  */
@@ -23,10 +22,7 @@ public:
 
 	UFUNCTION()
 	static UAbilityTask_RotateToCursor* SmoothRotateToMouse(UGameplayAbility* OwningAbility, float RotationSpeed);
-	
-	UPROPERTY()
-	FOnRotateComplete OnComplete;
-	
+
 private:
 	float InterpSpeed;
 	FRotator TargetRotation;

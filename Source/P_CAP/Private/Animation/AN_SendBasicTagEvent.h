@@ -21,4 +21,7 @@ public:
 	
 	UPROPERTY(EditAnywhere, Category="Event", meta=(Categories="Ability.Event"))
 	FGameplayTag EventTag;
+
+	UPROPERTY(EditAnywhere, Category="Projectile")
+	FName ProjectileMuzzleName = NAME_None;
 };

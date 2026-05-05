@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
 #include "CAP_GameplayAbilityTypes.generated.h"
 
 UENUM(BlueprintType)
@@ -15,7 +14,9 @@ enum class EAbilityInputID : uint8
 	Skill2				UMETA(DisplayName = "Skill2"),
 	ActiveItem			UMETA(DisplayName = "ActiveItem"),
 	Dodge				UMETA(DisplayName = "Dodge"),
-	SwapWeapon			UMETA(DisplayName = "SwapWeapon")
+	SwapWeapon			UMETA(DisplayName = "SwapWeapon"),
+	Confirm				UMETA(DisplayName = "Confirm"),
+	Cancel				UMETA(DisplayName = "Cancel"),
 };
 
 UENUM(BlueprintType)
@@ -25,6 +26,15 @@ enum class EItemGrade : uint8
 	Rare			UMETA(DisplayName = "레어"),
 	Epic			UMETA(DisplayName = "에픽"),
 	Legendary		UMETA(DisplayName = "레전더리")
+};
+
+
+UENUM(BlueprintType)
+enum class ECurrencyType : uint8
+{
+	Gold			UMETA(DisplayName = "Gold (골드)"),
+	WeaponMaterial	UMETA(DisplayName = "WeaponMaterial (무기 강화재료)"),
+	MagicStone		UMETA(DisplayName = "MagicStone (마석)"),
 };
 
 USTRUCT(BlueprintType)
@@ -48,20 +58,37 @@ public:
 	UPROPERTY(EditAnywhere)		float BaseWeaponSwapCooldownMultiplier=0.f;
 };
 
-/**무기 별 보너스 스탯 (등급별로 행 다르게 제작)*/
 USTRUCT(BlueprintType)
-struct FWeaponStatRow : public FTableRowBase
+struct FActionPromptData
 {
 	GENERATED_BODY()
 
-public:
-	/** 보너스 스탯 Map <스탯 태그, 수치> */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(Categories="Data.Stat"))
-	TMap<FGameplayTag, float> BonusStat;
-	/** 무기별 회피기 최대 연속 사용 횟수 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 MaxDodgeCount = 2;
-	/** 무기 업그레이드 가능한지 (레전더리라면 false) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bIsUpgradeable = true;
+	// 짧게 누르기 텍스트 (줍기, 구매하기, 대화하기 등)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	FString ShortActionText;
+	// 길게 누르기 텍스트 (파괴하기 / 비어있으면 Hidden처리)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	FString LongActionText;
+	// 재화를 표시할지
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	bool bShowCurrency=false;
+	// 표시할 재화 종류
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	ECurrencyType ActionCurrencyType = ECurrencyType::Gold;
+	// 재화 수치
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	int32 CurrencyAmount=0;
+};
+
+USTRUCT(BlueprintType)
+struct FInteractionPayload
+{
+	GENERATED_BODY()
+
+	// 상단 패널용 데이터 (아이템 정보, 무기 정보_ Instance / 없으면 숨김처리)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	UObject* DetailData =nullptr;
+	// 하단 패널 설정
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	FActionPromptData ActionData;
+};
+
+UENUM(BlueprintType)
+enum class EInteractAction : uint8
+{
+	Tap     UMETA(DisplayName = "Tap (짧게 누르기)"),
+	Hold    UMETA(DisplayName = "Hold (길게 누르기)")
 };

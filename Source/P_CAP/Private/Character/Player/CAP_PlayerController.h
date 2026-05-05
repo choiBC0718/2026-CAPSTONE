@@ -21,10 +21,7 @@ public:
 	virtual void SetupInputComponent() override;
 
 	FORCEINLINE UCAP_GameplayWidget* GetGameplayWidget() const { return GameplayWidget; }
-	
-	void UpdateInteractUI(bool bVisible, const FString& KeyName);
-	void UpdateInteractProgressUI(float Progress);
-	
+
 private:
 	UPROPERTY()
 	class ACAP_PlayerCharacter* PlayerCharacter;
@@ -52,9 +49,15 @@ private:
 	UFUNCTION()
 	void UINavigationHandle(const FInputActionValue& InputActionValue);
 	UFUNCTION()
-	void UIConfirmHandle(const FInputActionValue& InputActionValue);
-	UFUNCTION()
 	void UICloseHandle(const FInputActionValue& InputActionValue);
 	UFUNCTION()
-	void OpenItemSwapMenu(class UCAP_ItemInstance* NewItem);
+	void HandleUIConfirmStarted(const FInputActionInstance& InputActionInstance);
+	UFUNCTION()
+	void HandleUIConfirmOngoing(const FInputActionInstance& InputActionInstance);
+	UFUNCTION()
+	void HandleUIConfirmTriggered(const FInputActionInstance& InputActionInstance);
+	UFUNCTION()
+	void HandleUIConfirmCompleted(const FInputActionInstance& InputActionInstance);
+	UFUNCTION()
+	void HandleUIConfirmCanceled(const FInputActionInstance& InputActionInstance);
 };

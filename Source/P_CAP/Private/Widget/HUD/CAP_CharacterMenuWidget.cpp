@@ -6,10 +6,16 @@
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Components/Border.h"
 #include "Widget/PanelWidgets/CAP_InventoryTabWidget.h"
+#include "Widget/PanelWidgets/CAP_ItemEquipPanelWidget.h"
 
 void UCAP_CharacterMenuWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	if (ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>())
+	{
+		if (UCAP_InventoryComponent* InventoryComp = Player->GetInventoryComponent())
+			InventoryComp->OnInventoryChanged.AddDynamic(this, &UCAP_CharacterMenuWidget::HandleInventoryChanged);
+	}
 }
 
 void UCAP_CharacterMenuWidget::OnAnimationFinished_Implementation(const UWidgetAnimation* Animation)
@@ -91,8 +97,21 @@ void UCAP_CharacterMenuWidget::SwitchCharacterMenuTab()
 	}
 }
 
+void UCAP_CharacterMenuWidget::RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime)
+{
+	if (!bIsAttributeTabOpen && InventoryTabWidget && InventoryTabWidget->GetItemEquipPanel())
+	{
+		InventoryTabWidget->GetItemEquipPanel()->HandleInteractionInput(TriggerEvent, ElapsedTime);
+	}
+}
+
 FReply UCAP_CharacterMenuWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 	return FReply::Handled();
+}
+
+void UCAP_CharacterMenuWidget::HandleInventoryChanged(class UCAP_ItemInstance* ChangedItem, bool bIsAdded)
+{
+	RefreshMenu();
 }

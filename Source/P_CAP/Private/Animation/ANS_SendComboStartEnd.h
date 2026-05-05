@@ -21,11 +21,11 @@ public:
 	virtual void NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference) override;
 	virtual void NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
 
+	UPROPERTY(EditAnywhere, Category="Section Name")
+	FName NextSectionName = FName("Combo02");
 private:
 	UPROPERTY(EditAnywhere, Category="Event Tag")
-	FGameplayTag NextComboNameTag;
+	FGameplayTag NextComboTag;
 	UPROPERTY(EditAnywhere, Category="Event Tag")
 	FGameplayTag ComboEndTag;
-
-	FGameplayTag TargetClearTag;
 };

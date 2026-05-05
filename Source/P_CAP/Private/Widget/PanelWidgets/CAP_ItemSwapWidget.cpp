@@ -8,7 +8,6 @@
 #include "Widget/SlotWidgets/CAP_ItemSlotWidget.h"
 #include "Widget/SlotWidgets/CAP_SynergySimulSlotWidget.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
-#include "Character/Player/CAP_PlayerController.h"
 #include "Components/Image.h"
 #include "Components/ScrollBox.h"
 #include "Components/ScrollBoxSlot.h"
@@ -16,9 +15,9 @@
 #include "Components/VerticalBox.h"
 #include "Components/WrapBox.h"
 #include "Components/WrapBoxSlot.h"
-#include "Items/Item/CAP_InventoryComponent.h"
-#include "Items/Item/CAP_ItemBase.h"
-#include "Items/Item/CAP_ItemInstance.h"
+#include "Component/CAP_InventoryComponent.h"
+#include "Interactables/Item/CAP_WorldItem.h"
+#include "Interactables/Item/CAP_ItemInstance.h"
 
 void UCAP_ItemSwapWidget::NativeConstruct()
 {
@@ -101,14 +100,14 @@ void UCAP_ItemSwapWidget::MoveSelection(FVector2D InputVal)
 void UCAP_ItemSwapWidget::ConfirmSwap()
 {
 	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn());
-	ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(GetOwningPlayer());
 	if (CurrentSelectedSlot && CurrentSelectedSlot->SlotItemData && NewItemToSwap && Player)
 	{
 		UCAP_ItemInstance* OldItem = Cast<UCAP_ItemInstance>(CurrentSelectedSlot->SlotItemData);
-		AActor* InteractActor = Player->GetInventoryComponent()->GetNearbyInteractable();
+		AActor* InteractActor = Player->GetInteractionComponent()->GetNearbyInteractable();
 
 		UCAP_InventoryComponent* InventoryComp = Player->GetInventoryComponent();
-		if (!InventoryComp)
+		UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent();
+		if (!InventoryComp || !InteractionComp)
 			return;
 		
 		if (InventoryComp->SwapItem(OldItem, NewItemToSwap))
@@ -116,27 +115,21 @@ void UCAP_ItemSwapWidget::ConfirmSwap()
 			if (InteractActor)
 			{
 				InteractActor->Destroy();
-				InventoryComp->SetNearbyInteractable(nullptr);
-				Player->UpdateInteractUI(false);
+				InteractionComp->SetNearbyInteractable(nullptr);
 			}
-			FVector SpawnLoc = Player->GetActorLocation() + FVector(0.f,0.f,50.f);
+			FVector SpawnLoc = Player->GetActorLocation();
 			FTransform SpawnTransform(FRotator::ZeroRotator, SpawnLoc);
 			
-			ACAP_ItemBase* DroppedItem = GetWorld()->SpawnActorDeferred<ACAP_ItemBase>(ACAP_ItemBase::StaticClass(), SpawnTransform);
+			ACAP_WorldItem* DroppedItem = GetWorld()->SpawnActorDeferred<ACAP_WorldItem>(ACAP_WorldItem::StaticClass(), SpawnTransform);
 			if (DroppedItem)
 			{
 				DroppedItem->ItemInstance = OldItem;
-				DroppedItem->ItemDA = OldItem->GetItemDA();
+				DroppedItem->ItemDA = Cast<UCAP_ItemDataAsset>(OldItem->GetItemDA());
 				DroppedItem->FinishSpawning(SpawnTransform);
 				DroppedItem->DropItem();
 			}
 		}
-
-		if (PC && PC->GetGameplayWidget())
-		{
-			PC->GetGameplayWidget()->DeactivateSwitcher();
-			PC->SetPause(false);
-		}
+		NativeCloseMenu();
 	}
 }
 
@@ -215,25 +208,26 @@ void UCAP_ItemSwapWidget::UpdateTopSynergyIcons()
 	{
 		if (UCAP_ItemInstance* OldItemInst = Cast<UCAP_ItemInstance>(CurrentSelectedSlot->SlotItemData))
 		{
-			if (OldItemInst->GetItemDA())
+			if (UCAP_ItemDataBase* OldItemDA = OldItemInst->GetItemDA())
 			{
-				FGameplayTag OldTag1 = OldItemInst->GetItemDA()->SynergyTag1;
-				FGameplayTag OldTag2 = OldItemInst->GetItemDA()->SynergyTag2;
-
-				if (OldTag1.IsValid() && SimulatedCounts.Contains(OldTag1)) SimulatedCounts[OldTag1]--;
-				if (OldTag2.IsValid() && SimulatedCounts.Contains(OldTag2)) SimulatedCounts[OldTag2]--;
+				TArray<FGameplayTag> OldSynergies = OldItemDA->GetSynergyTags();
+				for (const FGameplayTag& Tag : OldSynergies)
+				{
+					if (SimulatedCounts.Contains(Tag))
+						SimulatedCounts[Tag]--;
+				}
 			}
 		}
 	}
 
 	// [더하기] 새로 얻을 아이템의 시너지 증가
-	if (NewItemToSwap->GetItemDA())
+	if (UCAP_ItemDataBase* ItemDA = NewItemToSwap->GetItemDA())
 	{
-		FGameplayTag NewTag1 = NewItemToSwap->GetItemDA()->SynergyTag1;
-		FGameplayTag NewTag2 = NewItemToSwap->GetItemDA()->SynergyTag2;
-
-		if (NewTag1.IsValid()) SimulatedCounts.FindOrAdd(NewTag1)++;
-		if (NewTag2.IsValid()) SimulatedCounts.FindOrAdd(NewTag2)++;
+		TArray<FGameplayTag> Synergies = ItemDA->GetSynergyTags();
+		for (const FGameplayTag& Tag : Synergies)
+		{
+			SimulatedCounts.FindOrAdd(Tag)++;
+		}
 	}
 
 	struct FSynergySortData

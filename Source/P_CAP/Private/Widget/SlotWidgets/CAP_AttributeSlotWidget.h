@@ -8,6 +8,14 @@
 #include "GAS/Setting/CAP_AttributeSet.h"
 #include "CAP_AttributeSlotWidget.generated.h"
 
+UENUM(BlueprintType)
+enum class EAttributeDisplay : uint8
+{
+	RawValue,
+	Percentage,
+	Multiplier,
+	RatioFromBase
+};
 /**
  * 1개의 Attribute를 나타낼 위젯
  * 여러 스탯들을 AttributeTabWidget에 넣음 
@@ -31,11 +39,13 @@ private:
 	FGameplayAttribute Attribute;
 	UPROPERTY(EditAnywhere, Category="Attribute")
 	FText AttributeName;
+	UPROPERTY(EditAnywhere, Category="Attribute")
+	EAttributeDisplay AttributeDisplay = EAttributeDisplay::RawValue;
 
 	UPROPERTY()
 	class UAbilitySystemComponent* OwnerASC;
 
-	void UpdatePercentage();
+	void UpdateAttributeValue();
 	void AttributeChanged(const FOnAttributeChangeData& Data);
 
 	FNumberFormattingOptions NumberFormattingOptions;

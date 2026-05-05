@@ -21,7 +21,8 @@ public:
 	
 	void RefreshInventoryTab(ACAP_PlayerCharacter* PlayerCharacter);
 	void NavigationInput(FVector2D InputVal);
-	
+
+	FORCEINLINE class UCAP_ItemEquipPanelWidget* GetItemEquipPanel() const {return ItemEquipPanel;}
 protected:
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_ItemEquipPanelWidget* ItemEquipPanel;

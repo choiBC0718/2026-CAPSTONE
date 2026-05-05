@@ -29,18 +29,23 @@ public:
 	void ActivateSwitcher();		// 인벤토리 메뉴 열기 (MenuSwitch 켜기)
 	void DeactivateSwitcher();		// MenuSwitch 끄기
 	void SwitchCharacterMenuTab();	
-	void OpenItemSwapMenu(class UCAP_ItemInstance* NewItem);	// 인벤토리 꽉 찼을 때 변경을 위한 위젯 활성화
-
-	void UpdateInteractProgress(float Progress);				// 키 누르는 동안 게이지 증가
-	void UpdateInteractionUI(bool bVisible, UObject* ItemData, const FString& KeyName);	//상호작용 할 아이템으로 UI 업데이트
 	
+	void RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime);
+
+	void ShowMenuWidget(UUserWidget* TargetMenuWidget);
+	void EnterUIMode();
+	void ExitUIMode();
+
+	UFUNCTION()
+	void HandleInventoryFull(class UCAP_ItemInstance* NewItem);	// 인벤토리 꽉 찼을 때 변경을 위한 위젯 활성화
+
 protected:
 	// Hp 바
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_ValueGauge* HealthBar;
-	// 부여된 스킬 아이콘 List View
+	// 장착한 무기에 부여된 스킬 아이콘
 	UPROPERTY(meta = (BindWidget))
-	class UCAP_AbilityListView* AbilityListView;
+	class UCAP_WeaponSkillBox* WeaponAbilityPanelWidget;
 	// 아이템 상호작용 시, 아이템의 디테일 값 나타낼 위젯
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_PickupDetailPanelWidget* PickupItemDetailWidget;
@@ -52,16 +57,19 @@ protected:
 	class UCAP_CharacterMenuWidget* CharacterMenuWidget;
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_ItemSwapWidget* ItemSwapWidget;
+
+	// 아이템 버프 리스트 위젯
+	UPROPERTY(meta = (BindWidget))
+	class UCAP_BuffListPanelWidget* BuffListPanel;
 	
+	UPROPERTY(meta = (BindWidget))
+	class UCAP_CurrencyPanelWidget* CurrencyPanel;
 private:
 	UPROPERTY()
 	ACAP_PlayerCharacter* Player;
 	UPROPERTY()
 	class UAbilitySystemComponent* OwnerASC;
 	
-	UFUNCTION()
-	void HandleWeaponChanged(class UCAP_WeaponInstance* NewWeaponInstance);
-
 	UFUNCTION()
 	void CompleteDeactivateSwitcher();
 };

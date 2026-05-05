@@ -46,6 +46,9 @@ public:
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxDodgeCount);
 
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CachedHealthPercent);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, Damage);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, Shield);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, DisassembleBonusMultiplier);
 
 private:
 	UPROPERTY()	FGameplayAttributeData Health;
@@ -66,4 +69,7 @@ private:
 	UPROPERTY()	FGameplayAttributeData MaxDodgeCount;
 	
 	UPROPERTY()	FGameplayAttributeData CachedHealthPercent;
+	UPROPERTY()	FGameplayAttributeData Shield;
+	UPROPERTY()	FGameplayAttributeData Damage;
+	UPROPERTY()	FGameplayAttributeData DisassembleBonusMultiplier;
 };

@@ -7,7 +7,8 @@
 #include "CAP_GameplayAbility.generated.h"
 
 /**
- * 
+ * 가장 기본적인 역할 수행 클래스
+ * 몽타주 재생 & 데미지 태그 이벤트 & 캐릭터 회전 & 루트모션
  */
 UCLASS()
 class UCAP_GameplayAbility : public UGameplayAbility
@@ -17,27 +18,47 @@ class UCAP_GameplayAbility : public UGameplayAbility
 public:
 	UCAP_GameplayAbility();
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
-	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
-	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags = nullptr, const FGameplayTagContainer* TargetTags = nullptr, FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
-
-protected:
-	void ApplyGameplayEffectToHitResult(const FHitResult& HitResult, TSubclassOf<UGameplayEffect> GameplayEffect, int Level=1);
-	void RotateToMouseCursor();
+	virtual void ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const override;
+	virtual bool CheckCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
 	
+protected:
 	UAnimInstance* GetOwnerAnimInstance() const;
 	class ACAP_PlayerCharacter* GetPlayerCharacterFromActorInfo() const;
-	class UCAP_WeaponDataAsset* GetWeaponDataAsset() const;
-	const struct FWeaponSkillData* GetCurrentSkillData() const;
+	const struct FWeaponSkillData* GetSkillDataFromContext(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo) const;
+
+	TArray<class ACAP_ProjectileBase*> SpawnProjectile(FVector SpawnLocation, const struct FSkillLogicDataBase* InProjectileData);
+	FVector GetMuzzleSocketLocation(FName SocketName);
+	void SendGameplayCueEvent(FHitResult HitResult, const struct FWeaponSkillData* InSkillData);
+
+	FGameplayTag TriggerCastBasicTag;
+	FGameplayTag TriggerCastAbilityTag;
+	FGameplayTag TriggerHitBasicTag;
+	FGameplayTag TriggerHitAbilityTag;
+	
+	FGameplayTag BaseDamageDataTag;
+	FGameplayTag DamageMultiplierDataTag;
+	FGameplayTag ChargeMultiplierDataTag;
 	
 	FGameplayTag DamageTag;
 	FGameplayTag RMSTag;
+	FGameplayTag SpawnProjectileTag;
+	FGameplayTag DataCooldownTag;
 	UFUNCTION()
 	void OnDamageTagReceived(FGameplayEventData Payload);
 	UFUNCTION()
 	void OnRMSTagReceived(FGameplayEventData Payload);
+	UFUNCTION()
+	void OnSpawnProjectileTagReceived(FGameplayEventData Payload);
 	
-	UPROPERTY();
-	class UAnimMontage* AbilityMontage;
-	UPROPERTY();
-	TSubclassOf<UGameplayEffect> AbilityDamageEffect;
+	bool bIsCasting = false;
+	FVector CachedTargetLocation;
+	UFUNCTION()
+	virtual void OnMontageInterrupted();
+
+	TSubclassOf<UGameplayEffect> GetDamageGE() const;
+	
+	bool IsBasicAttack() const;
+	void BroadcastTriggerEvent(FGameplayTag EventTag, FGameplayAbilityTargetDataHandle TargetData = FGameplayAbilityTargetDataHandle()) const;
+
+	float ChargedTime = 1.f;
 };

@@ -8,7 +8,7 @@
 void UCAP_ItemSlotWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	SetIsFocusable(true);
+	SetIsFocusable(false);
 }
 
 void UCAP_ItemSlotWidget::InitSlot(ESlotItemType InSlotType, UTexture2D* InIcon, UObject* InItemData)

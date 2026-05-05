@@ -8,6 +8,7 @@
 #include "Map/Debug/MapManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/BoxComponent.h"
+#include "P_CAP/P_CAP.h"
 
 ADoorActor::ADoorActor()
 {
@@ -26,6 +27,7 @@ ADoorActor::ADoorActor()
 	TriggerBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	TriggerBox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	TriggerBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	TriggerBox->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Overlap);
 }
 
 void ADoorActor::InitializeDoor(const FIntPoint& InSourceRoomPos, const FIntPoint& InTargetRoomPos, EDoorDirection InDirection)

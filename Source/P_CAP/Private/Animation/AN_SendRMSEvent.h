@@ -16,6 +16,7 @@ class UAN_SendRMSEvent : public UAnimNotify
 	GENERATED_BODY()
 
 public:
+	UAN_SendRMSEvent();
 	virtual void Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
 	virtual FString GetNotifyName_Implementation() const override;
 	

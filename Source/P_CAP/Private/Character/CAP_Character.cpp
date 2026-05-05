@@ -19,7 +19,8 @@ ACAP_Character::ACAP_Character()
 	GetMesh()->SetupAttachment(GetRootComponent());
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Target,ECR_Ignore);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Target, ECR_Ignore);
+	GetCapsuleComponent()->SetCollisionObjectType(ECC_Hitbox);
 
 	CAPAbilitySystemComponent = CreateDefaultSubobject<UCAP_AbilitySystemComponent>("Ability System Component");
 	CAPAttributeSet = CreateDefaultSubobject<UCAP_AttributeSet>("Attribute Set");
@@ -109,7 +110,6 @@ void ACAP_Character::Respawn()
 		CAPAbilitySystemComponent->ApplyFullStatEffect();
 	}
 }
-void ACAP_Character::OnDead(){}
 
 void ACAP_Character::PlayDeathAnimation()
 {
@@ -142,8 +142,6 @@ void ACAP_Character::SetRagdollEnabled(bool bIsEnable)
 		GetMesh()->SetRelativeTransform(MeshRelativeTransform);
 	}
 }
-
-void ACAP_Character::OnRespawn(){}
 
 void ACAP_Character::SetAIPerceptionStimuliSourceEnabled(bool bIsEnabled)
 {

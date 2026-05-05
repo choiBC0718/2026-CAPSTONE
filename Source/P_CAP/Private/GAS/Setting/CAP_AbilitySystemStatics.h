@@ -23,7 +23,20 @@ public:
 
 	static FGameplayTag GetBasicAttackTag();
 	static FGameplayTag GetSkillAttackTag();
-	static FGameplayTag GetTargetClearTag();
 	static FGameplayTag GetDamageTag();
 	static FGameplayTag GetRMSTag();
+	static FGameplayTag GetSpawnProjectileTag();
+	static FGameplayTag GetAbilityChargeTimeTag();
+
+	static FGameplayTag GetDataDamageMultiplierTag();
+	static FGameplayTag GetDataDamageBaseTag();
+	static FGameplayTag GetDataDamageTag();
+	static FGameplayTag GetDataCooldownTag();
+	static FGameplayTag GetDataEffectDurationTag();
+	static FGameplayTag GetDataStackTag();
+
+	static FGameplayTag GetItemTriggerCastBasic();
+	static FGameplayTag GetItemTriggerCastAbility();
+	static FGameplayTag GetItemTriggerHitBasic();
+	static FGameplayTag GetItemTriggerHitAbility();
 };

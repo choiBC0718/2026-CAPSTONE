@@ -5,10 +5,11 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "P_CAP/P_CAP.h"
 
 
 void UAN_HitBox::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
-	const FAnimNotifyEventReference& EventReference)
+                        const FAnimNotifyEventReference& EventReference)
 {
 	Super::Notify(MeshComp, Animation, EventReference);
 	
@@ -38,7 +39,7 @@ void UAN_HitBox::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Ani
 	IgnoreActors.Add(OwnerActor);
 
 	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
-	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Hitbox));
 
 	TArray<AActor*> OverlappedActors;
 	// 모양에 따라 다른 함수 호출

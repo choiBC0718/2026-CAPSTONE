@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "CAP_ItemInteraction.generated.h"
 
 USTRUCT(BlueprintType)
@@ -28,7 +29,8 @@ public:
 	void SetInteractionUIVisibility(bool bVisible);
 	void UpdateInteractProgress(float Progress);
 	void SetInteractKeyText(const FString& KeyName);
-	
+
+	void UpdateActionTexts(const FInteractionPayload& Payload, int32 FinalCurrencyAmount);
 private:
 	UPROPERTY(meta = (BindWidget))
 	class UImage* EquipIconImg;
