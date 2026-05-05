@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CAP_EquipItemEffectTypes.h"
 #include "CAP_WeaponDataAsset.h"
 #include "GameplayEffect.h"
 #include "Engine/DataAsset.h"
@@ -24,6 +25,7 @@ public:
 
 	FORCEINLINE const UDataTable* GetBaseStatDataTable() const {return BaseStatDataTable;}
 	FORCEINLINE const UDataTable* GetWeaponStatDataTable() const {return WeaponStatDataTable;}
+	FORCEINLINE const UDataTable* GetDisassembleRewardDataTable() const {return DisassembleRewardTable;}
 	
 	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemStatInfiniteEffect() const {return MasterStatInfiniteGE;}
 	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemStatDurationEffect() const {return MasterStatDurationGE;}
@@ -52,6 +54,10 @@ private:
 	UDataTable* BaseStatDataTable;
 	UPROPERTY(EditDefaultsOnly, Category="Weapon Stats")
 	UDataTable* WeaponStatDataTable;
+	UPROPERTY(EditDefaultsOnly, Category="Disassemble Rewards")
+	UDataTable* DisassembleRewardTable;
+	UPROPERTY(EditDefaultsOnly, Category="Disassemble Rewards")
+	TMap<FGameplayTag, FDisassembleRewardRow> Test;
 
 	// 물리 데미지 GE - ExecCalc Physical 설정
 	UPROPERTY(EditDefaultsOnly, Category="Master GE|Instant Damage Master GE")

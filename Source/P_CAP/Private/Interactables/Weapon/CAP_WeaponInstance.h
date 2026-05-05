@@ -40,6 +40,8 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	int32 UpgradeLevel =0;
 
+	EItemGrade CurrentGrade;
+	
 	// 캐시 데이터
 	FWeaponSkillData BasicAttackData;
 	TArray<FWeaponSkillData> GrantedActiveSkills;

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "CAP_EquipItemEffectTypes.generated.h"
 
 USTRUCT(BlueprintType)
@@ -53,4 +54,19 @@ public:
 	/** 무기 업그레이드 가능한지 (레전더리라면 false) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bIsUpgradeable = true;
+};
+
+USTRUCT(BlueprintType)
+struct FDisassembleRewardRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon")
+	ECurrencyType WeaponCurrencyType = ECurrencyType::WeaponMaterial;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon")
+	int32 WeaponRewardAmount = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Item")
+	ECurrencyType ItemCurrencyType = ECurrencyType::Gold;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Item")
+	int32 ItemRewardAmount = 0;
 };

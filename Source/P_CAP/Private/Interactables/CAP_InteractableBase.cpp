@@ -12,17 +12,11 @@ ACAP_InteractableBase::ACAP_InteractableBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	RootCollision = CreateDefaultSubobject<USphereComponent>("RootCollision");
-	SetRootComponent(RootCollision);
-	RootCollision->SetSimulatePhysics(true);
-	RootCollision->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	RootCollision->SetCollisionResponseToAllChannels(ECR_Ignore);
-	RootCollision->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
-	RootCollision->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
-	RootCollision->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Ignore);
+	RootScene = CreateDefaultSubobject<USceneComponent>("RootScene");
+	SetRootComponent(RootScene);
 	
 	InteractionSphere = CreateDefaultSubobject<USphereComponent>("InteractionSphere");
-	InteractionSphere->SetupAttachment(RootCollision);
+	InteractionSphere->SetupAttachment(GetRootComponent());
 	InteractionSphere->SetSphereRadius(100.f);
 	InteractionSphere->SetRelativeLocation(FVector(0.f, 0.f, 100.f));
 	InteractionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
@@ -37,18 +31,8 @@ void ACAP_InteractableBase::BeginPlay()
 
 	InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &ACAP_InteractableBase::OnInteractSphereBeginOverlap);
 	InteractionSphere->OnComponentEndOverlap.AddDynamic(this, &ACAP_InteractableBase::OnInteractSphereEndOverlap);
-	RootCollision->OnComponentHit.AddDynamic(this, &ACAP_InteractableBase::OnRootCollisionHit);
 }
 
-
-void ACAP_InteractableBase::DropItem()
-{
-	if (RootCollision)
-	{
-		FVector DropImpulse = FVector(0.f,0.f, 600.f);
-		RootCollision->AddImpulse(DropImpulse, NAME_None, true);
-	}
-}
 
 void ACAP_InteractableBase::OnInteractSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                                      UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -85,10 +69,4 @@ void ACAP_InteractableBase::OnInteractSphereEndOverlap(UPrimitiveComponent* Over
 			if (InteractComp->GetNearbyInteractable() == this)
 				InteractComp->SetNearbyInteractable(nullptr);
 	}
-}
-
-void ACAP_InteractableBase::OnRootCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
-{
-	RootCollision->SetSimulatePhysics(false);
 }

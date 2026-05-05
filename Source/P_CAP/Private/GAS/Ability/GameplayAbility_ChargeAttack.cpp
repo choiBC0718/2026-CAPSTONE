@@ -11,6 +11,7 @@
 UGameplayAbility_ChargeAttack::UGameplayAbility_ChargeAttack()
 {
 	ChargeStartTag = FGameplayTag::RequestGameplayTag("Ability.Event.Charge.StartLoop");
+	TickRotTask=nullptr;
 }
 
 void UGameplayAbility_ChargeAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
@@ -18,6 +19,9 @@ void UGameplayAbility_ChargeAttack::ActivateAbility(const FGameplayAbilitySpecHa
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
+	if (!IsActive())
+		return;
+	
 	UAbilityTask_WaitGameplayEvent* WaitChargeStartTag = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, ChargeStartTag);
 	WaitChargeStartTag->EventReceived.AddDynamic(this, &UGameplayAbility_ChargeAttack::OnChargeStartTagReceived);
 	WaitChargeStartTag->ReadyForActivation();

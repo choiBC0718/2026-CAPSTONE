@@ -3,18 +3,25 @@
 
 #include "Interactables/Weapon/CAP_WorldWeapon.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
 #include "CAP_WeaponInstance.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Component/CAP_WeaponComponent.h"
+#include "Components/SphereComponent.h"
+#include "Data/CAP_AbilitySystemGenerics.h"
 #include "Data/CAP_WeaponDataAsset.h"
 #include "GameFramework/RotatingMovementComponent.h"
+#include "GAS/Setting/CAP_AttributeSet.h"
 
 ACAP_WorldWeapon::ACAP_WorldWeapon()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	MeshContainer=CreateDefaultSubobject<USceneComponent>(TEXT("MeshContainer"));
-	MeshContainer->SetupAttachment(GetRootComponent());
+	RootCollision = CreateDefaultSubobject<USphereComponent>("RootCollision");
+	SetRootComponent(RootCollision);
+	
+	MeshContainer=CreateDefaultSubobject<USceneComponent>("MeshContainer");
+	MeshContainer->SetupAttachment(InteractionSphere);
 	
 	WeaponMesh_R = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Skeletal Mesh R");
 	WeaponMesh_R->SetupAttachment(MeshContainer);
@@ -45,6 +52,7 @@ void ACAP_WorldWeapon::BeginPlay()
 		WeaponInstance->InitializeWeapon(WeaponDA);
 		WeaponInstance->LoadWeaponAssets(FStreamableDelegate::CreateLambda([](){}));
 	}
+	RootCollision->OnComponentHit.AddDynamic(this, &ACAP_WorldWeapon::OnRootCollisionHit);
 }
 
 void ACAP_WorldWeapon::OnConstruction(const FTransform& Transform)
@@ -83,13 +91,43 @@ void ACAP_WorldWeapon::OnConstruction(const FTransform& Transform)
 
 void ACAP_WorldWeapon::Interact(class AActor* InsActor, EInteractAction ActionType)
 {
-	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(InsActor))
+	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(InsActor);
+	if (!Player) return;
+	
+	if (ActionType == EInteractAction::Tap)
 	{
 		if (UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent())
 		{
 			WeaponComp->PickupWeapon(WeaponInstance);
 			Destroy();
 		}
+	}
+	else
+	{
+		UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
+		UCAP_AbilitySystemComponent* P_ASC = Cast<UCAP_AbilitySystemComponent>(ASC);
+		UCAP_CurrencyComponent* CurrencyComp = Player->GetCurrencyComponent();
+		if (!ASC || !P_ASC || !CurrencyComp)
+			return;
+
+		const UCAP_AbilitySystemGenerics* Generics = P_ASC->GetGenerics();
+		if (Generics && Generics->GetDisassembleRewardDataTable())
+		{
+			EItemGrade TargetGrade = WeaponInstance->GetWeaponDA() ? WeaponInstance->GetWeaponDA()->ItemGrade : EItemGrade::Normal;
+			
+			FString EnumString = UEnum::GetValueAsString(TargetGrade);
+			FString GradeName = EnumString.RightChop(EnumString.Find(TEXT("::")) + 2); 
+				
+			FDisassembleRewardRow* Row = Generics->GetDisassembleRewardDataTable()->FindRow<FDisassembleRewardRow>(FName(*GradeName), "");
+			if (Row)
+			{
+				float BonusMultiplier = ASC->GetNumericAttribute(UCAP_AttributeSet::GetDisassembleBonusMultiplierAttribute());
+				int32 FinalAmount = FMath::RoundToInt(Row->WeaponRewardAmount * (1.0f + BonusMultiplier));
+					
+				CurrencyComp->AddCurrency(Row->WeaponCurrencyType, FinalAmount);
+			}
+		}
+		Destroy();
 	}
 }
 
@@ -103,4 +141,10 @@ FInteractionPayload ACAP_WorldWeapon::GetInteractionPayload() const
 	Payload.ActionData.ActionCurrencyType = ECurrencyType::WeaponMaterial;
 	Payload.ActionData.CurrencyAmount = 5; 
 	return Payload;
+}
+
+void ACAP_WorldWeapon::OnRootCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+{
+	RootCollision->SetSimulatePhysics(false);
 }

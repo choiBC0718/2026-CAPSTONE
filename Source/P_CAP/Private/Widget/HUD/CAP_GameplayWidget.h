@@ -32,6 +32,10 @@ public:
 	
 	void RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime);
 
+	void ShowMenuWidget(UUserWidget* TargetMenuWidget);
+	void EnterUIMode();
+	void ExitUIMode();
+
 	UFUNCTION()
 	void HandleInventoryFull(class UCAP_ItemInstance* NewItem);	// 인벤토리 꽉 찼을 때 변경을 위한 위젯 활성화
 

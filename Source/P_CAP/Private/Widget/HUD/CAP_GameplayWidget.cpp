@@ -64,26 +64,8 @@ bool UCAP_GameplayWidget::IsItemSwapMenuOpen()
 // WidgetSwitcher 활성화, UI 오픈 애니메이션 재생
 void UCAP_GameplayWidget::ActivateSwitcher()
 {
-	if (MenuSwitcher && CharacterMenuWidget)
-	{
-		MenuSwitcher->SetVisibility(ESlateVisibility::Visible);
-		MenuSwitcher->SetActiveWidget(CharacterMenuWidget);
-		if (ICAP_MenuInterface* Menu = Cast<ICAP_MenuInterface>(CharacterMenuWidget))
-		{
-			Menu->NativeOpenMenu();
-		}
-		if (PickupItemDetailWidget)
-			PickupItemDetailWidget->SetVisibility(ESlateVisibility::Collapsed);
-
-		if (APlayerController* PC= GetOwningPlayer())
-		{
-			PC->SetPause(true);
-			FInputModeGameAndUI InputMode;
-			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-			InputMode.SetHideCursorDuringCapture(false);
-			PC->SetInputMode(InputMode);
-		}
-	}
+	if (CharacterMenuWidget)
+		ShowMenuWidget(CharacterMenuWidget);
 }
 // WidgetSwitcher 비활성화, UI 닫히는 애니메이션 재생
 void UCAP_GameplayWidget::DeactivateSwitcher()
@@ -112,28 +94,12 @@ void UCAP_GameplayWidget::SwitchCharacterMenuTab()
 
 void UCAP_GameplayWidget::HandleInventoryFull(class UCAP_ItemInstance* NewItem)
 {
-	if (PickupItemDetailWidget && MenuSwitcher && ItemSwapWidget && Player)
+	if (ItemSwapWidget && Player)
 	{
-		PickupItemDetailWidget->SetVisibility(ESlateVisibility::Collapsed);
-		
-		MenuSwitcher->SetVisibility(ESlateVisibility::Visible);
-		MenuSwitcher->SetActiveWidget(ItemSwapWidget);
+		ShowMenuWidget(ItemSwapWidget);
 		ItemSwapWidget->InitSwapUI(Player, NewItem);
-		if (ICAP_MenuInterface* Menu = Cast<ICAP_MenuInterface>(ItemSwapWidget))
-		{
-			Menu->NativeOpenMenu();
-		}
-		if (APlayerController* PC = GetOwningPlayer())
-		{
-			PC->SetPause(true);
-			FInputModeGameAndUI InputMode;
-			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-			InputMode.SetHideCursorDuringCapture(false);
-			PC->SetInputMode(InputMode);
-		}
 	}
 }
-
 
 void UCAP_GameplayWidget::RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime)
 {
@@ -150,6 +116,22 @@ void UCAP_GameplayWidget::RouteUIConfirmInput(ETriggerEvent TriggerEvent, float 
 	}
 }
 
+void UCAP_GameplayWidget::ShowMenuWidget(UUserWidget* TargetMenuWidget)
+{
+	if (!MenuSwitcher || !TargetMenuWidget)
+		return;
+	
+	if (PickupItemDetailWidget)
+		PickupItemDetailWidget->SetVisibility(ESlateVisibility::Collapsed);
+
+	MenuSwitcher->SetVisibility(ESlateVisibility::Visible);
+	MenuSwitcher->SetActiveWidget(TargetMenuWidget);
+	if (ICAP_MenuInterface* Menu = Cast<ICAP_MenuInterface>(TargetMenuWidget))
+		Menu->NativeOpenMenu();
+
+	EnterUIMode();
+}
+
 // 위젯 닫히는 애니메이션 끝나면 실행됨
 void UCAP_GameplayWidget::CompleteDeactivateSwitcher()
 {
@@ -162,13 +144,6 @@ void UCAP_GameplayWidget::CompleteDeactivateSwitcher()
 		}
 		MenuSwitcher->SetVisibility(ESlateVisibility::Collapsed);
 	}
-	if (APlayerController* PC = GetOwningPlayer())
-	{
-		PC->SetPause(false);
-		FInputModeGameOnly InputMode;
-		InputMode.SetConsumeCaptureMouseDown(false);
-		PC->SetInputMode(InputMode);
-	}
 	if (Player)
 	{
 		if (UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent())
@@ -178,5 +153,28 @@ void UCAP_GameplayWidget::CompleteDeactivateSwitcher()
 					PickupItemDetailWidget->SetVisibility(ESlateVisibility::Visible);
 		}
 	}
+	ExitUIMode();
 }
 
+void UCAP_GameplayWidget::EnterUIMode()
+{
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		PC->SetPause(true);
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetHideCursorDuringCapture(false);
+		PC->SetInputMode(InputMode);
+	}
+}
+
+void UCAP_GameplayWidget::ExitUIMode()
+{
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		PC->SetPause(false);
+		FInputModeGameOnly InputMode;
+		InputMode.SetConsumeCaptureMouseDown(false);
+		PC->SetInputMode(InputMode);
+	}
+}

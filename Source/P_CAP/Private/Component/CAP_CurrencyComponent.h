@@ -37,6 +37,6 @@ public:
 	FOnCurrencyChanged OnCurrencyChanged;
 
 private:
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere)
 	TMap<ECurrencyType, int32> CurrencyMap;
 };

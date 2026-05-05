@@ -34,5 +34,11 @@ private:
 	void OnJogFwdTagReceived(FGameplayEventData Payload);
 
 	UPROPERTY()
+	class UAbilityTask_WaitInputRelease* InputReleaseTask;
+	UPROPERTY()
+	class UAbilityTask_WaitDelay* MaxHoldTask;
+	UPROPERTY()
 	class UAbilityTask_TickMoveToCursor* MoveToCursor;
+
+	void ClearTasks();
 };

@@ -49,7 +49,15 @@ private:
 	UFUNCTION()
 	void UINavigationHandle(const FInputActionValue& InputActionValue);
 	UFUNCTION()
-	void UIConfirmHandle(const struct FInputActionInstance& Instance);
-	UFUNCTION()
 	void UICloseHandle(const FInputActionValue& InputActionValue);
+	UFUNCTION()
+	void HandleUIConfirmStarted(const FInputActionInstance& InputActionInstance);
+	UFUNCTION()
+	void HandleUIConfirmOngoing(const FInputActionInstance& InputActionInstance);
+	UFUNCTION()
+	void HandleUIConfirmTriggered(const FInputActionInstance& InputActionInstance);
+	UFUNCTION()
+	void HandleUIConfirmCompleted(const FInputActionInstance& InputActionInstance);
+	UFUNCTION()
+	void HandleUIConfirmCanceled(const FInputActionInstance& InputActionInstance);
 };

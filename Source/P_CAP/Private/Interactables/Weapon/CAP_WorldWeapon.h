@@ -17,6 +17,7 @@ class ACAP_WorldWeapon : public ACAP_InteractableBase
 	
 public:	
 	ACAP_WorldWeapon();
+	
 	virtual void BeginPlay() override;
 	virtual void OnConstruction(const FTransform& Transform) override;
 
@@ -31,6 +32,8 @@ public:
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category="Component")
+	class USphereComponent* RootCollision;
+	UPROPERTY(VisibleAnywhere, Category="Component")
 	class USceneComponent* MeshContainer;
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class USkeletalMeshComponent* WeaponMesh_R;
@@ -38,4 +41,7 @@ protected:
 	class USkeletalMeshComponent* WeaponMesh_L;
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class URotatingMovementComponent* RotatingMovement;
+
+	UFUNCTION()
+	void OnRootCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 };

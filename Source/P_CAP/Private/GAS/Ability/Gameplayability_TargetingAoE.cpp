@@ -18,6 +18,7 @@
 UGameplayability_TargetingAoE::UGameplayability_TargetingAoE()
 {
 	BlockAbilitiesWithTag.AddTag(UCAP_AbilitySystemStatics::GetBasicAttackTag());
+	SpawnedRangeIndicator = nullptr;
 }
 
 void UGameplayability_TargetingAoE::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,

@@ -6,10 +6,6 @@
 UCAP_CurrencyComponent::UCAP_CurrencyComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-
-	CurrencyMap.Add(ECurrencyType::Gold,0);
-	CurrencyMap.Add(ECurrencyType::WeaponMaterial,0);
-	CurrencyMap.Add(ECurrencyType::MagicStone,0);
 }
 
 void UCAP_CurrencyComponent::BeginPlay()
@@ -26,6 +22,10 @@ void UCAP_CurrencyComponent::AddCurrency(ECurrencyType Type, int32 Amount)
 	int32 OldAmount = CurrentAmount;
 	
 	CurrentAmount += Amount;
+	
+	UE_LOG(LogTemp,Warning,TEXT("재화 타입 %s"), *UEnum::GetValueAsString(Type));
+	UE_LOG(LogTemp,Warning,TEXT("재화 추가 됨 (+%d)"), Amount);
+	UE_LOG(LogTemp,Warning,TEXT("현재 재화 (+%d)"), CurrentAmount);
 
 	if (OnCurrencyChanged.IsBound())
 		OnCurrencyChanged.Broadcast(Type, OldAmount, CurrentAmount);

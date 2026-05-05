@@ -37,11 +37,11 @@ void ACAP_PlayerController::SetupInputComponent()
 		EnhancedInputComp->BindAction(UICloseIA, ETriggerEvent::Started, this, &ACAP_PlayerController::UICloseHandle);
 		EnhancedInputComp->BindAction(UINavigation, ETriggerEvent::Started, this, &ACAP_PlayerController::UINavigationHandle);
 		
-		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Started, this, &ACAP_PlayerController::UIConfirmHandle);
-		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Ongoing, this, &ACAP_PlayerController::UIConfirmHandle);
-		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Triggered, this, &ACAP_PlayerController::UIConfirmHandle);
-		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Completed, this, &ACAP_PlayerController::UIConfirmHandle);
-		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Canceled, this, &ACAP_PlayerController::UIConfirmHandle);
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Started, this, &ACAP_PlayerController::HandleUIConfirmStarted);
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Ongoing, this, &ACAP_PlayerController::HandleUIConfirmOngoing);
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Triggered, this, &ACAP_PlayerController::HandleUIConfirmTriggered);
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Completed, this, &ACAP_PlayerController::HandleUIConfirmCompleted);
+		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Canceled, this, &ACAP_PlayerController::HandleUIConfirmCanceled);
 	}
 }
 
@@ -88,17 +88,6 @@ void ACAP_PlayerController::UINavigationHandle(const FInputActionValue& InputAct
 	}
 }
 
-void ACAP_PlayerController::UIConfirmHandle(const struct FInputActionInstance& Instance)
-{
-	if (!GameplayWidget)
-		return;
-
-	ETriggerEvent TriggerEvent = Instance.GetTriggerEvent();
-	float ElapsedTime = Instance.GetElapsedTime();
-
-	GameplayWidget->RouteUIConfirmInput(TriggerEvent, ElapsedTime);
-}
-
 void ACAP_PlayerController::UICloseHandle(const FInputActionValue& InputActionValue)
 {
 	if (!GameplayWidget) return;
@@ -106,5 +95,45 @@ void ACAP_PlayerController::UICloseHandle(const FInputActionValue& InputActionVa
 	if (GameplayWidget->IsItemSwapMenuOpen() || GameplayWidget->IsCharacterMenuOpen())
 	{
 		GameplayWidget->DeactivateSwitcher();
+	}
+}
+
+void ACAP_PlayerController::HandleUIConfirmStarted(const FInputActionInstance& InputInst)
+{
+	if (GameplayWidget)
+	{
+		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Started, InputInst.GetElapsedTime());
+	}
+}
+
+void ACAP_PlayerController::HandleUIConfirmOngoing(const FInputActionInstance& InputInst)
+{
+	if (GameplayWidget)
+	{
+		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Ongoing, InputInst.GetElapsedTime());
+	}
+}
+
+void ACAP_PlayerController::HandleUIConfirmTriggered(const FInputActionInstance& InputInst)
+{
+	if (GameplayWidget)
+	{
+		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Triggered, InputInst.GetElapsedTime());
+	}
+}
+
+void ACAP_PlayerController::HandleUIConfirmCompleted(const FInputActionInstance& InputInst)
+{
+	if (GameplayWidget)
+	{
+		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Completed, InputInst.GetElapsedTime());
+	}
+}
+
+void ACAP_PlayerController::HandleUIConfirmCanceled(const FInputActionInstance& InputInst)
+{
+	if (GameplayWidget)
+	{
+		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Canceled, InputInst.GetElapsedTime());
 	}
 }

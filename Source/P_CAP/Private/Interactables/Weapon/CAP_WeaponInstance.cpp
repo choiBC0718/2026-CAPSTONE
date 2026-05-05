@@ -28,6 +28,7 @@ void UCAP_WeaponInstance::InitializeWeapon(UCAP_WeaponDataAsset* InWeaponDA)
 		case EItemGrade::Epic:		SkillsToGrant = 2;	break;
 		case EItemGrade::Legendary:	SkillsToGrant = 2;	break;
 	}
+	CurrentGrade = GetWeaponDA()->ItemGrade;
 	
 	// DA에 설정한 DT스킬들을 랜덤으로 가져오기
 	TArray<FDataTableRowHandle> AvailableHandles = GetWeaponDA()->ActiveAbilityArray;

@@ -32,7 +32,7 @@ public:
 	UCAP_InventoryComponent* GetInventoryComponent() const {return InventoryComponent;}
 	UCAP_CurrencyComponent* GetCurrencyComponent() const {return CurrencyComponent;}
 	UCAP_InteractionComponent* GetInteractionComponent() const {return InteractionComponent;}
-
+	
 	FString GetInteractKeyName() const;
 	
 private:
