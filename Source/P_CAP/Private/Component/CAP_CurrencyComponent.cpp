@@ -3,6 +3,12 @@
 
 #include "Component/CAP_CurrencyComponent.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
+#include "Framework/CAP_RewardSettings.h"
+#include "GAS/CAP_AbilitySystemComponent.h"
+#include "GAS/Setting/CAP_AttributeSet.h"
+
 UCAP_CurrencyComponent::UCAP_CurrencyComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
@@ -12,6 +18,27 @@ void UCAP_CurrencyComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+}
+
+void UCAP_CurrencyComponent::ProcessDisassembleReward(EItemGrade Grade, ECurrencyType Type)
+{
+	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner());
+	if (!Player)
+		return;
+
+	UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player));
+	if (!ASC)
+		return;
+
+	const UCAP_RewardSettings* RewardSetting = GetDefault<UCAP_RewardSettings>();
+	if (const FDisassembleRewardRow* Row = RewardSetting->DisassembleRewardMap.Find(Grade))
+	{
+		float BonusMul = ASC->GetNumericAttribute(UCAP_AttributeSet::GetDisassembleBonusMultiplierAttribute());
+		int32 BaseAmount = Type==ECurrencyType::WeaponMaterial ? Row->WeaponRewardAmount : Row->ItemRewardAmount;
+		int32 FinalAmount = FMath::RoundToInt(BaseAmount * (1.f + BonusMul));
+
+		AddCurrency(Type, FinalAmount);
+	}
 }
 
 void UCAP_CurrencyComponent::AddCurrency(ECurrencyType Type, int32 Amount)

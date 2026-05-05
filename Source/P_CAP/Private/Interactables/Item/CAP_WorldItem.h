@@ -35,12 +35,15 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class USphereComponent* RootCollision;
 	UPROPERTY(VisibleAnywhere, Category="Component")
-	class USceneComponent* MeshContainer;
-	UPROPERTY(VisibleAnywhere, Category="Component")
 	class UStaticMeshComponent* ItemMesh;
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class URotatingMovementComponent* RotatingMovement;
 
 	UFUNCTION()
 	void OnRootCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	UPROPERTY()
+	int32 CachedBaseRewardAmount = 0;
+	UPROPERTY()
+	ECurrencyType CachedRewardCurrencyType;
 };

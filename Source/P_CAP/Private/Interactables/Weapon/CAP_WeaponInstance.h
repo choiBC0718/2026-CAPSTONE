@@ -36,6 +36,9 @@ public:
 	// 위젯에서 무기 슬롯에 포커스 주고 상호작용 키 입력 시, 스킬 순서 변경
 	void SwapSkillOrder();
 
+	EItemGrade GetCurrentGrade() const {return CurrentGrade;}
+	void SetCurrentGrade(EItemGrade NewGrade) {CurrentGrade = NewGrade;}
+
 private:
 	UPROPERTY(VisibleAnywhere)
 	int32 UpgradeLevel =0;

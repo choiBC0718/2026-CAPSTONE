@@ -21,6 +21,9 @@ public:
 	UCAP_CurrencyComponent();
 	virtual void BeginPlay() override;
 
+	UFUNCTION()
+	void ProcessDisassembleReward(EItemGrade Grade, ECurrencyType Type);
+	
 	// 현재 재화 타입에 Amount만큼 더해줌
 	UFUNCTION()
 	void AddCurrency(ECurrencyType Type, int32 Amount);

@@ -19,8 +19,7 @@ public:
 	virtual void NativeConstruct() override;
 	virtual void UpdateDetailInfo(UObject* ItemData) override;
 
-	void UpdateInteractionUI(bool bVisible, UObject* ItemData, const FString& KeyName);
-	
+	void UpdateInteractionUI(bool bVisible, const FInteractionPayload& Payload, const FString& KeyName);
 protected:
 	UPROPERTY(meta=(BindWidget))
 	class UCAP_ItemInteraction* InteractTextWidget;

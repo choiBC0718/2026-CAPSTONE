@@ -207,6 +207,9 @@ struct FWeaponVisualInfo
 	/** 최종 미세 보정값 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FTransform GripOffsetTransform = FTransform();
+	/** 월드 스폰 시 적용시킬 위치+회전+스케일 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FTransform ConstructionOffset = FTransform();
 };
 
 /**

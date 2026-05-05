@@ -18,7 +18,7 @@ ACAP_InteractableBase::ACAP_InteractableBase()
 	InteractionSphere = CreateDefaultSubobject<USphereComponent>("InteractionSphere");
 	InteractionSphere->SetupAttachment(GetRootComponent());
 	InteractionSphere->SetSphereRadius(100.f);
-	InteractionSphere->SetRelativeLocation(FVector(0.f, 0.f, 100.f));
+	InteractionSphere->SetRelativeLocation(FVector(0.f, 0.f, 120.f));
 	InteractionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	InteractionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 	InteractionSphere->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Overlap);

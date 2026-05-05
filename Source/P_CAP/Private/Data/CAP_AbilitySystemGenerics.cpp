@@ -28,3 +28,15 @@ TSubclassOf<UGameplayEffect> UCAP_AbilitySystemGenerics::GetDurationDamageGE(ESk
 			return nullptr;
 	}
 }
+
+FName UCAP_AbilitySystemGenerics::GetRowNameFromGrade(EItemGrade Grade)
+{
+	switch (Grade)
+	{
+	case EItemGrade::Normal:		return FName("Normal");
+	case EItemGrade::Rare:			return FName("Rare");
+	case EItemGrade::Epic:			return FName("Epic");
+	case EItemGrade::Legendary:		return FName("Legendary");
+	default:						return FName();
+	}
+}

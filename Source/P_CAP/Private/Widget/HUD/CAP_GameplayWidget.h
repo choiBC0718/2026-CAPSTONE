@@ -61,6 +61,9 @@ protected:
 	// 아이템 버프 리스트 위젯
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_BuffListPanelWidget* BuffListPanel;
+	
+	UPROPERTY(meta = (BindWidget))
+	class UCAP_CurrencyPanelWidget* CurrencyPanel;
 private:
 	UPROPERTY()
 	ACAP_PlayerCharacter* Player;

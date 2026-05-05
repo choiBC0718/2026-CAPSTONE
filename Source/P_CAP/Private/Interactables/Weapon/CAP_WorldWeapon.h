@@ -30,6 +30,7 @@ public:
 	UPROPERTY(BlueprintReadWrite,Category="Weapon Data", meta=(ExposeOnSpawn="true"))
 	class UCAP_WeaponInstance* WeaponInstance;
 
+	virtual void DropItem() override;
 protected:
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class USphereComponent* RootCollision;
@@ -44,4 +45,9 @@ protected:
 
 	UFUNCTION()
 	void OnRootCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	UPROPERTY()
+	int32 CachedBaseRewardAmount = 0;
+	UPROPERTY()
+	ECurrencyType CachedRewardCurrencyType;
 };

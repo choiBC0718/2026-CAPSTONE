@@ -265,7 +265,7 @@ void UCAP_GameplayAbility::BroadcastTriggerEvent(FGameplayTag EventTag,	FGamepla
 	FGameplayEventData Payload;
 	Payload.Instigator = GetAvatarActorFromActorInfo();
 	Payload.TargetData = TargetData;
-	//UE_LOG(LogTemp,Warning,TEXT("트리거 발생 태그 = %s [브로드캐스트 트리거 이벤트]"),*EventTag.ToString());
+	//UE_LOG(LogTemp,Warning,TEXT("트리거 발생 태그 = %s"),*EventTag.ToString());
 	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetAvatarActorFromActorInfo(), EventTag, Payload);
 }
 

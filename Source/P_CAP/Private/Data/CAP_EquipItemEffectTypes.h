@@ -57,15 +57,15 @@ public:
 };
 
 USTRUCT(BlueprintType)
-struct FDisassembleRewardRow : public FTableRowBase
+struct FDisassembleRewardRow
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon")
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Weapon")
 	ECurrencyType WeaponCurrencyType = ECurrencyType::WeaponMaterial;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon")
 	int32 WeaponRewardAmount = 0;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Item")
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Item")
 	ECurrencyType ItemCurrencyType = ECurrencyType::Gold;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Item")
 	int32 ItemRewardAmount = 0;

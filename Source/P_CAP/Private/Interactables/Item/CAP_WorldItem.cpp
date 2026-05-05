@@ -3,14 +3,13 @@
 
 #include "Interactables/Item/CAP_WorldItem.h"
 
-#include "AbilitySystemBlueprintLibrary.h"
 #include "CAP_ItemInstance.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Component/CAP_InventoryComponent.h"
 #include "Components/SphereComponent.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
+#include "Framework/CAP_RewardSettings.h"
 #include "GameFramework/RotatingMovementComponent.h"
-#include "GAS/Setting/CAP_AttributeSet.h"
 
 ACAP_WorldItem::ACAP_WorldItem()
 {
@@ -18,17 +17,20 @@ ACAP_WorldItem::ACAP_WorldItem()
 	
 	RootCollision = CreateDefaultSubobject<USphereComponent>("RootCollision");
 	SetRootComponent(RootCollision);
-	RootScene ->RemoveFromRoot();
-	
-	MeshContainer=CreateDefaultSubobject<USceneComponent>("MeshContainer");
-	MeshContainer->SetupAttachment(InteractionSphere);
+	RootCollision->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+	RootCollision->SetCollisionResponseToAllChannels(ECR_Ignore);
+	RootCollision->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+	RootCollision->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
+	RootCollision->SetSimulatePhysics(true);
+
+	RootScene->SetupAttachment(RootCollision);
 	
 	ItemMesh=CreateDefaultSubobject<UStaticMeshComponent>("ItemMesh");
-	ItemMesh->SetupAttachment(MeshContainer);
+	ItemMesh->SetupAttachment(InteractionSphere);
 	ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	RotatingMovement=CreateDefaultSubobject<URotatingMovementComponent>("RotatingMovement");
-	RotatingMovement->SetUpdatedComponent(MeshContainer);
+	RotatingMovement->SetUpdatedComponent(InteractionSphere);
 	RotatingMovement->RotationRate=FRotator(0.f,45.f,0.f);
 }
 
@@ -42,6 +44,16 @@ void ACAP_WorldItem::BeginPlay()
 		ItemInstance->Initialize(ItemDA);
 	}
 	RootCollision->OnComponentHit.AddDynamic(this, &ACAP_WorldItem::OnRootCollisionHit);
+
+	if (ItemDA)
+	{
+		const UCAP_RewardSettings* RewardSetting = GetDefault<UCAP_RewardSettings>();
+		if (const FDisassembleRewardRow* Row = RewardSetting->DisassembleRewardMap.Find(ItemDA->ItemGrade))
+		{
+			CachedBaseRewardAmount = Row->ItemRewardAmount;
+			CachedRewardCurrencyType = Row->ItemCurrencyType;
+		}
+	}
 }
 
 void ACAP_WorldItem::OnConstruction(const FTransform& Transform)
@@ -70,28 +82,10 @@ void ACAP_WorldItem::Interact(AActor* InsActor, EInteractAction ActionType)
 	}
 	else
 	{
-		UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
-		UCAP_AbilitySystemComponent* P_ASC = Cast<UCAP_AbilitySystemComponent>(ASC);
-		UCAP_CurrencyComponent* CurrencyComp = Player->GetCurrencyComponent();
-		if (!ASC || !P_ASC || !CurrencyComp)
-			return;
-
-		const UCAP_AbilitySystemGenerics* Generics = P_ASC->GetGenerics();
-		if (Generics && Generics->GetDisassembleRewardDataTable())
+		if (ItemDA)
 		{
-			FString EnumString = UEnum::GetValueAsString(ItemDA->ItemGrade);
-			UE_LOG(LogTemp,Warning,TEXT("Enum String = %s"), * EnumString);
-			FString GradeName = EnumString.RightChop(EnumString.Find(TEXT("::"))+2);
-			UE_LOG(LogTemp,Warning,TEXT("Grade Name = %s"), * GradeName);
-
-			FDisassembleRewardRow* Row = Generics->GetDisassembleRewardDataTable()->FindRow<FDisassembleRewardRow>(FName(*GradeName),"");
-			if (Row)
-			{
-				UE_LOG(LogTemp,Warning,TEXT("Found Row"));
-				float BonusMul = P_ASC->GetNumericAttribute(UCAP_AttributeSet::GetDisassembleBonusMultiplierAttribute());
-				int32 FinalAmount = FMath::RoundToInt(Row->ItemRewardAmount * (1.f + BonusMul));
-				CurrencyComp->AddCurrency(Row->ItemCurrencyType, FinalAmount);
-			}
+			if (UCAP_CurrencyComponent* CurrComp = Player->GetCurrencyComponent())
+				CurrComp->ProcessDisassembleReward(ItemDA->ItemGrade, ECurrencyType::Gold);
 		}
 		Destroy();
 	}
@@ -104,8 +98,8 @@ FInteractionPayload ACAP_WorldItem::GetInteractionPayload() const
 	Payload.ActionData.ShortActionText = TEXT("줍기");
 	Payload.ActionData.LongActionText = TEXT("파괴하기");
 	Payload.ActionData.bShowCurrency = true;
-	Payload.ActionData.ActionCurrencyType = ECurrencyType::Gold;
-	Payload.ActionData.CurrencyAmount = 0;
+	Payload.ActionData.ActionCurrencyType = CachedRewardCurrencyType;
+	Payload.ActionData.CurrencyAmount = CachedBaseRewardAmount;
 	
 	return Payload;
 }

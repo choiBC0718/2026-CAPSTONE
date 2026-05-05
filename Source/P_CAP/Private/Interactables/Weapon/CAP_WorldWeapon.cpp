@@ -3,15 +3,13 @@
 
 #include "Interactables/Weapon/CAP_WorldWeapon.h"
 
-#include "AbilitySystemBlueprintLibrary.h"
 #include "CAP_WeaponInstance.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Component/CAP_WeaponComponent.h"
 #include "Components/SphereComponent.h"
-#include "Data/CAP_AbilitySystemGenerics.h"
 #include "Data/CAP_WeaponDataAsset.h"
+#include "Framework/CAP_RewardSettings.h"
 #include "GameFramework/RotatingMovementComponent.h"
-#include "GAS/Setting/CAP_AttributeSet.h"
 
 ACAP_WorldWeapon::ACAP_WorldWeapon()
 {
@@ -19,6 +17,13 @@ ACAP_WorldWeapon::ACAP_WorldWeapon()
 
 	RootCollision = CreateDefaultSubobject<USphereComponent>("RootCollision");
 	SetRootComponent(RootCollision);
+	RootCollision->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+	RootCollision->SetCollisionResponseToAllChannels(ECR_Ignore);
+	RootCollision->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+	RootCollision->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
+	RootCollision->SetSimulatePhysics(true);
+
+	RootScene->SetupAttachment(RootCollision);
 	
 	MeshContainer=CreateDefaultSubobject<USceneComponent>("MeshContainer");
 	MeshContainer->SetupAttachment(InteractionSphere);
@@ -26,15 +31,11 @@ ACAP_WorldWeapon::ACAP_WorldWeapon()
 	WeaponMesh_R = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Skeletal Mesh R");
 	WeaponMesh_R->SetupAttachment(MeshContainer);
 	WeaponMesh_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	WeaponMesh_R->SetRelativeLocation(FVector(95.f, -25.f, -10.f));
-	WeaponMesh_R->SetRelativeRotation(FRotator(0.f, -90.f, -90.f));
 
 	WeaponMesh_L = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Skeletal Mesh L");
 	WeaponMesh_L->SetupAttachment(MeshContainer);
 	WeaponMesh_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	WeaponMesh_L->SetRelativeLocation(FVector(95.f, 25.f, -10.f));
-	WeaponMesh_L->SetRelativeRotation(FRotator(0.f, -90.f, -90.f));
-
+	
 	RotatingMovement=CreateDefaultSubobject<URotatingMovementComponent>("RotatingMovement");
 	RotatingMovement->SetUpdatedComponent(MeshContainer);
 	RotatingMovement->RotationRate=FRotator(0.f,45.f,0.f);
@@ -53,6 +54,16 @@ void ACAP_WorldWeapon::BeginPlay()
 		WeaponInstance->LoadWeaponAssets(FStreamableDelegate::CreateLambda([](){}));
 	}
 	RootCollision->OnComponentHit.AddDynamic(this, &ACAP_WorldWeapon::OnRootCollisionHit);
+	
+	if (WeaponInstance)
+	{
+		const UCAP_RewardSettings* RewardSetting = GetDefault<UCAP_RewardSettings>();
+		if (const FDisassembleRewardRow* Row = RewardSetting->DisassembleRewardMap.Find(WeaponInstance->GetCurrentGrade()))
+		{
+			CachedBaseRewardAmount = Row->WeaponRewardAmount;
+			CachedRewardCurrencyType = Row->WeaponCurrencyType;
+		}
+	}
 }
 
 void ACAP_WorldWeapon::OnConstruction(const FTransform& Transform)
@@ -60,7 +71,7 @@ void ACAP_WorldWeapon::OnConstruction(const FTransform& Transform)
 	Super::OnConstruction(Transform);
 
 	if (!WeaponMesh_L || !WeaponMesh_R)	return;
-
+/*
 	WeaponMesh_R->SetSkeletalMesh(nullptr);
 	WeaponMesh_L->SetSkeletalMesh(nullptr);
 
@@ -72,19 +83,22 @@ void ACAP_WorldWeapon::OnConstruction(const FTransform& Transform)
 	}// Instance없다면 그냥 설정한 DA 이용
 	else if (WeaponDA){
 		DAToUse = WeaponDA;
-	}
+	}*/
 
-	if (DAToUse)
+	if (WeaponDA && !WeaponDA->WeaponVisualInfos.IsEmpty())
 	{
-		for (const FWeaponVisualInfo& VisualInfo : DAToUse->WeaponVisualInfos)
+		for (const FWeaponVisualInfo& VisualInfo : WeaponDA->WeaponVisualInfos)
 		{
-			if (!VisualInfo.WeaponMesh)
-				continue;
-			
 			if (VisualInfo.EquipHand == EEquipHand::Left)
+			{
 				WeaponMesh_L->SetSkeletalMesh(VisualInfo.WeaponMesh.LoadSynchronous());
+				WeaponMesh_L->SetRelativeTransform(VisualInfo.ConstructionOffset);
+			}
 			else
+			{
 				WeaponMesh_R->SetSkeletalMesh(VisualInfo.WeaponMesh.LoadSynchronous());
+				WeaponMesh_R->SetRelativeTransform(VisualInfo.ConstructionOffset);
+			}
 		}
 	}
 }
@@ -104,27 +118,12 @@ void ACAP_WorldWeapon::Interact(class AActor* InsActor, EInteractAction ActionTy
 	}
 	else
 	{
-		UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
-		UCAP_AbilitySystemComponent* P_ASC = Cast<UCAP_AbilitySystemComponent>(ASC);
-		UCAP_CurrencyComponent* CurrencyComp = Player->GetCurrencyComponent();
-		if (!ASC || !P_ASC || !CurrencyComp)
-			return;
-
-		const UCAP_AbilitySystemGenerics* Generics = P_ASC->GetGenerics();
-		if (Generics && Generics->GetDisassembleRewardDataTable())
+		if (WeaponInstance)
 		{
-			EItemGrade TargetGrade = WeaponInstance->GetWeaponDA() ? WeaponInstance->GetWeaponDA()->ItemGrade : EItemGrade::Normal;
-			
-			FString EnumString = UEnum::GetValueAsString(TargetGrade);
-			FString GradeName = EnumString.RightChop(EnumString.Find(TEXT("::")) + 2); 
-				
-			FDisassembleRewardRow* Row = Generics->GetDisassembleRewardDataTable()->FindRow<FDisassembleRewardRow>(FName(*GradeName), "");
-			if (Row)
+			if (UCAP_CurrencyComponent* CurrencyComp = Player->GetCurrencyComponent())
 			{
-				float BonusMultiplier = ASC->GetNumericAttribute(UCAP_AttributeSet::GetDisassembleBonusMultiplierAttribute());
-				int32 FinalAmount = FMath::RoundToInt(Row->WeaponRewardAmount * (1.0f + BonusMultiplier));
-					
-				CurrencyComp->AddCurrency(Row->WeaponCurrencyType, FinalAmount);
+				EItemGrade TargetGrade = WeaponInstance->GetCurrentGrade();
+				CurrencyComp->ProcessDisassembleReward(TargetGrade, ECurrencyType::WeaponMaterial);
 			}
 		}
 		Destroy();
@@ -138,13 +137,22 @@ FInteractionPayload ACAP_WorldWeapon::GetInteractionPayload() const
 	Payload.ActionData.ShortActionText = TEXT("줍기");
 	Payload.ActionData.LongActionText = TEXT("파괴하기");
 	Payload.ActionData.bShowCurrency = true;
-	Payload.ActionData.ActionCurrencyType = ECurrencyType::WeaponMaterial;
-	Payload.ActionData.CurrencyAmount = 5; 
+	Payload.ActionData.ActionCurrencyType = CachedRewardCurrencyType;
+	Payload.ActionData.CurrencyAmount = CachedBaseRewardAmount;
 	return Payload;
 }
 
+void ACAP_WorldWeapon::DropItem()
+{
+	if (RootCollision)
+	{
+		FVector DropImpulse = FVector(0.f,0.f, 600.f);
+		RootCollision->AddImpulse(DropImpulse, NAME_None, true);
+	}
+}
+
 void ACAP_WorldWeapon::OnRootCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+                                          UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
 	RootCollision->SetSimulatePhysics(false);
 }
