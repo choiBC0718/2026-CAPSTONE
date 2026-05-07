@@ -11,16 +11,17 @@
  * 
  */
 UCLASS()
-class UCAP_PickupDetailPanelWidget : public UCAP_SwapDetailPanelWIdget
+class UCAP_PickupDetailPanelWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
 public:
 	virtual void NativeConstruct() override;
-	virtual void UpdateDetailInfo(UObject* ItemData) override;
 
 	void UpdateInteractionUI(bool bVisible, const FInteractionPayload& Payload, const FString& KeyName);
 protected:
+	UPROPERTY(meta=(BindWidget))
+	class UCAP_SwapDetailPanelWIdget* ItemDetailPanelWidget;
 	UPROPERTY(meta=(BindWidget))
 	class UCAP_ItemInteraction* InteractTextWidget;
 

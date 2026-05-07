@@ -58,10 +58,17 @@ void ACAP_WorldWeapon::BeginPlay()
 	if (WeaponInstance)
 	{
 		const UCAP_RewardSettings* RewardSetting = GetDefault<UCAP_RewardSettings>();
-		if (const FDisassembleRewardRow* Row = RewardSetting->DisassembleRewardMap.Find(WeaponInstance->GetCurrentGrade()))
+		if (RewardSetting->DisassembleRewardDT.IsNull())
+			return;
+
+		if (UDataTable* LoadedDT = RewardSetting->DisassembleRewardDT.LoadSynchronous())
 		{
-			CachedBaseRewardAmount = Row->WeaponRewardAmount;
-			CachedRewardCurrencyType = Row->WeaponCurrencyType;
+			FName Grade = RewardSetting->GetRowNameFromGrade(WeaponInstance->GetCurrentGrade());
+			if (const FDisassembleRewardRow* RewardRow = LoadedDT->FindRow<FDisassembleRewardRow>(Grade,""))
+			{
+				CachedBaseRewardAmount = RewardRow->WeaponRewardAmount;
+				CachedRewardCurrencyType = RewardRow->WeaponCurrencyType;
+			}
 		}
 	}
 }

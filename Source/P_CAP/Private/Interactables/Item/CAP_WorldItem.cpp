@@ -48,10 +48,17 @@ void ACAP_WorldItem::BeginPlay()
 	if (ItemDA)
 	{
 		const UCAP_RewardSettings* RewardSetting = GetDefault<UCAP_RewardSettings>();
-		if (const FDisassembleRewardRow* Row = RewardSetting->DisassembleRewardMap.Find(ItemDA->ItemGrade))
+		if (RewardSetting->DisassembleRewardDT.IsNull())
+			return;
+
+		if (UDataTable* LoadedDT = RewardSetting->DisassembleRewardDT.LoadSynchronous())
 		{
-			CachedBaseRewardAmount = Row->ItemRewardAmount;
-			CachedRewardCurrencyType = Row->ItemCurrencyType;
+			FName Grade = RewardSetting->GetRowNameFromGrade(ItemDA->ItemGrade);
+			if (const FDisassembleRewardRow* RewardRow = LoadedDT->FindRow<FDisassembleRewardRow>(Grade,""))
+			{
+				CachedBaseRewardAmount = RewardRow->ItemRewardAmount;
+				CachedRewardCurrencyType = RewardRow->ItemCurrencyType;
+			}
 		}
 	}
 }

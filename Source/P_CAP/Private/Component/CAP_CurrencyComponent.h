@@ -42,4 +42,9 @@ public:
 private:
 	UPROPERTY(VisibleAnywhere)
 	TMap<ECurrencyType, int32> CurrencyMap;
+
+	UPROPERTY()
+	const UDataTable* LoadedRewardDisassembleDT;
+
+	static FName GetRowNameFromGrade(EItemGrade Grade);
 };

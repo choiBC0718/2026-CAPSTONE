@@ -27,46 +27,36 @@ void UCAP_PickupDetailPanelWidget::NativeConstruct()
 	}
 }
 
-void UCAP_PickupDetailPanelWidget::UpdateDetailInfo(UObject* ItemData)
-{
-	Super::UpdateDetailInfo(ItemData);
-
-	if (UCAP_WeaponInstance* WeaponInst = Cast<UCAP_WeaponInstance>(ItemData))
-	{
-		if (UCAP_WeaponDataAsset* WeaponDA = WeaponInst->GetWeaponDA())
-		{
-			ItemNameText->SetText(WeaponDA->ItemName);
-			ItemGradeText->SetText(GetGradeText(WeaponDA->ItemGrade));
-			ItemDescriptionText->SetText(WeaponDA->ItemDescription);
-
-			for (const FWeaponSkillData SkillData : WeaponInst->GetGrantedSkills())
-			{
-				AddFeatureIconToBox(SkillData.SkillIcon);
-			}
-		}
-	}
-}
-
 void UCAP_PickupDetailPanelWidget::UpdateInteractionUI(bool bVisible, const FInteractionPayload& Payload, const FString& KeyName)
 {
 	SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	if (bVisible)
-	{
-		UpdateDetailInfo(Payload.DetailData);
-		if (InteractTextWidget)
-		{
-			InteractTextWidget->SetInteractKeyText(KeyName);
+	if (!bVisible)
+		return;
 
-			int32 FinalAmount = Payload.ActionData.CurrencyAmount;
-			if (Player && Payload.ActionData.bShowCurrency)
+	if (InteractTextWidget)
+	{
+		InteractTextWidget->SetInteractKeyText(KeyName);
+		int32 FinalAmount = Payload.ActionData.CurrencyAmount;
+		if (Player && Payload.ActionData.bShowCurrency)
+		{
+			if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player))
 			{
-				if (UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player)))
-				{
-					float BonusMultiplier = ASC->GetNumericAttribute(UCAP_AttributeSet::GetDisassembleBonusMultiplierAttribute());
-					FinalAmount = FMath::RoundToInt(FinalAmount * (1.0f + BonusMultiplier));
-				}
+				float BonusMul = ASC->GetNumericAttribute(UCAP_AttributeSet::GetDisassembleBonusMultiplierAttribute());
+				FinalAmount = FMath::RoundToInt(FinalAmount * (1.f + BonusMul));
 			}
-			InteractTextWidget->UpdateActionTexts(Payload, FinalAmount);
+		}
+		InteractTextWidget->UpdateActionTexts(Payload, FinalAmount);		
+	}
+	if (ItemDetailPanelWidget)
+	{
+		if (Payload.DetailData != nullptr)
+		{
+			ItemDetailPanelWidget->SetVisibility(ESlateVisibility::Visible);
+			ItemDetailPanelWidget->UpdateDetailInfo(Payload.DetailData);
+		}
+		else
+		{
+			ItemDetailPanelWidget->SetVisibility(ESlateVisibility::Hidden);
 		}
 	}
 }

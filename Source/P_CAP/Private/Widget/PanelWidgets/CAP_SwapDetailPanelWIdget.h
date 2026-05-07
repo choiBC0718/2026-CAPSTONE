@@ -16,7 +16,7 @@ class UCAP_SwapDetailPanelWIdget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	virtual void UpdateDetailInfo(UObject* ItemData);
+	void UpdateDetailInfo(UObject* ItemData);
 
 protected:
 	UPROPERTY(meta=(BindWidget))

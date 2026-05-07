@@ -64,9 +64,9 @@ struct FActionPromptData
 	GENERATED_BODY()
 
 	// 짧게 누르기 텍스트 (줍기, 구매하기, 대화하기 등)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)	FString ShortActionText;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	FString ShortActionText = "";
 	// 길게 누르기 텍스트 (파괴하기 / 비어있으면 Hidden처리)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)	FString LongActionText;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)	FString LongActionText = "";
 	// 재화를 표시할지
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)	bool bShowCurrency=false;
 	// 표시할 재화 종류

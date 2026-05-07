@@ -33,10 +33,14 @@ public:
 	void UpdateActionTexts(const FInteractionPayload& Payload, int32 FinalCurrencyAmount);
 private:
 	UPROPERTY(meta = (BindWidget))
+	class UBorder* TapInteractBorder;
+	UPROPERTY(meta = (BindWidget))
 	class UImage* EquipIconImg;
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* EquipText;
 	
+	UPROPERTY(meta = (BindWidget))
+	class UBorder* HoldInteractBorder;
 	UPROPERTY(meta = (BindWidget))
 	class UImage* DisassembleIconImg;
 	UPROPERTY(meta = (BindWidget))

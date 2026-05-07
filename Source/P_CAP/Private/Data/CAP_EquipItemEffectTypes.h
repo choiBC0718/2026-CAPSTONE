@@ -57,7 +57,7 @@ public:
 };
 
 USTRUCT(BlueprintType)
-struct FDisassembleRewardRow
+struct FDisassembleRewardRow : public FTableRowBase
 {
 	GENERATED_BODY()
 

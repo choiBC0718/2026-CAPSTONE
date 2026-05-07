@@ -3,6 +3,7 @@
 
 #include "Widget/Common/CAP_ItemInteraction.h"
 
+#include "Components/Border.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
@@ -61,12 +62,16 @@ void UCAP_ItemInteraction::SetInteractKeyText(const FString& KeyName)
 
 void UCAP_ItemInteraction::UpdateActionTexts(const FInteractionPayload& Payload, int32 FinalCurrencyAmount)
 {
-	if (EquipText)
+	EquipText->SetText(FText::FromString(Payload.ActionData.ShortActionText));
+	
+	if (Payload.ActionData.LongActionText.IsEmpty())
 	{
-		EquipText->SetText(FText::FromString(Payload.ActionData.ShortActionText));
+		HoldInteractBorder->SetVisibility(ESlateVisibility::Hidden);
 	}
-	if (DisassembleText)
+	else
 	{
+		HoldInteractBorder->SetVisibility(ESlateVisibility::Visible);
+		
 		FString LongText = Payload.ActionData.LongActionText;
 		if (Payload.ActionData.bShowCurrency)
 		{
