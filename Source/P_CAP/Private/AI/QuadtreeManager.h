@@ -40,8 +40,7 @@ class P_CAP_API AQuadtreeManager : public AActor
 	
 public:	
 	AQuadtreeManager();
-
-	// 전체 맵의 크기 (X, Y 넓이)와 Z축 두께(높이)
+	
 	UPROPERTY(EditAnywhere, Category = "Quadtree")
 	FVector MapSize = FVector(2000.f, 2000.f, 100.f); 
 
