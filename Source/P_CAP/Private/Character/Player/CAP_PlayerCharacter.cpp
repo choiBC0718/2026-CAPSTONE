@@ -1,8 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Character/Player/CAP_PlayerCharacter.h"
-
 #include "CAP_PlayerController.h"
 #include "AI/PlayerTrackerComponent.h"
 #include "Camera/CameraComponent.h"
@@ -18,17 +16,21 @@
 #include "Component/CAP_InventoryComponent.h"
 #include "Component/CAP_WeaponComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "GAS/Ability/CAP_GameplayAbility.h"
+#include "Interface/CAP_InteractInterface.h"
+#include "AI/BaseMonster.h"         // 몬스터 타격 판별을 위해 추가
+#include "Interactables/Weapon/CAP_WorldWeapon.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 {
-	SpringArm = CreateDefaultSubobject<USpringArmComponent>("Spring Arm Comp");
-	SpringArm->SetupAttachment(GetRootComponent());
-	SpringArm->bUsePawnControlRotation = false;
-	SpringArm->bInheritYaw = false;    
-	SpringArm->bDoCollisionTest = false;
+    SpringArm = CreateDefaultSubobject<USpringArmComponent>("Spring Arm Comp");
+    SpringArm->SetupAttachment(GetRootComponent());
+    SpringArm->bUsePawnControlRotation = false;
+    SpringArm->bInheritYaw = false;    
+    SpringArm->bDoCollisionTest = false;
 
-	Camera = CreateDefaultSubobject<UCameraComponent>("Camera Comp");
-	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
+    Camera = CreateDefaultSubobject<UCameraComponent>("Camera Comp");
+    Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 
 	WeaponComponent = CreateDefaultSubobject<UCAP_WeaponComponent>("Weapon Component");
 	InventoryComponent = CreateDefaultSubobject<UCAP_InventoryComponent>("Inventory Component");
@@ -37,8 +39,11 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 	
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
+    
+    bUseControllerRotationYaw = false;
+    GetCharacterMovement()->bOrientRotationToMovement = true;
 
-	PlayerTracker = CreateDefaultSubobject<UPlayerTrackerComponent>(TEXT("Player Tracker"));
+    PlayerTracker = CreateDefaultSubobject<UPlayerTrackerComponent>(TEXT("Player Tracker"));
 }
 
 void ACAP_PlayerCharacter::PawnClientRestart()
@@ -135,18 +140,18 @@ FString ACAP_PlayerCharacter::GetInteractKeyName() const
 
 FVector ACAP_PlayerCharacter::GetMoveForwardDir()
 {
-	FVector Forward = Camera->GetForwardVector();
-	Forward.Z = 0;
-	Forward.Normalize();
-	return Forward;
+    FVector Forward = Camera->GetForwardVector();
+    Forward.Z = 0;
+    Forward.Normalize();
+    return Forward;
 }
 
 FVector ACAP_PlayerCharacter::GetMoveRightDir()
 {
-	FVector Right = Camera->GetRightVector();
-	Right.Z = 0;
-	Right.Normalize();
-	return Right;
+    FVector Right = Camera->GetRightVector();
+    Right.Z = 0;
+    Right.Normalize();
+    return Right;
 }
 
 void ACAP_PlayerCharacter::MoveInputHandle(const FInputActionValue& InputActionValue)
@@ -157,22 +162,23 @@ void ACAP_PlayerCharacter::MoveInputHandle(const FInputActionValue& InputActionV
 	FVector2D InputVal = InputActionValue.Get<FVector2D>();
 	if (InputVal.IsNearlyZero()) return;
 
-	InputVal.Normalize();
+    InputVal.Normalize();
 
-	AddMovementInput(GetMoveForwardDir() * InputVal.Y + GetMoveRightDir() * InputVal.X);
+    AddMovementInput(GetMoveForwardDir() * InputVal.Y + GetMoveRightDir() * InputVal.X);
 }
 
 void ACAP_PlayerCharacter::AbilityInputHandle(const FInputActionValue& InputActionValue, EAbilityInputID AbilityInputID)
 {
-	bool bPressed = InputActionValue.Get<bool>();
-	if (bPressed)
-	{
-		GetAbilitySystemComponent()->AbilityLocalInputPressed((int32)AbilityInputID);
-	}
-	else
-	{
-		GetAbilitySystemComponent()->AbilityLocalInputReleased((int32)AbilityInputID);
-	}
+    bool bPressed = InputActionValue.Get<bool>();
+    if (bPressed)
+    {
+       // 기존 GAS 스킬 실행 로직만 남김 (레이저 삭제)
+       GetAbilitySystemComponent()->AbilityLocalInputPressed((int32)AbilityInputID);
+    }
+    else
+    {
+       GetAbilitySystemComponent()->AbilityLocalInputReleased((int32)AbilityInputID);
+    }
 }
 
 void ACAP_PlayerCharacter::InteractInputHandle(const FInputActionInstance& Instance)

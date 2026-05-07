@@ -1,6 +1,8 @@
-#include "AI/PlayerBehaviorLearner.h" // 본인의 폴더 경로에 맞게 수정 필요 (예: "PlayerBehaviorLearner.h")
+#include "AI/PlayerBehaviorLearner.h"
 #include "Kismet/GameplayStatics.h"
-#include "AI/LearnerSaveGame.h"       // 본인의 폴더 경로에 맞게 수정 필요 (예: "LearnerSaveGame.h")
+#include "AI/LearnerSaveGame.h"       
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 
 APlayerBehaviorLearner::APlayerBehaviorLearner()
 {
@@ -10,95 +12,308 @@ APlayerBehaviorLearner::APlayerBehaviorLearner()
 void APlayerBehaviorLearner::BeginPlay()
 {
     Super::BeginPlay();
-
-    if (UGameplayStatics::DoesSaveGameExist(TEXT("AIBrainData"), 0))
-    {
-       USaveGame* LoadedGame = UGameplayStatics::LoadGameFromSlot(TEXT("AIBrainData"), 0);
-       ULearnerSaveGame* LoadGameInstance = Cast<ULearnerSaveGame>(LoadedGame);
-       
-       if (LoadGameInstance)
-       {
-          ExplorerCentroid = LoadGameInstance->SavedExplorerCentroid;
-          SpeedRunnerCentroid = LoadGameInstance->SavedSpeedRunnerCentroid;
-          UE_LOG(LogTemp, Warning, TEXT("세이브 파일에서 데이터 불러옴"));
-       }
-       else
-       {
-          UE_LOG(LogTemp, Error, TEXT("파일은 있지만 ULearnerSaveGame으로 변환 실패"));
-       }
-    }
-    else
-    {
-       UE_LOG(LogTemp, Warning, TEXT("세이브 파일 없음. 초기값으로 시작"));
-    }
+    LoadLearnerData();
 
     if (GEngine)
     {
-       FString Msg = FString::Printf(TEXT("시작 뇌 수치 -> 탐험: %s | 직진: %s"), *ExplorerCentroid.ToString(), *SpeedRunnerCentroid.ToString());
-       GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Yellow, Msg);
+        FString Msg = FString::Printf(TEXT("AI 뇌 로드 완료 (K-Means / K=%d / 히스토리:%d건)"), K, PlayHistory.Num());
+        GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Yellow, Msg);
     }
 }
 
-// 3번째 매개변수를 float PassRatio로 변경하여 헤더와 일치시킴
-void APlayerBehaviorLearner::ProcessPlayerData(int32 VisitedNodeCount, float PlayTime, float PassRatio)
+void APlayerBehaviorLearner::ProcessPlayerData(FPlayerBehaviorData PlayerDataPoint)
 {
-    // Z축에 PassRatio (float) 할당
-    FVector PlayerDataPoint(VisitedNodeCount, PlayTime, PassRatio);
+    PlayHistory.Add(PlayerDataPoint);
 
-    if (CurrentMode == ELearnerMode::Training_Explorer)
+    while (PlayHistory.Num() > MaxHistorySize)
     {
-       ExplorerCentroid = FMath::Lerp(ExplorerCentroid, PlayerDataPoint, 0.3f);
-       UpdateCentroids(); 
-       UE_LOG(LogTemp, Warning, TEXT("탐험형 뇌 업데이트 완료: %s"), *ExplorerCentroid.ToString());
+        PlayHistory.RemoveAt(0);
     }
-    else if (CurrentMode == ELearnerMode::Training_SpeedRunner)
-    {
-       SpeedRunnerCentroid = FMath::Lerp(SpeedRunnerCentroid, PlayerDataPoint, 0.3f);
-       UpdateCentroids(); 
-       UE_LOG(LogTemp, Warning, TEXT("직진형 뇌 업데이트 완료: %s"), *SpeedRunnerCentroid.ToString());
-    }
-    else if (CurrentMode == ELearnerMode::Inference)
-    {
-       EPlayerPersona Result = Classify(PlayerDataPoint);
-       FString PersonaName = (Result == EPlayerPersona::Explorer) ? TEXT("탐험형(Explorer)") : TEXT("직진형(SpeedRunner)");
-       UE_LOG(LogTemp, Error, TEXT("AI 판별 결과 - 이 유저는 [%s] 입니다!"), *PersonaName);
-    }
-}
 
-void APlayerBehaviorLearner::UpdateCentroids()
-{
-    USaveGame* SaveGameObj = UGameplayStatics::CreateSaveGameObject(ULearnerSaveGame::StaticClass());
-    ULearnerSaveGame* SaveGameInstance = Cast<ULearnerSaveGame>(SaveGameObj);
-    
-    if (SaveGameInstance)
+    UE_LOG(LogTemp, Warning, TEXT("플레이 데이터 수집 완료 (총 %d건)"), PlayHistory.Num());
+
+    if (PlayHistory.Num() >= MinDataForClustering)
     {
-       SaveGameInstance->SavedExplorerCentroid = ExplorerCentroid;
-       SaveGameInstance->SavedSpeedRunnerCentroid = SpeedRunnerCentroid;
-       
-       bool bIsSaved = UGameplayStatics::SaveGameToSlot(SaveGameInstance, TEXT("AIBrainData"), 0);
-       
-       if (bIsSaved && GEngine)
-       {
-           FString Msg = FString::Printf(TEXT("뇌 영구 저장 완료! 탐험: %s | 직진: %s"), *ExplorerCentroid.ToString(), *SpeedRunnerCentroid.ToString());
-           GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green, Msg);
-       }
-    }
-}
+        RunKMeans();
 
-EPlayerPersona APlayerBehaviorLearner::Classify(FVector NewPlayerData)
-{
-    float DistToExplorer = FVector::Distance(NewPlayerData, ExplorerCentroid);
-    float DistToSpeedRunner = FVector::Distance(NewPlayerData, SpeedRunnerCentroid);
+        // [변경됨] 이름표(페르소나) 대신 소속된 군집 번호만 로그로 띄움
+        int32 ClusterIdx = FindNearestCentroid(PlayerDataPoint);
+        FString Msg = FString::Printf(TEXT("K-Means 분류 완료: 현재 플레이어는 Cluster[%d] 성향입니다."), ClusterIdx);
+        UE_LOG(LogTemp, Warning, TEXT("%s"), *Msg);
 
-    UE_LOG(LogTemp, Log, TEXT(">> 탐험형 기준점과의 거리: %f"), DistToExplorer);
-    UE_LOG(LogTemp, Log, TEXT(">> 직진형 기준점과의 거리: %f"), DistToSpeedRunner);
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Cyan, Msg);
+        }
 
-    if (DistToExplorer < DistToSpeedRunner)
-    {
-       return EPlayerPersona::Explorer;
+        ExportAllDataToCSV();
     }
     else
     {
-       return EPlayerPersona::SpeedRunner;
+        FString Msg = FString::Printf(TEXT("데이터 수집 중... (%d / %d)"), PlayHistory.Num(), MinDataForClustering);
+        UE_LOG(LogTemp, Warning, TEXT("%s"), *Msg);
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Orange, Msg);
+        }
     }
+
+    SaveLearnerData();
+}
+
+void APlayerBehaviorLearner::RunKMeans()
+{
+    UE_LOG(LogTemp, Warning, TEXT("=== K-Means 클러스터링 시작 (K=%d, 데이터=%d건) ==="), K, PlayHistory.Num());
+
+    InitializeCentroidsKMeansPP();
+
+    for (int32 Iter = 0; Iter < MaxIterations; Iter++)
+    {
+        TArray<TArray<int32>> ClusterMembers;
+        ClusterMembers.SetNum(K);
+
+        for (int32 i = 0; i < PlayHistory.Num(); i++)
+        {
+            int32 NearestIdx = FindNearestCentroid(PlayHistory[i]);
+            ClusterMembers[NearestIdx].Add(i);
+        }
+
+        TArray<FPlayerBehaviorData> NewCentroids;
+        NewCentroids.SetNum(K);
+        bool bConverged = true;
+
+        for (int32 c = 0; c < K; c++)
+        {
+            if (ClusterMembers[c].Num() == 0)
+            {
+                NewCentroids[c] = Centroids[c];
+                continue;
+            }
+
+            FPlayerBehaviorData Sum;
+            for (int32 DataIdx : ClusterMembers[c])
+            {
+                Sum = Sum + PlayHistory[DataIdx];
+            }
+            NewCentroids[c] = Sum / static_cast<float>(ClusterMembers[c].Num());
+
+            float Moved = FPlayerBehaviorData::Distance(Centroids[c], NewCentroids[c]);
+            if (Moved > ConvergenceThreshold)
+            {
+                bConverged = false;
+            }
+        }
+
+        Centroids = NewCentroids;
+
+        if (bConverged)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("K-Means 수렴 완료! (%d회 반복)"), Iter + 1);
+            break;
+        }
+    }
+
+    // [변경됨] 강제로 이름표를 붙이던 MapCentroidsToPersonas() 삭제
+    bIsClusteringReady = true;
+
+    for (int32 c = 0; c < K; c++)
+    {
+        // [변경됨] 순수 센트로이드 데이터 로그 출력
+        UE_LOG(LogTemp, Warning, TEXT("  Cluster[%d] = (V:%.3f T:%.3f P:%.3f K:%.3f M:%.3f)"),
+               c,
+               Centroids[c].VisitedNodeCount, Centroids[c].PlayTime,
+               Centroids[c].PassRatio, Centroids[c].KillRatio, Centroids[c].MeleeRatio);
+    }
+}
+
+void APlayerBehaviorLearner::InitializeCentroidsKMeansPP()
+{
+    Centroids.Empty();
+
+    int32 FirstIdx = FMath::RandRange(0, PlayHistory.Num() - 1);
+    Centroids.Add(PlayHistory[FirstIdx]);
+
+    for (int32 c = 1; c < K; c++)
+    {
+        float BestDist = -1.f;
+        int32 BestIdx = 0;
+
+        for (int32 i = 0; i < PlayHistory.Num(); i++)
+        {
+            float MinDistToExisting = TNumericLimits<float>::Max();
+            for (int32 e = 0; e < Centroids.Num(); e++)
+            {
+                float Dist = FPlayerBehaviorData::Distance(PlayHistory[i], Centroids[e]);
+                if (Dist < MinDistToExisting)
+                {
+                    MinDistToExisting = Dist;
+                }
+            }
+
+            if (MinDistToExisting > BestDist)
+            {
+                BestDist = MinDistToExisting;
+                BestIdx = i;
+            }
+        }
+
+        Centroids.Add(PlayHistory[BestIdx]);
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("K-Means++ 초기 센트로이드 %d개 선택 완료"), K);
+}
+
+int32 APlayerBehaviorLearner::FindNearestCentroid(const FPlayerBehaviorData& DataPoint) const
+{
+    int32 NearestIdx = 0;
+    float MinDist = TNumericLimits<float>::Max();
+
+    for (int32 c = 0; c < Centroids.Num(); c++)
+    {
+        float Dist = FPlayerBehaviorData::Distance(DataPoint, Centroids[c]);
+        if (Dist < MinDist)
+        {
+            MinDist = Dist;
+            NearestIdx = c;
+        }
+    }
+
+    return NearestIdx;
+}
+
+// =============================================
+// [변경됨] 맵 팀이 호출할 데이터 추출 API
+// =============================================
+FPlayerTendencyModifier APlayerBehaviorLearner::GetCurrentPlayerTendency()
+{
+    FPlayerTendencyModifier Tendency; // 기본 생성자에서 모두 0.5로 세팅됨
+
+    // 예외 처리: 데이터가 없거나 학습 전이면 기본값 반환
+    if (!bIsClusteringReady || Centroids.Num() == 0 || PlayHistory.Num() == 0)
+    {
+        return Tendency;
+    }
+
+    // 1. 방금 플레이한 가장 최근 기록을 가져옴
+    FPlayerBehaviorData LatestPlay = PlayHistory.Last();
+
+    // 2. 이 플레이가 어느 군집(Centroid)에 속하는지 찾음
+    int32 ClusterIdx = FindNearestCentroid(LatestPlay);
+    FPlayerBehaviorData UserCentroid = Centroids[ClusterIdx];
+
+    // 3. 센트로이드의 수치를 맵 팀이 쓰기 좋게 변환하여 바구니에 담음
+    // 탐색률 = (방문율 + 플레이시간 비율)의 평균
+    Tendency.ExplorationRate = (UserCentroid.VisitedNodeCount + UserCentroid.PlayTime) / 2.0f;
+    Tendency.CombatAggression = UserCentroid.KillRatio;
+    Tendency.MeleePreference = UserCentroid.MeleeRatio;
+    Tendency.ObstacleBypass = UserCentroid.PassRatio;
+
+    return Tendency;
+}
+
+void APlayerBehaviorLearner::SaveLearnerData()
+{
+    USaveGame* SaveGameObj = UGameplayStatics::CreateSaveGameObject(ULearnerSaveGame::StaticClass());
+    ULearnerSaveGame* SaveInstance = Cast<ULearnerSaveGame>(SaveGameObj);
+    
+    if (SaveInstance)
+    {
+        SaveInstance->SavedPlayHistory = PlayHistory;
+        SaveInstance->SavedCentroids = Centroids;
+        SaveInstance->bSavedClusteringReady = bIsClusteringReady;
+		// [변경됨] Persona 저장 로직 삭제
+
+        bool bIsSaved = UGameplayStatics::SaveGameToSlot(SaveInstance, TEXT("AIBrainData"), 0);
+
+        if (bIsSaved)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("K-Means 뇌 저장 완료 (히스토리:%d / 클러스터:%d)"), 
+                   PlayHistory.Num(), Centroids.Num());
+        }
+    }
+}
+
+void APlayerBehaviorLearner::LoadLearnerData()
+{
+    if (!UGameplayStatics::DoesSaveGameExist(TEXT("AIBrainData"), 0))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("세이브 파일 없음. 빈 상태로 시작합니다."));
+        return;
+    }
+
+    USaveGame* LoadedGame = UGameplayStatics::LoadGameFromSlot(TEXT("AIBrainData"), 0);
+    ULearnerSaveGame* LoadInstance = Cast<ULearnerSaveGame>(LoadedGame);
+
+    if (LoadInstance)
+    {
+        PlayHistory = LoadInstance->SavedPlayHistory;
+        Centroids = LoadInstance->SavedCentroids;
+        bIsClusteringReady = LoadInstance->bSavedClusteringReady;
+		// [변경됨] Persona 로드 로직 삭제
+
+        UE_LOG(LogTemp, Warning, TEXT("세이브 로드 완료 (히스토리:%d / 클러스터링:%s)"),
+               PlayHistory.Num(),
+               bIsClusteringReady ? TEXT("준비됨") : TEXT("수집중"));
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("세이브 파일 변환 실패"));
+    }
+}
+
+void APlayerBehaviorLearner::ExportDataToCSV(const FPlayerBehaviorData& PlayerData, const FString& ClusterLabel)
+{
+    FString FilePath = FPaths::ProjectSavedDir() + TEXT("Logs/AILearningData.csv");
+
+    if (!FPlatformFileManager::Get().GetPlatformFile().FileExists(*FilePath))
+    {
+        FString Header = TEXT("VisitedNodeCount,PlayTime,PassRatio,KillRatio,MeleeRatio,Cluster\n");
+        FFileHelper::SaveStringToFile(Header, *FilePath);
+    }
+
+    FString DataLine = FString::Printf(TEXT("%f,%f,%f,%f,%f,%s\n"),
+                                       PlayerData.VisitedNodeCount,
+                                       PlayerData.PlayTime,
+                                       PlayerData.PassRatio,
+                                       PlayerData.KillRatio,
+                                       PlayerData.MeleeRatio,
+                                       *ClusterLabel);
+
+    FFileHelper::SaveStringToFile(DataLine, *FilePath, FFileHelper::EEncodingOptions::AutoDetect, &IFileManager::Get(), FILEWRITE_Append);
+}
+
+void APlayerBehaviorLearner::ExportAllDataToCSV()
+{
+    FString FilePath = FPaths::ProjectSavedDir() + TEXT("Logs/AIClusterResult.csv");
+
+    // [변경됨] Persona 헤더 삭제
+    FString Content = TEXT("VisitedNodeCount,PlayTime,PassRatio,KillRatio,MeleeRatio,ClusterID\n");
+
+    for (int32 i = 0; i < PlayHistory.Num(); i++)
+    {
+        int32 ClusterIdx = FindNearestCentroid(PlayHistory[i]);
+
+        Content += FString::Printf(TEXT("%f,%f,%f,%f,%f,%d\n"),
+                                   PlayHistory[i].VisitedNodeCount,
+                                   PlayHistory[i].PlayTime,
+                                   PlayHistory[i].PassRatio,
+                                   PlayHistory[i].KillRatio,
+                                   PlayHistory[i].MeleeRatio,
+                                   ClusterIdx);
+    }
+
+    Content += TEXT("\n# Centroids\n");
+    for (int32 c = 0; c < Centroids.Num(); c++)
+    {
+        Content += FString::Printf(TEXT("%f,%f,%f,%f,%f,Centroid_%d\n"),
+                                   Centroids[c].VisitedNodeCount,
+                                   Centroids[c].PlayTime,
+                                   Centroids[c].PassRatio,
+                                   Centroids[c].KillRatio,
+                                   Centroids[c].MeleeRatio,
+                                   c);
+    }
+
+    FFileHelper::SaveStringToFile(Content, *FilePath);
+    UE_LOG(LogTemp, Warning, TEXT("클러스터 결과 CSV 내보내기 완료: %s"), *FilePath);
 }

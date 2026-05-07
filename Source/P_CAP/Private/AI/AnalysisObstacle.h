@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -19,13 +17,18 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	// 접근 및 회피 감지용 (바깥쪽 큰 박스)
 	UPROPERTY(VisibleAnywhere, Category = "Trigger")
 	UBoxComponent* OuterZone; 
 
-	// 돌파 감지용 (안쪽 작은 박스)
 	UPROPERTY(VisibleAnywhere, Category = "Trigger")
 	UBoxComponent* InnerZone; 
+
+	// [변경] 하드코딩 제거 → 에디터에서 장애물 크기 조절 가능
+	UPROPERTY(EditAnywhere, Category = "Trigger|Size")
+	FVector OuterZoneExtent = FVector(300.f, 300.f, 200.f);
+
+	UPROPERTY(EditAnywhere, Category = "Trigger|Size")
+	FVector InnerZoneExtent = FVector(100.f, 100.f, 200.f);
 
 	UFUNCTION()
 	void OnOuterOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
@@ -37,6 +40,6 @@ protected:
 	void OnInnerOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 private:
-	bool bHasPassedThrough; // 중심부(Inner) 통과 여부 기록
-	bool bIsTracking;       // 현재 플레이어가 Outer 영역 안에 있는지 추적 상태
+	bool bHasPassedThrough;
+	bool bIsTracking;
 };
