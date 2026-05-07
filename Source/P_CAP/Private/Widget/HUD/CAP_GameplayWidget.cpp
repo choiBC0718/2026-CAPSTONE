@@ -6,6 +6,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "CAP_CharacterMenuWidget.h"
+#include "CAP_DialogueWidget.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Components/WidgetSwitcher.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
@@ -18,8 +19,12 @@
 void UCAP_GameplayWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+
 	Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
 	if (!Player)
+		return;
+	OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
+	if (!OwnerASC)
 		return;
 	
 	if (CharacterMenuWidget)
@@ -30,20 +35,27 @@ void UCAP_GameplayWidget::NativeConstruct()
 	if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
 	{
 		InvComp->OnInventoryFull.AddDynamic(this, &UCAP_GameplayWidget::HandleInventoryFull);
-	}	
-	OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
-		
-	if (OwnerASC && HealthBar)
+	}
+	if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
+	{
+		InteractComp->OnDialogueTriggered.AddDynamic(this, &UCAP_GameplayWidget::HandleDialogueTriggered);
+	}		
+	if (HealthBar)
 	{
 		HealthBar->SetAndBoundToGameplayAttribute(OwnerASC, UCAP_AttributeSet::GetHealthAttribute(), UCAP_AttributeSet::GetMaxHealthAttribute());
 	}
-	if (PickupItemDetailWidget)
+	if (InteractPanelWidget)
 	{
-		PickupItemDetailWidget->SetVisibility(ESlateVisibility::Collapsed);
+		InteractPanelWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 	if (MenuSwitcher)
 	{
 		MenuSwitcher->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	if (DialogueWidget)
+	{
+		DialogueWidget->SetVisibility(ESlateVisibility::Collapsed);
+		DialogueWidget->OnDialogueFinished.AddDynamic(this, &UCAP_GameplayWidget::HandleDialogueFinished);
 	}
 	if (BuffListPanel)
 	{
@@ -101,6 +113,26 @@ void UCAP_GameplayWidget::HandleInventoryFull(class UCAP_ItemInstance* NewItem)
 	}
 }
 
+void UCAP_GameplayWidget::HandleDialogueTriggered(const FNPCData& NPCData)
+{
+	if (!DialogueWidget)
+		return;
+
+	DialogueWidget->SetVisibility(ESlateVisibility::Visible);
+	DialogueWidget->StartDialogue();
+	DialogueWidget->UpdateDialogueUI(NPCData);
+	InteractPanelWidget->SetVisibility(ESlateVisibility::Collapsed);
+
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(DialogueWidget->TakeWidget());
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		PC->SetInputMode(InputMode);
+		PC->bShowMouseCursor = true;
+	}
+}
+
 void UCAP_GameplayWidget::RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime)
 {
 	if (IsItemSwapMenuOpen() && ItemSwapWidget)
@@ -121,8 +153,8 @@ void UCAP_GameplayWidget::ShowMenuWidget(UUserWidget* TargetMenuWidget)
 	if (!MenuSwitcher || !TargetMenuWidget)
 		return;
 	
-	if (PickupItemDetailWidget)
-		PickupItemDetailWidget->SetVisibility(ESlateVisibility::Collapsed);
+	if (InteractPanelWidget)
+		InteractPanelWidget->SetVisibility(ESlateVisibility::Collapsed);
 
 	MenuSwitcher->SetVisibility(ESlateVisibility::Visible);
 	MenuSwitcher->SetActiveWidget(TargetMenuWidget);
@@ -149,11 +181,22 @@ void UCAP_GameplayWidget::CompleteDeactivateSwitcher()
 		if (UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent())
 		{
 			if (InteractionComp->GetNearbyInteractable()!=nullptr)
-				if (PickupItemDetailWidget)
-					PickupItemDetailWidget->SetVisibility(ESlateVisibility::Visible);
+				if (InteractPanelWidget)
+					InteractPanelWidget->SetVisibility(ESlateVisibility::Visible);
 		}
 	}
 	ExitUIMode();
+}
+
+void UCAP_GameplayWidget::HandleDialogueFinished()
+{
+	InteractPanelWidget->SetVisibility(ESlateVisibility::Visible);
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		FInputModeGameOnly InputMode;
+		PC->SetInputMode(InputMode);
+		PC->bShowMouseCursor = false;
+	}
 }
 
 void UCAP_GameplayWidget::EnterUIMode()

@@ -23,9 +23,8 @@ public:
 
 	virtual void Interact(class AActor* InsActor, EInteractAction ActionType) override;
 	virtual FInteractionPayload GetInteractionPayload() const override;
-	
-	UPROPERTY(EditDefaultsOnly, Category="Weapon Data")
-	class UCAP_WeaponDataAsset* WeaponDA;
+
+	void InitializeWeaponData(class UCAP_WeaponDataAsset* NewWeaponDA);
 	
 	UPROPERTY(BlueprintReadWrite,Category="Weapon Data", meta=(ExposeOnSpawn="true"))
 	class UCAP_WeaponInstance* WeaponInstance;
@@ -45,6 +44,9 @@ protected:
 
 	UFUNCTION()
 	void OnRootCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	UPROPERTY(EditDefaultsOnly, Category="Weapon Data")
+	class UCAP_WeaponDataAsset* WeaponDA;
 
 	UPROPERTY()
 	int32 CachedBaseRewardAmount = 0;

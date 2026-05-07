@@ -22,8 +22,8 @@ ACAP_WorldWeapon::ACAP_WorldWeapon()
 	RootCollision->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
 	RootCollision->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
 	RootCollision->SetSimulatePhysics(true);
-
-	RootScene->SetupAttachment(RootCollision);
+	
+	InteractionSphere->SetupAttachment(RootCollision);
 	
 	MeshContainer=CreateDefaultSubobject<USceneComponent>("MeshContainer");
 	MeshContainer->SetupAttachment(InteractionSphere);
@@ -147,6 +147,11 @@ FInteractionPayload ACAP_WorldWeapon::GetInteractionPayload() const
 	Payload.ActionData.ActionCurrencyType = CachedRewardCurrencyType;
 	Payload.ActionData.CurrencyAmount = CachedBaseRewardAmount;
 	return Payload;
+}
+
+void ACAP_WorldWeapon::InitializeWeaponData(class UCAP_WeaponDataAsset* NewWeaponDA)
+{
+	WeaponDA = NewWeaponDA;
 }
 
 void ACAP_WorldWeapon::DropItem()

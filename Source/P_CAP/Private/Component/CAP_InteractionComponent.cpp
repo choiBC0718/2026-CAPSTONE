@@ -59,3 +59,19 @@ void UCAP_InteractionComponent::ProcessInteractInput(ETriggerEvent TriggerEvent,
 	}
 }
 
+void UCAP_InteractionComponent::BeginDialogue(const struct FNPCData& InNPCData)
+{
+	OnDialogueTriggered.Broadcast(InNPCData);
+}
+
+void UCAP_InteractionComponent::ExecuteNPCSpecialAction()
+{
+	if (NearbyInteractable)
+	{
+		if (ICAP_InteractInterface* InteractObj = Cast<ICAP_InteractInterface>(NearbyInteractable))
+		{
+			InteractObj->ExecuteSpecialAction(GetOwner());
+		}
+	}
+}
+

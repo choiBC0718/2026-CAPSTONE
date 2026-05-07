@@ -18,14 +18,13 @@ public:
 
 	virtual void Interact(AActor* InsActor, EInteractAction ActionType) override {}
 	virtual FInteractionPayload GetInteractionPayload() const override {return FInteractionPayload();}
+	virtual void ExecuteSpecialAction(AActor* Actor) override {}
 
 	virtual void BeginPlay() override;
 
 	virtual void DropItem() {}
 	
 protected:
-	UPROPERTY(VisibleAnywhere, Category="Interaction")
-	class USceneComponent* RootScene;
 	// 플레이어 오버랩 상호작용 컴포넌트
 	UPROPERTY(VisibleAnywhere, Category="Interaction")
 	class USphereComponent* InteractionSphere;

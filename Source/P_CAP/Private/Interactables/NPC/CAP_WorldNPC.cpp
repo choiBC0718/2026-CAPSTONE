@@ -3,6 +3,7 @@
 
 #include "Interactables/NPC/CAP_WorldNPC.h"
 
+#include "Character/Player/CAP_PlayerCharacter.h"
 #include "Components/SphereComponent.h"
 
 ACAP_WorldNPC::ACAP_WorldNPC()
@@ -14,7 +15,12 @@ ACAP_WorldNPC::ACAP_WorldNPC()
 
 void ACAP_WorldNPC::Interact(AActor* InsActor, EInteractAction ActionType)
 {
-	
+	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(InsActor);
+	if (!Player)
+		return;
+
+	if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
+		InteractComp->BeginDialogue(NPCData);
 }
 
 FInteractionPayload ACAP_WorldNPC::GetInteractionPayload() const

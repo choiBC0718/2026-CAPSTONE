@@ -22,8 +22,8 @@ ACAP_WorldItem::ACAP_WorldItem()
 	RootCollision->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
 	RootCollision->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
 	RootCollision->SetSimulatePhysics(true);
-
-	RootScene->SetupAttachment(RootCollision);
+	
+	InteractionSphere->SetupAttachment(RootCollision);
 	
 	ItemMesh=CreateDefaultSubobject<UStaticMeshComponent>("ItemMesh");
 	ItemMesh->SetupAttachment(InteractionSphere);
@@ -120,8 +120,13 @@ void ACAP_WorldItem::DropItem()
 	}
 }
 
+void ACAP_WorldItem::InitializeItemData(UCAP_ItemDataAsset* NewItemDA)
+{
+	ItemDA=NewItemDA;
+}
+
 void ACAP_WorldItem::OnRootCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+                                        UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
 	RootCollision->SetSimulatePhysics(false);
 }

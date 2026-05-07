@@ -24,7 +24,8 @@ public:
 	virtual FInteractionPayload GetInteractionPayload() const override;
 
 	virtual void DropItem() override;
-	
+	void InitializeItemData(UCAP_ItemDataAsset* NewItemDA);
+
 	UPROPERTY(EditDefaultsOnly, Category="Item Data")
 	class UCAP_ItemDataAsset* ItemDA;
 

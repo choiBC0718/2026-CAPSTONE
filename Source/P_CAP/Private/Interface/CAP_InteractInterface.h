@@ -24,4 +24,6 @@ class ICAP_InteractInterface
 public:
 	virtual void Interact(AActor* InsActor, EInteractAction ActionType) = 0;
 	virtual FInteractionPayload GetInteractionPayload() const = 0;
+	
+	virtual void ExecuteSpecialAction(AActor* Actor) =0;
 };

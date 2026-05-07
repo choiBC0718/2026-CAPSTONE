@@ -33,7 +33,7 @@ void UPlayerTrackerComponent::RecordLocation()
 	if (AActor* OwnerActor = GetOwner())
 	{
 		FVector CurrentLocation = OwnerActor->GetActorLocation();
-		DrawDebugSphere(GetWorld(), CurrentLocation, 30.f, 12, FColor::Green, true);
+		//DrawDebugSphere(GetWorld(), CurrentLocation, 30.f, 12, FColor::Green, true);
 
 		if (CachedQuadtreeManager)
 		{

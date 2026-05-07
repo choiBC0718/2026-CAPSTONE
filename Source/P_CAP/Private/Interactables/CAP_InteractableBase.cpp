@@ -11,12 +11,9 @@
 ACAP_InteractableBase::ACAP_InteractableBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
-
-	RootScene = CreateDefaultSubobject<USceneComponent>("RootScene");
-	SetRootComponent(RootScene);
 	
 	InteractionSphere = CreateDefaultSubobject<USphereComponent>("InteractionSphere");
-	InteractionSphere->SetupAttachment(GetRootComponent());
+	SetRootComponent(InteractionSphere);
 	InteractionSphere->SetSphereRadius(100.f);
 	InteractionSphere->SetRelativeLocation(FVector(0.f, 0.f, 120.f));
 	InteractionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);

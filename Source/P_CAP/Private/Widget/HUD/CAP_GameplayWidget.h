@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "CAP_CharacterMenuWidget.h"
 #include "Blueprint/UserWidget.h"
+#include "Interactables/NPC/CAP_WorldNPC.h"
 #include "Widget/PanelWidgets/CAP_ItemSwapWidget.h"
 #include "Widget/PanelWidgets/CAP_PickupDetailPanelWidget.h"
 #include "CAP_GameplayWidget.generated.h"
@@ -38,6 +39,8 @@ public:
 
 	UFUNCTION()
 	void HandleInventoryFull(class UCAP_ItemInstance* NewItem);	// 인벤토리 꽉 찼을 때 변경을 위한 위젯 활성화
+	UFUNCTION()
+	void HandleDialogueTriggered(const FNPCData& NPCData);		// NPC와 상호작용 시 델리게이트
 
 protected:
 	// Hp 바
@@ -46,15 +49,16 @@ protected:
 	// 장착한 무기에 부여된 스킬 아이콘
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_WeaponSkillBox* WeaponAbilityPanelWidget;
-	// 아이템 상호작용 시, 아이템의 디테일 값 나타낼 위젯
+	// 상호작용 대상 오버랩 시 보여줄 패널
 	UPROPERTY(meta = (BindWidget))
-	class UCAP_PickupDetailPanelWidget* PickupItemDetailWidget;
+	class UCAP_PickupDetailPanelWidget* InteractPanelWidget;
 
 	UPROPERTY(meta = (BindWidget))
 	class UWidgetSwitcher* MenuSwitcher;
 	// Tab 키로 띄울 위젯
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_CharacterMenuWidget* CharacterMenuWidget;
+	// 인벤토리 꽉 찬 경우 띄울 아이템 교체 위젯
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_ItemSwapWidget* ItemSwapWidget;
 
@@ -64,6 +68,10 @@ protected:
 	
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_CurrencyPanelWidget* CurrencyPanel;
+	
+	UPROPERTY(meta = (BindWidget))
+	class UCAP_DialogueWidget* DialogueWidget;
+	
 private:
 	UPROPERTY()
 	ACAP_PlayerCharacter* Player;
@@ -72,4 +80,6 @@ private:
 	
 	UFUNCTION()
 	void CompleteDeactivateSwitcher();
+	UFUNCTION()
+	void HandleDialogueFinished();
 };

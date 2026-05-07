@@ -25,8 +25,10 @@ public:
 	// 특정 아이템 효과가 구독한 이벤트 핸들 저장
 	TMap<const class UCAP_ItemBehaviorBase*, TArray<FDelegateHandle>> BoundEventHandles;
 	// 각 아이템 행동 모듈에서 효과를 발동 시키기 위해 트리거가 몇번 발동 되었는지 저장되는 Map
+	UPROPERTY()
 	TMap<const class UCAP_ItemBehaviorBase*, int32> BehaviorCounters;
 	// 각 아이템 행동 모듈 별 마지막 발동 시간 저장 Map, 태그 이용시 같은 아이템에 대해 문제 발생하여 float로 사용
+	UPROPERTY()
 	TMap<const class UCAP_ItemBehaviorBase*,float> BehaviorLastTriggerTimes;
 
 	void SetCachedASC(UCAP_AbilitySystemComponent* ASC);

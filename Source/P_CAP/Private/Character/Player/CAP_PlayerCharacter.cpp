@@ -16,10 +16,7 @@
 #include "Component/CAP_InventoryComponent.h"
 #include "Component/CAP_WeaponComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "GAS/Ability/CAP_GameplayAbility.h"
-#include "Interface/CAP_InteractInterface.h"
 #include "AI/BaseMonster.h"         // 몬스터 타격 판별을 위해 추가
-#include "Interactables/Weapon/CAP_WorldWeapon.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 {
