@@ -18,8 +18,9 @@ public:
 
 	virtual void Interact(AActor* InsActor, EInteractAction ActionType) override {}
 	virtual FInteractionPayload GetInteractionPayload() const override {return FInteractionPayload();}
-	virtual void ExecuteSpecialAction(AActor* Actor) override {}
-
+	virtual ENPCActionResult ExecuteSpecialAction(AActor* Actor) override {return ENPCActionResult::Success;}
+	virtual bool GetSpecialActionCost(AActor* Actor, int32& OutCost) override {return false;}
+	
 	virtual void BeginPlay() override;
 
 	virtual void DropItem() {}

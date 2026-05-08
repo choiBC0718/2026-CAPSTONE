@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "EnhancedInputComponent.h"
 #include "Components/ActorComponent.h"
+#include "Interactables/NPC/CAP_WorldNPC.h"
 #include "CAP_InteractionComponent.generated.h"
 
 // 오버랩 대상 변경됨 델리게이트
@@ -21,13 +22,20 @@ class UCAP_InteractionComponent : public UActorComponent
 
 public:	
 	UCAP_InteractionComponent();
+
+	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	
 	AActor* GetNearbyInteractable() const {return NearbyInteractable;}
 	
 	void SetNearbyInteractable(AActor* NewActor);
 	void ProcessInteractInput(ETriggerEvent TriggerEvent, float ElapsedTime);
 	void BeginDialogue(const struct FNPCData& InNPCData);
-	void ExecuteNPCSpecialAction();
+	ENPCActionResult ExecuteNPCSpecialAction();
+
+	bool GetNPCSpecialActionCost(int32& OutCost);
+	
+	UFUNCTION()
+	void EndDialogueCamera();
 
 	UPROPERTY()
 	FOnInteractableChanged OnInteractableChanged;
@@ -47,4 +55,15 @@ private:
 	// 아이템 분해 완료 시간
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	float HoldThreshold = 1.0f;
+
+	float OriginArmLength;
+	FRotator OriginArmRotation;
+	FVector OriginSocketOffset;
+	bool bIsDialogueCameraActive = false;
+
+	float TargetArmLength;
+	FRotator TargetArmRotation;
+	FVector TargetSocketOffset;
+
+	void UpdateDialogueCamera(float DeltaTime);
 };

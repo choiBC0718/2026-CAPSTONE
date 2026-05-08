@@ -10,6 +10,7 @@
 #include "Component/CAP_InteractionComponent.h"
 #include "Component/CAP_InventoryComponent.h"
 #include "Component/CAP_WeaponComponent.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "CAP_PlayerCharacter.generated.h"
 
@@ -27,7 +28,8 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void BeginPlay() override;
-	
+
+	USpringArmComponent* GetSpringArmComponent() const {return SpringArm;}
 	UCAP_WeaponComponent* GetWeaponComponent() const {return WeaponComponent;}
 	UCAP_InventoryComponent* GetInventoryComponent() const {return InventoryComponent;}
 	UCAP_CurrencyComponent* GetCurrencyComponent() const {return CurrencyComponent;}

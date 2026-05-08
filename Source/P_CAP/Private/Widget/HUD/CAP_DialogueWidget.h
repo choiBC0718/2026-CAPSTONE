@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "Interactables/NPC/CAP_WorldNPC.h"
 #include "CAP_DialogueWidget.generated.h"
 
 
@@ -93,4 +94,12 @@ private:
 
 	UPROPERTY()
 	ACAP_PlayerCharacter* Player;
+	
+	UPROPERTY()
+	FNPCData CachedNPCData;
+
+	bool bIsConfirming = false;
+	void ChangeToConfirmState(const FString& ConfirmText);
+
+	void SetupActiveButtons(bool bShowTalk, bool bShowSpecial,bool bShowQuit);
 };

@@ -7,24 +7,6 @@
 #include "CAP_WorldNPC.generated.h"
 
 
-USTRUCT(BlueprintType)
-struct FNPCData
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dialogue")
-	FString NPCName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dialogue")
-	class UTexture2D* NPCImage = nullptr;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dialogue", meta=(MultiLine=true))
-	FString DefaultDialogue;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dialogue")
-	FString SpecialActionText;
-};
-
 /**
  * 
  */

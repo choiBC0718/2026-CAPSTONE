@@ -15,7 +15,8 @@ class ANPC_WeaponDrop : public ACAP_WorldNPC
 	GENERATED_BODY()
 
 public:
-	virtual void ExecuteSpecialAction(AActor* Actor) override;
+	virtual ENPCActionResult ExecuteSpecialAction(AActor* Actor) override;
+	virtual bool GetSpecialActionCost(AActor* Actor, int32& OutCost) override;
 
 protected:
 	UPROPERTY(EditAnywhere, Category="Drop")
@@ -23,5 +24,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Drop")
 	TArray<class UCAP_WeaponDataAsset*> DropWeaponDataAssets;
 
-	bool bHasReward = false;
+	UPROPERTY(EditAnywhere, Category="Drop")
+	int32 CostMagicStone = 10;
+
+	UPROPERTY()
+	class UCAP_WeaponDataAsset* FirstDroppedWeapon = nullptr;
+	
+	int32 InteractionCount = 0;
 };

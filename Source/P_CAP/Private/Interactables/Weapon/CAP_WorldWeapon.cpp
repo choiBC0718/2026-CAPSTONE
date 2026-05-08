@@ -78,19 +78,6 @@ void ACAP_WorldWeapon::OnConstruction(const FTransform& Transform)
 	Super::OnConstruction(Transform);
 
 	if (!WeaponMesh_L || !WeaponMesh_R)	return;
-/*
-	WeaponMesh_R->SetSkeletalMesh(nullptr);
-	WeaponMesh_L->SetSkeletalMesh(nullptr);
-
-	UCAP_WeaponDataAsset* DAToUse = nullptr;
-	// 생성된 Instance가 있다면 그 Instance를 만들 때 사용한 DA 이용
-	if (WeaponInstance && WeaponInstance->GetWeaponDA())
-	{
-		DAToUse = WeaponInstance->GetWeaponDA();
-	}// Instance없다면 그냥 설정한 DA 이용
-	else if (WeaponDA){
-		DAToUse = WeaponDA;
-	}*/
 
 	if (WeaponDA && !WeaponDA->WeaponVisualInfos.IsEmpty())
 	{

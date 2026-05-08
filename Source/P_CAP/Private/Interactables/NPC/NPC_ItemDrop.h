@@ -15,7 +15,8 @@ class ANPC_ItemDrop : public ACAP_WorldNPC
 	GENERATED_BODY()
 
 public:
-	virtual void ExecuteSpecialAction(AActor* Actor) override;
+	virtual ENPCActionResult ExecuteSpecialAction(AActor* Actor) override;
+	virtual bool GetSpecialActionCost(AActor* Actor, int32& OutCost) override;
 
 protected:
 	UPROPERTY(EditAnywhere, Category="Drop")
@@ -23,5 +24,8 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Drop")
 	TArray<class UCAP_ItemDataAsset*> DripItemDataAssets;
 
-	bool bHasReward = false;;
+	UPROPERTY(EditAnywhere, Category="Drop")
+	int32 CostMagicStone = 10;
+
+	int32 InteractionCount = 0;
 };

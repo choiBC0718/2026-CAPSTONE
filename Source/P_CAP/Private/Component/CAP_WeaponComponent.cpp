@@ -131,6 +131,16 @@ void UCAP_WeaponComponent::SwapWeapon()
 	ApplyWeaponData(EquippedWeapons[CurrentWeaponIndex]);
 }
 
+bool UCAP_WeaponComponent::HasWeapon(class UCAP_WeaponDataAsset* WeaponDA) const
+{
+	for (UCAP_WeaponInstance* WeaponInst : EquippedWeapons)
+	{
+		if (WeaponInst && WeaponInst->GetWeaponDA() == WeaponDA)
+			return true;
+	}
+	return false;
+}
+
 class USkeletalMeshComponent* UCAP_WeaponComponent::GetWeaponMesh(EEquipHand Hand) const
 {
 	return Hand == EEquipHand::Left ? WeaponMesh_L : WeaponMesh_R; 

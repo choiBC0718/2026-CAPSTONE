@@ -131,6 +131,11 @@ void UCAP_GameplayWidget::HandleDialogueTriggered(const FNPCData& NPCData)
 		PC->SetInputMode(InputMode);
 		PC->bShowMouseCursor = true;
 	}
+	if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
+	{
+		DialogueWidget->OnDialogueFinished.RemoveDynamic(InteractComp, &UCAP_InteractionComponent::EndDialogueCamera);
+		DialogueWidget->OnDialogueFinished.AddDynamic(InteractComp, &UCAP_InteractionComponent::EndDialogueCamera);
+	}
 }
 
 void UCAP_GameplayWidget::RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime)

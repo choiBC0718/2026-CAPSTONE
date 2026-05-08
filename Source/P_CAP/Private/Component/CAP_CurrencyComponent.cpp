@@ -62,8 +62,6 @@ void UCAP_CurrencyComponent::AddCurrency(ECurrencyType Type, int32 Amount)
 
 bool UCAP_CurrencyComponent::ConsumeCurrency(ECurrencyType Type, int32 Amount)
 {
-	if (Amount <=0)	return false;
-
 	int32& CurrentAmount = CurrencyMap.FindOrAdd(Type, 0);
 
 	// 잔액 부족

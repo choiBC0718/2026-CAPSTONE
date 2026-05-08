@@ -33,6 +33,9 @@ public:
 	const TArray<class UCAP_WeaponInstance*>& GetEquippedWeapons() const {return EquippedWeapons;}
 	class USkeletalMeshComponent* GetWeaponMesh(EEquipHand Hand) const;
 
+	// 특정 무기를 가지고 있는지 확인
+	bool HasWeapon(class UCAP_WeaponDataAsset* WeaponDA) const;
+	
 private:
 	UPROPERTY()
 	class USkeletalMeshComponent* WeaponMesh_L;
