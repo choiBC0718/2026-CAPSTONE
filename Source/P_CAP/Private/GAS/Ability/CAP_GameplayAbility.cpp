@@ -350,13 +350,25 @@ FVector UCAP_GameplayAbility::GetMuzzleSocketLocation(FName SocketName)
 
 void UCAP_GameplayAbility::SendGameplayCueEvent(FHitResult HitResult, const struct FWeaponSkillData* InSkillData)
 {
-	if (InSkillData && InSkillData->GameplayCueTag.IsValid())
+	if (!InSkillData || !InSkillData->GameplayCueTag.IsValid())
+		return;
+
+	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(HitResult.GetActor());
+	
+	FGameplayCueParameters CueParams;
+	CueParams.Location = HitResult.ImpactPoint;
+	CueParams.Normal = HitResult.ImpactNormal;
+
+	CueParams.Instigator = GetAvatarActorFromActorInfo();
+	CueParams.EffectCauser = GetAvatarActorFromActorInfo();
+	CueParams.TargetAttachComponent = HitResult.GetComponent();
+
+	if (TargetASC)
 	{
-		FGameplayCueParameters CueParams;
-		CueParams.Location = HitResult.ImpactPoint;
-		CueParams.Normal = HitResult.ImpactNormal;
-		CurrentActorInfo->AbilitySystemComponent->ExecuteGameplayCue(InSkillData->GameplayCueTag, CueParams);
+		TargetASC->ExecuteGameplayCue(InSkillData->GameplayCueTag, CueParams);
 	}
+	else if (CurrentActorInfo && CurrentActorInfo->AbilitySystemComponent.IsValid())
+		CurrentActorInfo->AbilitySystemComponent->ExecuteGameplayCue(InSkillData->GameplayCueTag, CueParams);
 }
 
 const struct FWeaponSkillData* UCAP_GameplayAbility::GetSkillDataFromContext(const FGameplayAbilitySpecHandle Handle,

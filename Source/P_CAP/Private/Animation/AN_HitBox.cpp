@@ -80,12 +80,13 @@ void UAN_HitBox::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Ani
 					// 1. 무기의 현재 뼈(소켓) 위치를 가져옵니다.
 					FVector ExactWeaponLoc = MeshComp->GetSocketLocation(SocketName);
 					
-					// 2. 무기에서 적을 향하는 방향 (피가 튀거나 스파크가 튈 방향)
-					FVector DirToTarget = (HitActor->GetActorLocation() - ExactWeaponLoc).GetSafeNormal();
+					FVector EnemyLoc = HitActor->GetActorLocation();
+					FVector DirToTarget = (EnemyLoc - ExactWeaponLoc).GetSafeNormal();
 
 					FHitResult DummyHit(HitActor, nullptr, ExactWeaponLoc, DirToTarget);
-					DummyHit.ImpactPoint = ExactWeaponLoc;
+					DummyHit.ImpactPoint = EnemyLoc;
 					DummyHit.ImpactNormal = DirToTarget * -1.f;
+					DummyHit.bBlockingHit = true;
 
 					FGameplayAbilityTargetData_SingleTargetHit* TargetData = new FGameplayAbilityTargetData_SingleTargetHit(DummyHit);
 					Payload.TargetData.Add(TargetData);
