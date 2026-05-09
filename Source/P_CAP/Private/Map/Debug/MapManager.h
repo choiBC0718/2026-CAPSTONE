@@ -10,6 +10,9 @@
 #include "Map/RoomActor/DoorDirection.h"
 #include "MapManager.generated.h"
 
+class AStageExitActor;
+struct FStageConfig;
+
 UCLASS()
 class AMapManager : public AActor
 {
@@ -33,6 +36,9 @@ public:
 	/* 플레이어를 실제 이동시키는 함수 */
 	void RequestMovePlayer(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection);
 
+	void GenerateStage(const FStageConfig& StageConfig);
+	void ClearCurrentStage();
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -49,17 +55,29 @@ private:
 	UPROPERTY(EditAnywhere, Category="Map")
 	bool bUseRandomSeedOnBeginPlay = false;
 
+	UPROPERTY(EditAnywhere, Category="Map")
+	bool bGenerateMapOnBeginPlay = true;
+
 	UPROPERTY(EditAnywhere, Category="Map Spawn")
 	TSubclassOf<ARoomActor> RoomActorClass;
 
 	UPROPERTY(EditAnywhere, Category="Map Spawn")
 	float RoomSpacing = 2200.f;
 
+	UPROPERTY(EditAnywhere, Category="Stage Exit")
+	TSubclassOf<AStageExitActor> StageExitActorClass;
+
+	UPROPERTY(EditAnywhere, Category="Stage Exit")
+	FVector StageExitLocalOffset = FVector(0.f, 0.f, 120.f);
+
 	UPROPERTY()
 	FMapLayout CurrentLayout;
 
 	UPROPERTY()
 	TArray<TObjectPtr<ARoomActor>> SpawnedRooms;
+
+	UPROPERTY()
+	TArray<TObjectPtr<AStageExitActor>> SpawnedStageExits;
 
 	/* 좌표 기반 빠른 조회용 */
 	UPROPERTY()
@@ -69,7 +87,11 @@ private:
 	void RegenerateWithRandomSeed();
 	void RegenerateWithCurrentSeed();
 
+	void EnsureMapGenerator();
 	void GenerateMapAndSpawnRooms();
 	void SpawnRooms(const FMapLayout& Layout);
+	void SpawnStageExitInRoom(ARoomActor* RoomActor, const FRoomData& RoomData);
+	void MovePlayerToStartRoom();
+	void ClearSpawnedStageExits();
 	void ClearSpawnedRooms();
 };
