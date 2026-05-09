@@ -20,6 +20,9 @@ ARoomActor::ARoomActor()
 	/* 바닥 메시 */
 	FloorMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FloorMesh"));
 	FloorMesh->SetupAttachment(Root);
+
+	/* 몬스터 스폰 전용 컴포넌트 */
+	MonsterSpawnerComponent = CreateDefaultSubobject<URoomMonsterSpawnerComponent>(TEXT("MonsterSpawnerComponent"));
 }
 
 void ARoomActor::InitializeRoom(const FRoomData& InRoomData, int32 InMapSeed)
@@ -32,6 +35,10 @@ void ARoomActor::InitializeRoom(const FRoomData& InRoomData, int32 InMapSeed)
 	ClearSpawnedDoors();
 	ClearSpawnedPathActors();
 	ClearSpawnedStructureMeshes();
+	if (MonsterSpawnerComponent)
+	{
+		MonsterSpawnerComponent->ClearSpawnedMonsters();
+	}
 
 	/* 방 정보 기준으로 문과 경로를 다시 생성 */
 	SpawnConnectedDoors();
@@ -75,6 +82,10 @@ void ARoomActor::Destroyed()
 	ClearSpawnedDoors();
 	ClearSpawnedPathActors();
 	ClearSpawnedStructureMeshes();
+	if (MonsterSpawnerComponent)
+	{
+		MonsterSpawnerComponent->ClearSpawnedMonsters();
+	}
 	Super::Destroyed();
 }
 
@@ -201,6 +212,10 @@ void ARoomActor::GenerateAndSpawnInterior()
 	/* 생성된 경로 데이터로 실제 path actor를 생성 */
 	SpawnGuaranteedPaths(Layout);
 	SpawnLargeStructureMeshes(Layout);
+	if (MonsterSpawnerComponent)
+	{
+		MonsterSpawnerComponent->SpawnMonsters(CachedRoomData, CachedInteriorLayout, CachedMapSeed, GetActorTransform());
+	}
 	DrawInteriorCellDebug(Layout);
 }
 

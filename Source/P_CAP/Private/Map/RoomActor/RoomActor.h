@@ -10,6 +10,7 @@
 #include "Map/RoomActor/Interior/RoomInteriorData.h"
 #include "Map/RoomActor/Interior/RoomInteriorPropSet.h"
 #include "Map/RoomActor/Interior/PCG/RoomPathActor.h"
+#include "Map/RoomActor/Monster/RoomMonsterSpawnerComponent.h"
 #include "Map/RoomData.h"
 #include "Map/RoomActor/DoorDirection.h"
 #include "Map/RoomActor/DoorActor.h"
@@ -33,6 +34,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Room")
 	UStaticMeshComponent* FloorMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Room|Monster")
+	TObjectPtr<URoomMonsterSpawnerComponent> MonsterSpawnerComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Door")
 	TSubclassOf<ADoorActor> DoorActorClass;
