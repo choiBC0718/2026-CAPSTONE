@@ -82,10 +82,12 @@ void AStageExitActor::OnTriggerBeginOverlap(
 	bool bFromSweep,
 	const FHitResult& SweepResult)
 {
-	if (!bEnabled || !Cast<APawn>(OtherActor))
+	if (!bEnabled || bIsProcessingExit || !Cast<APawn>(OtherActor))
 	{
 		return;
 	}
+
+	bIsProcessingExit = true;
 
 	if (GEngine)
 	{
@@ -108,6 +110,7 @@ void AStageExitActor::OnTriggerBeginOverlap(
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, TEXT("StageExit: StageManager not found"));
 		}
+		bIsProcessingExit = false;
 		return;
 	}
 

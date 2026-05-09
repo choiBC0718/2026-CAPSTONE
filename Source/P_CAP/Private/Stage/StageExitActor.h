@@ -42,6 +42,9 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage Exit", meta=(AllowPrivateAccess="true"))
 	bool bEnabled = true;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Stage Exit", meta=(AllowPrivateAccess="true"))
+	bool bIsProcessingExit = false;
+
 	UFUNCTION()
 	void OnTriggerBeginOverlap(
 		UPrimitiveComponent* OverlappedComponent,

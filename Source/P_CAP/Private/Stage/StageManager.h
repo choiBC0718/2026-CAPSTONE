@@ -7,7 +7,9 @@
 #include "StageManager.generated.h"
 
 class AMapManager;
+class APlayerController;
 class UStageDataAsset;
+class UStageLoadingWidget;
 
 UCLASS()
 class AStageManager : public AActor
@@ -31,6 +33,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage", meta=(AllowPrivateAccess="true"))
@@ -42,8 +45,30 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<AMapManager> MapManager;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage|Loading", meta=(AllowPrivateAccess="true"))
+	TSubclassOf<UStageLoadingWidget> LoadingWidgetClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage|Loading", meta=(AllowPrivateAccess="true", ClampMin="0.1"))
+	float LoadingTotalDuration = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage|Loading", meta=(AllowPrivateAccess="true", ClampMin="0.0", ClampMax="1.0"))
+	float StageGenerateProgressRatio = 0.4f;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Stage", meta=(AllowPrivateAccess="true"))
 	int32 CurrentStageIndex = INDEX_NONE;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UStageLoadingWidget> ActiveLoadingWidget;
+
+	int32 PendingStageIndex = INDEX_NONE;
+	float LoadingElapsedTime = 0.f;
+	bool bIsLoadingStage = false;
+	bool bGeneratedPendingStage = false;
+
 	AMapManager* ResolveMapManager();
+	void StartStageWithLoading(int32 StageIndex);
+	void ShowLoadingScreen();
+	void HideLoadingScreen();
+	void SetLoadingProgress(float Progress);
+	void SetPlayerInputEnabled(bool bEnabled);
 };
