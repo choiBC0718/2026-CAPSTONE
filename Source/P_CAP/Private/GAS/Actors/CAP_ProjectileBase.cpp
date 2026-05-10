@@ -26,9 +26,9 @@ ACAP_ProjectileBase::ACAP_ProjectileBase()
 	
 	ProjMovementComp = CreateDefaultSubobject<UProjectileMovementComponent>("Projectile Movement Component");
 	ProjMovementComp->UpdatedComponent = CollisionComp;
-	ProjMovementComp->InitialSpeed = ProjectileSpeed;
-    ProjMovementComp->MaxSpeed = ProjectileSpeed;
 	ProjMovementComp->bRotationFollowsVelocity = true;
+	ProjMovementComp->bIsHomingProjectile = false;
+	ProjMovementComp->ProjectileGravityScale = 1.f;
 
 	InitialLifeSpan = 5.f;
 }
@@ -42,57 +42,69 @@ void ACAP_ProjectileBase::BeginPlay()
 	HitActors.Empty();
 }
 
-void ACAP_ProjectileBase::InitProjectile(FVector TargetOrDirection, float InExplosionRadius, float ArcTension, FGameplayEffectSpecHandle InHitEffectSpecHandle, FGameplayTag CueTag,FGameplayTag InTriggerEventTag, USceneComponent* HomingTarget)
+void ACAP_ProjectileBase::InitProjectile(const FProjectileInitData& InitData)
 {
-	HitGameplayCueTag = CueTag;
-	HitEffectHandle = InHitEffectSpecHandle;
-	TriggerEventTag = InTriggerEventTag;
-	ExplosionRadius = InExplosionRadius;
+	ProjectileType		= InitData.ProjectileType;
+	ProjectileSpeed		= InitData.ProjectileSpeed;
+	MaxDistance			= InitData.MaxDistance;
+	ExplosionRadius		= InitData.ExplosionRadius;
+	HitEffectHandle		= InitData.DamageSpecHandle;
+	HitGameplayCueTag	= InitData.CueTag;
+	HitTriggerTag		= InitData.HitTriggerTag;
+	MaxHitCount			= InitData.MaxHitCount;
+
+	FVector LaunchDir	= InitData.LaunchDir;
+	ProjMovementComp->InitialSpeed = ProjectileSpeed;
+	ProjMovementComp->MaxSpeed = ProjectileSpeed;
+	ProjMovementComp->bInitialVelocityInLocalSpace = false;
+
+	if (CollisionComp)
+	{
+		if (ProjectileType == EProjectileType::Falling || ProjectileType == EProjectileType::Arc)
+			CollisionComp->SetCollisionProfileName(FName("Projectile_Arc"));
+		else
+			CollisionComp->SetCollisionProfileName(FName("Projectile_Straight"));
+	}
 	
 	switch (ProjectileType)
 	{
 		case EProjectileType::Straight:
 		{
-			ProjMovementComp->ProjectileGravityScale = 0.f;
-			float TravelMaxTime = MaxDistance/ ProjectileSpeed;
-			GetWorld()->GetTimerManager().SetTimer(ProjTimerHandle, this, &ACAP_ProjectileBase::TravelMaxDistanceReached, TravelMaxTime);
+			ProjMovementComp->Velocity = InitData.LaunchDir.GetSafeNormal() * ProjectileSpeed;
+			StraightTypeInit();
 			break;
 		}
 		case EProjectileType::Arc:
 		{
-			ProjMovementComp->ProjectileGravityScale = 1.f;
 			FVector LaunchVel;
-			bool bSuccess = UGameplayStatics::SuggestProjectileVelocity_CustomArc(this, LaunchVel, GetActorLocation(), TargetOrDirection, 0.f, ArcTension);
+			bool bSuccess = UGameplayStatics::SuggestProjectileVelocity_CustomArc(this, LaunchVel, GetActorLocation(), InitData.TargetLocation, 0.f, InitData.ArcTension);
 			if (bSuccess)
 			{
+				ProjMovementComp->InitialSpeed = 0.f;
+				ProjMovementComp->MaxSpeed = 0.f;
 				ProjMovementComp->Velocity = LaunchVel;
-			}
-			else
-			{
-				ProjectileType = EProjectileType::Straight;
-				InitProjectile(TargetOrDirection - GetActorLocation(), 0.f, 0.f, InHitEffectSpecHandle, CueTag, TriggerEventTag);
 			}
 			break;
 		}
 		case EProjectileType::Falling:
 		{
-			ProjMovementComp->Velocity = FVector(0.f, 0.f, -1.f);
+			ProjMovementComp->Velocity = LaunchDir.GetSafeNormal() * ProjectileSpeed;
 			break;
 		}
 		case EProjectileType::Homing:
 		{
-			ProjMovementComp->ProjectileGravityScale = 0.f;
-			if (HomingTarget)
+			if (InitData.HomingTarget.IsValid())
 			{
-				ProjMovementComp->Velocity = TargetOrDirection * ProjectileSpeed*0.5f;
+				ProjMovementComp->Velocity = LaunchDir.GetSafeNormal() * ProjectileSpeed*0.5f;
 				ProjMovementComp->bIsHomingProjectile = true;
-				ProjMovementComp->HomingTargetComponent = HomingTarget;
+				ProjMovementComp->HomingTargetComponent = InitData.HomingTarget.Get();
 				ProjMovementComp->HomingAccelerationMagnitude = ProjectileSpeed * 6.f;
 			}
 			else
 			{
 				ProjectileType = EProjectileType::Straight;
-				InitProjectile(TargetOrDirection, InExplosionRadius, 0.f, InHitEffectSpecHandle, CueTag, TriggerEventTag, nullptr);
+				ProjMovementComp->Velocity = InitData.LaunchDir.GetSafeNormal() * ProjectileSpeed;
+				StraightTypeInit();
 			}
 			break;
 		}
@@ -103,17 +115,14 @@ void ACAP_ProjectileBase::OnProjectileOverlap(UPrimitiveComponent* OverlappedCom
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (!OtherActor || OtherActor==GetOwner() || OtherActor == this || OtherActor->GetClass() == this->GetClass())
-	{
 		return;
-	}
 
-	if (ProjectileType == EProjectileType::Straight)
+	if (ProjectileType == EProjectileType::Straight || ProjectileType==EProjectileType::Homing)
 		ProcessStraightHit(OtherActor,SweepResult);
 	else
-	{
 		ProcessExplosiveHit(SweepResult);
-	}
-	//UE_LOG(LogTemp,Warning,TEXT("발생시키는 트리거 태그 = %s"),*TriggerEventTag.ToString());
+	
+	//UE_LOG(LogTemp,Warning,TEXT("발생시키는 트리거 태그 = %s"),*HitTriggerTag.ToString());
 }
 
 void ACAP_ProjectileBase::TravelMaxDistanceReached()
@@ -153,7 +162,7 @@ void ACAP_ProjectileBase::ProcessStraightHit(AActor* OtherActor, const FHitResul
 	FHitResult FinalHit(OtherActor, nullptr, GetActorLocation(), GetActorForwardVector());
 	FGameplayAbilityTargetData_SingleTargetHit* TargetData = new FGameplayAbilityTargetData_SingleTargetHit(FinalHit);
 	Payload.TargetData.Add(TargetData);
-	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetInstigator(), TriggerEventTag, Payload);
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetInstigator(), HitTriggerTag, Payload);
 
 	SendLocalGameplayCue(SweepResult);
 
@@ -178,7 +187,7 @@ void ACAP_ProjectileBase::ProcessExplosiveHit(const FHitResult& SweepResult)
 
 	TArray<FOverlapResult> Overlaps;
 	FCollisionObjectQueryParams ObjQueryParams;
-	ObjQueryParams.AddObjectTypesToQuery(ECC_Hitbox); // 폭발은 Hitbox에게만 데미지
+	ObjQueryParams.AddObjectTypesToQuery(ECC_Hitbox);
 
 	FCollisionShape SphereShape = FCollisionShape::MakeSphere(ExplosionRadius);
 	TArray<TWeakObjectPtr<AActor>> HitActorsArray;
@@ -212,10 +221,17 @@ void ACAP_ProjectileBase::ProcessExplosiveHit(const FHitResult& SweepResult)
 
 	if (Payload.TargetData.Num() > 0)
 	{
-		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetInstigator(), TriggerEventTag, Payload);
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetInstigator(), HitTriggerTag, Payload);
 	}
 
 	SendLocalGameplayCue(SweepResult);
 	Destroy();
 }
 
+void ACAP_ProjectileBase::StraightTypeInit()
+{
+	ProjMovementComp->ProjectileGravityScale = 0.f;
+
+	float TravelMaxTime = MaxDistance / ProjectileSpeed;
+	GetWorld()->GetTimerManager().SetTimer(ProjTimerHandle, this, &ACAP_ProjectileBase::TravelMaxDistanceReached, TravelMaxTime);
+}

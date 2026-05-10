@@ -5,87 +5,18 @@
 #include "CoreMinimal.h"
 #include "CAP_ItemDataAsset.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
-#include "InstancedStruct.h"
 #include "CAP_WeaponDataAsset.generated.h"
 
 
-USTRUCT(BlueprintType)
-struct FSkillLogicDataBase
-{
-	GENERATED_BODY()
-	virtual ~FSkillLogicDataBase() = default;
-
-	virtual int32 GetNumOfProjectiles() const {return 1;}
-	virtual int32 GetMaxHitCount() const {return 1;}
-	virtual float GetSpreadAngle() const {return 0.f;}
-	virtual TSoftClassPtr<class ACAP_ProjectileBase> GetProjectileClass() const {return nullptr;}
-};
-// 투사체 전용 데이터
-USTRUCT(BlueprintType)
-struct FProjectileLogicData: public FSkillLogicDataBase
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSoftClassPtr<class ACAP_ProjectileBase> ProjectileClass = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "1"))
-	int32 NumOfProjectiles = 1;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "1"))
-	int32 MaxHitCount = 1;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(EditCondition = "NumOfProjectiles > 1"))
-	float SpreadAngle = 30.f;
-
-	virtual int32 GetNumOfProjectiles() const override {return NumOfProjectiles;}
-	virtual int32 GetMaxHitCount() const override {return MaxHitCount;}
-	virtual float GetSpreadAngle() const override {return SpreadAngle;}
-	virtual TSoftClassPtr<class ACAP_ProjectileBase> GetProjectileClass() const override {return ProjectileClass;}
-};
-// 타게팅 전용 데이터
-USTRUCT(BlueprintType)
-struct FTargetingLogicData : public FSkillLogicDataBase
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSoftObjectPtr<class UAnimMontage> CastMontage = nullptr;
-	// 스킬이 시전될 타겟 액터
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSoftClassPtr<class ACAP_TargetActor> TargetActorClass = nullptr;
-	// 스킬 시전 가능한 최대 사거리 인디케이터
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSoftClassPtr<class ACAP_TargetRangeIndicator> RangeIndicatorClass = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float MaxTargetingRange = 1000.f;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float TargetAreaRadius = 300.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSoftClassPtr<class ACAP_ProjectileBase> ProjectileClass = nullptr;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
-	float FallingSpawnHeight = 1000.f;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FName ProjectileSocketName = NAME_None;
-	/*
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "1"))
-	int32 NumOfProjectiles = 1;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "1"))
-	int32 MaxHitCount = 1;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float SpreadAngle = 30.f;
-
-	virtual int32 GetNumOfProjectiles() const override {return NumOfProjectiles;}
-	virtual int32 GetMaxHitCount() const override {return MaxHitCount;}
-	virtual float GetSpreadAngle() const override {return SpreadAngle;}
-	*/
-	virtual TSoftClassPtr<class ACAP_ProjectileBase> GetProjectileClass() const override {return ProjectileClass;}
-};
 
 UENUM(BlueprintType)
-enum class ESkillLogicType : uint8
+enum class EStatusEffectType : uint8
 {
-	Melee			UMETA(DisplayName = "근접 로직"),
-	Projectile		UMETA(DisplayName = "투사체 로직"),
-	Targeting		UMETA(DisplayName = "타게팅 로직")
+	None		UMETA(DisplayName = "None"),
+	Freeze		UMETA(DisplayName = "Freeze"),
+	Bleed		UMETA(DisplayName = "Bleed"),
+	Burn		UMETA(DisplayName = "Burn"),
+	Stun		UMETA(DisplayName = "Stun"),
 };
 
 UENUM(BlueprintType)
@@ -101,12 +32,12 @@ struct FWeaponSkillData : public FTableRowBase
 {
 	GENERATED_BODY()
 
-	/** 스킬이 사용할 GA 클래스*/
+	/** 스킬이 사용할 입력 로직 클래스 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Logic")
-	TSoftClassPtr<class UCAP_GameplayAbility> AbilityClass = nullptr;
-	/** GA 클래스에서 실행시킬 Task 분기를 위한 구분 */
+	TSubclassOf<class UGA_FlowBase> InputAbilityClass = nullptr;
+	/** 스킬의 결과물 클래스 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Logic")
-	ESkillLogicType LogicType = ESkillLogicType::Melee;
+	TArray<TSubclassOf<class UGA_PayloadBase>> PayloadAbilityClass;
 	
 	/** 스킬 애니메이션 몽타주*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Animation")
@@ -140,41 +71,6 @@ struct FWeaponSkillData : public FTableRowBase
 	/** 스킬 아이콘*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill UI")
 	TSoftObjectPtr<class UTexture2D> SkillIcon = nullptr;
-
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Logic", meta=(BaseStruct="/Script/P_CAP.SkillLogicDataBase", ExcludeBaseStruct))
-	FInstancedStruct LogicData;
-	/*
-	// 투사체 클래스 (Targeting 로직에 넣을 시 타게팅 + 투사체로 실행)
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs", meta = (EditCondition = "LogicType == ESkillLogicType::Projectile || LogicType == ESkillLogicType::Targeting"))
-	TSoftClassPtr<class ACAP_ProjectileBase> ProjectileClass = nullptr;
-	// 투사체를 스폰시킬 무기 에셋의 소켓 이름
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs", meta = (EditCondition = "LogicType == ESkillLogicType::Projectile || LogicType == ESkillLogicType::Targeting"))
-	FName ProjectileSocketName = NAME_None;
-	
-	// 캐스트 몽타주
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Targeting", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
-	TSoftObjectPtr<class UAnimMontage> CastMontage = nullptr;
-	// 타겟 액터 클래스
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Targeting", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
-	TSoftClassPtr<class ACAP_TargetActor> TargetActorClass = nullptr;
-	// 타게팅 사거리 인디케이터
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Targeting", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
-	TSoftClassPtr<class ACAP_TargetRangeIndicator> RangeIndicatorClass = nullptr;
-	// 타게팅 사거리
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Targeting", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
-	float MaxTargetingRange = 1000.f;
-	// 데미지 구역 크기
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Targeting", meta = (EditCondition = "LogicType == ESkillLogicType::Targeting"))
-	float TargetAreaRadius = 300.f;
-	
-	// 투사체 개수
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Projectile", meta = (EditCondition = "LogicType == ESkillLogicType::Projectile"))
-	int32 NumOfProjectiles = 1;
-	// 투사체 퍼짐 각도
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Needs|Projectile", meta = (EditCondition = "LogicType == ESkillLogicType::Projectile && NumOfProjectiles>=2"))
-	float SpreadAngle = 30.f;
-	*/
 };
 
 UENUM(BlueprintType)

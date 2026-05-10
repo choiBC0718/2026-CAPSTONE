@@ -67,26 +67,11 @@ void UCAP_WeaponInstance::LoadWeaponAssets(FStreamableDelegate OnLoaded)
 
 	auto ExtractAssetsFromSkill = [&](const FWeaponSkillData& SkillData)
 	{
-		if (!SkillData.AbilityClass.IsNull())
-			AssetsToLoad.AddUnique(SkillData.AbilityClass.ToSoftObjectPath());
 		if (!SkillData.AbilityMontage.IsNull())
 			AssetsToLoad.AddUnique(SkillData.AbilityMontage.ToSoftObjectPath());
-
-		if (const FTargetingLogicData* TargetingData = SkillData.LogicData.GetPtr<FTargetingLogicData>())
+		if (!SkillData.SkillIcon.IsNull())
 		{
-			if (!TargetingData->CastMontage.IsNull())
-				AssetsToLoad.AddUnique(TargetingData->CastMontage.ToSoftObjectPath());
-			if (!TargetingData->TargetActorClass.IsNull())
-				AssetsToLoad.AddUnique(TargetingData->TargetActorClass.ToSoftObjectPath());
-			if (!TargetingData->RangeIndicatorClass.IsNull())
-				AssetsToLoad.AddUnique(TargetingData->RangeIndicatorClass.ToSoftObjectPath());
-			if (!TargetingData->ProjectileClass.IsNull())
-				AssetsToLoad.AddUnique(TargetingData->ProjectileClass.ToSoftObjectPath());
-		}
-		else if (const FProjectileLogicData* ProjData = SkillData.LogicData.GetPtr<FProjectileLogicData>())
-		{
-			if (!ProjData->ProjectileClass.IsNull())
-				AssetsToLoad.AddUnique(ProjData->ProjectileClass.ToSoftObjectPath());
+			AssetsToLoad.AddUnique(SkillData.SkillIcon.ToSoftObjectPath());
 		}
 	};
 	

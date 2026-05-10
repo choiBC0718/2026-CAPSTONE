@@ -1,7 +1,7 @@
   // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "GAS/Ability/GameplayAbility_ChargeAttack.h"
+#include "GAS/Ability/Flow/GameplayAbility_ChargeAttack.h"
 
 #include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
@@ -18,9 +18,16 @@ void UGameplayAbility_ChargeAttack::ActivateAbility(const FGameplayAbilitySpecHa
  	const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-
+	if (!K2_CommitAbility())
+	{
+		K2_EndAbility();
+		return;
+	}
 	if (!IsActive())
 		return;
+	
+  	TickRotTask = UAbilityTask_TickRotToCursor::TickRotToCursor(this, TickRotSpeed);
+  	TickRotTask->ReadyForActivation();
 	
 	UAbilityTask_WaitGameplayEvent* WaitChargeStartTag = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, ChargeStartTag);
 	WaitChargeStartTag->EventReceived.AddDynamic(this, &UGameplayAbility_ChargeAttack::OnChargeStartTagReceived);
@@ -29,9 +36,6 @@ void UGameplayAbility_ChargeAttack::ActivateAbility(const FGameplayAbilitySpecHa
 	UAbilityTask_WaitInputRelease* InputReleaseTask = UAbilityTask_WaitInputRelease::WaitInputRelease(this);
   	InputReleaseTask->OnRelease.AddDynamic(this, &UGameplayAbility_ChargeAttack::OnInputReleased);
   	InputReleaseTask->ReadyForActivation();
-	
-  	TickRotTask = UAbilityTask_TickRotToCursor::TickRotToCursor(this, 100.f);
-  	TickRotTask->ReadyForActivation();
 }
 
 void UGameplayAbility_ChargeAttack::OnChargeStartTagReceived(FGameplayEventData Payload)

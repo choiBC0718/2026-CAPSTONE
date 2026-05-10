@@ -125,11 +125,9 @@ void UCAP_GameplayWidget::HandleDialogueTriggered(const FNPCData& NPCData)
 
 	if (APlayerController* PC = GetOwningPlayer())
 	{
-		FInputModeUIOnly InputMode;
+		FInputModeGameAndUI InputMode;
 		InputMode.SetWidgetToFocus(DialogueWidget->TakeWidget());
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		PC->SetInputMode(InputMode);
-		PC->bShowMouseCursor = true;
 	}
 	if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
 	{
@@ -196,33 +194,16 @@ void UCAP_GameplayWidget::CompleteDeactivateSwitcher()
 void UCAP_GameplayWidget::HandleDialogueFinished()
 {
 	InteractPanelWidget->SetVisibility(ESlateVisibility::Visible);
-	if (APlayerController* PC = GetOwningPlayer())
-	{
-		FInputModeGameOnly InputMode;
-		PC->SetInputMode(InputMode);
-		PC->bShowMouseCursor = false;
-	}
 }
 
 void UCAP_GameplayWidget::EnterUIMode()
 {
 	if (APlayerController* PC = GetOwningPlayer())
-	{
 		PC->SetPause(true);
-		FInputModeGameAndUI InputMode;
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		InputMode.SetHideCursorDuringCapture(false);
-		PC->SetInputMode(InputMode);
-	}
 }
 
 void UCAP_GameplayWidget::ExitUIMode()
 {
 	if (APlayerController* PC = GetOwningPlayer())
-	{
 		PC->SetPause(false);
-		FInputModeGameOnly InputMode;
-		InputMode.SetConsumeCaptureMouseDown(false);
-		PC->SetInputMode(InputMode);
-	}
 }

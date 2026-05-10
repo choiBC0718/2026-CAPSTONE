@@ -9,6 +9,8 @@
 #include "GameFramework/Character.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Ability/CAP_GameplayAbility.h"
+#include "GAS/Ability/Flow/GA_FlowBase.h"
+#include "GAS/Ability/Payload/GA_PayloadBase.h"
 
 UCAP_WeaponComponent::UCAP_WeaponComponent()
 {
@@ -112,8 +114,7 @@ void UCAP_WeaponComponent::SwapWeapon()
 	int32 NextIndex = (CurrentWeaponIndex ==0) ? 1:0;
 	if (EquippedWeapons[NextIndex] == nullptr)
 		return;
-	// 교체된 무기 능력 언마운트
-	UnmapWeaponAbilities(EquippedWeapons[CurrentWeaponIndex]);
+
 	if (ASC)
 		ASC->CancelAllAbilities();
 
@@ -122,7 +123,6 @@ void UCAP_WeaponComponent::SwapWeapon()
 	{
 		if (UAnimInstance* AnimInst = OwnerCharacter->GetMesh()->GetAnimInstance())
 		{
-			// BlendOut 시간을 0.0f로 주어 몽타주를 1프레임 만에 즉시 꺼버립니다!
 			AnimInst->Montage_Stop(0.0f, nullptr);
 		}
 	}
@@ -191,7 +191,6 @@ void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 	}
 
 	GrantWeaponAbilities(WeaponInstance);
-	MapWeaponAbilities(WeaponInstance);
 
 	if (OnWeaponChanged.IsBound())
 	{
@@ -217,65 +216,46 @@ void UCAP_WeaponComponent::GrantWeaponAbilities(class UCAP_WeaponInstance* Weapo
 {
 	if (!ASC || !WeaponInst || WeaponInst->GrantedAbilityHandles.Num() > 0)
 		return;
+
+	const int32 PAYLOAD_INPUT_OFFSET = 100;
 	// WeaponInstance에 부여받은 능력을 추가하기
 	const FWeaponSkillData* BasicAttack = WeaponInst->GetBasicAttack();
-	if (BasicAttack && BasicAttack->AbilityClass.Get())
+	if (BasicAttack)
 	{
-		FGameplayAbilitySpec Spec(BasicAttack->AbilityClass.Get(), 1, INDEX_NONE, GetOwner());
-		WeaponInst->GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
-	}
-	
-	for (const FWeaponSkillData& SkillData : WeaponInst->GetGrantedSkills())
-	{
-		if (SkillData.AbilityClass.Get())
+		int32 BasicInputID = static_cast<int32>(EAbilityInputID::BasicAttack);
+		if (BasicAttack->InputAbilityClass)
 		{
-			FGameplayAbilitySpec Spec(SkillData.AbilityClass.Get(), 1, INDEX_NONE, GetOwner());
+			FGameplayAbilitySpec Spec(BasicAttack->InputAbilityClass, 1, BasicInputID, GetOwner());
 			WeaponInst->GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
 		}
-	}
-}
-
-void UCAP_WeaponComponent::MapWeaponAbilities(class UCAP_WeaponInstance* WeaponInst)
-{
-	if (!ASC || !WeaponInst)
-		return;
-
-	int32 HandleIndex = 0;
-	// HandleInex ( 0 = BasicAttack / 1 = Skill1 / 2 = Skill2 )
-	if (WeaponInst->GetBasicAttack() && WeaponInst->GetBasicAttack()->AbilityClass.Get())
-	{
-		if (WeaponInst->GrantedAbilityHandles.IsValidIndex(HandleIndex))
+		for (TSubclassOf<UGA_PayloadBase> PayloadClass : BasicAttack->PayloadAbilityClass)
 		{
-			FGameplayAbilitySpec* Spec = ASC->FindAbilitySpecFromHandle(WeaponInst->GrantedAbilityHandles[HandleIndex]);
-			if (Spec) Spec->InputID = static_cast<int32>(EAbilityInputID::BasicAttack);
-			HandleIndex++;
+			if (PayloadClass)
+			{
+				FGameplayAbilitySpec PayloadSpec(PayloadClass, 1, BasicInputID + PAYLOAD_INPUT_OFFSET, GetOwner());
+				WeaponInst->GrantedAbilityHandles.Add(ASC->GiveAbility(PayloadSpec));
+			}
 		}
 	}
 
 	int32 SkillInputIndex = static_cast<int32>(EAbilityInputID::Skill1);
 	for (const FWeaponSkillData& SkillData : WeaponInst->GetGrantedSkills())
 	{
-		if (SkillData.AbilityClass.Get() && WeaponInst->GrantedAbilityHandles.IsValidIndex(HandleIndex))
+		if (SkillData.InputAbilityClass)
 		{
-			FGameplayAbilitySpec* Spec = ASC->FindAbilitySpecFromHandle(WeaponInst->GrantedAbilityHandles[HandleIndex]);
-			if (Spec) Spec->InputID = SkillInputIndex++;
-			HandleIndex++;
+			FGameplayAbilitySpec Spec(SkillData.InputAbilityClass, 1, SkillInputIndex, GetOwner());
+			WeaponInst->GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
 		}
-	}
-}
-
-void UCAP_WeaponComponent::UnmapWeaponAbilities(class UCAP_WeaponInstance* WeaponInst)
-{
-	if (!ASC || !WeaponInst)
-		return;
-
-	for (const FGameplayAbilitySpecHandle& Handle : WeaponInst->GrantedAbilityHandles)
-	{
-		FGameplayAbilitySpec* Spec = ASC->FindAbilitySpecFromHandle(Handle);
-		if (Spec)
+		
+		for (TSubclassOf<UGA_PayloadBase> PayloadClass : SkillData.PayloadAbilityClass)
 		{
-			Spec->InputID = INDEX_NONE;
+			if (PayloadClass)
+			{
+				FGameplayAbilitySpec PayloadSpec(PayloadClass, 1, SkillInputIndex + PAYLOAD_INPUT_OFFSET, GetOwner());
+				WeaponInst->GrantedAbilityHandles.Add(ASC->GiveAbility(PayloadSpec));
+			}
 		}
+		SkillInputIndex++;
 	}
 }
 

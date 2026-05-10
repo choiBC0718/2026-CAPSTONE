@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GAS/Ability/CAP_GameplayAbility.h"
+#include "GA_FlowBase.h"
 #include "GameplayAbility_ChargeAttack.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class UGameplayAbility_ChargeAttack : public UCAP_GameplayAbility
+class UGameplayAbility_ChargeAttack : public UGA_FlowBase
 {
 	GENERATED_BODY()
 
@@ -36,5 +36,10 @@ private:
 	class UAbilityTask_TickRotToCursor* TickRotTask;
 
 	float ChargeStartTime = 0.f;
+	// 회전 속도
+	UPROPERTY(EditDefaultsOnly, Category = "Ability")
+	float TickRotSpeed = 100.f;
+	// 최대 차징 시간
+	UPROPERTY(EditDefaultsOnly, Category = "Ability")
 	float MaxChargeTime = 3.f;
 };

@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GAS/Ability/CAP_GameplayAbility.h"
+#include "GA_FlowBase.h"
 #include "GameplayAbility_ComboAttack.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class UGameplayAbility_ComboAttack : public UCAP_GameplayAbility
+class UGameplayAbility_ComboAttack : public UGA_FlowBase
 {
 	GENERATED_BODY()
 

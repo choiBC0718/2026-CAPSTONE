@@ -1,15 +1,14 @@
    // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "GAS/Ability/Gameplayability_TargetingAoE.h"
+#include "GAS/Ability/Flow/Gameplayability_TargetingAoE.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitTargetData.h"
 #include "Data/CAP_WeaponDataAsset.h"
-#include "Engine/OverlapResult.h"
-#include "GAS/Actors/CAP_ProjectileBase.h"
+#include "GAS/Ability/Payload/GA_PayloadBase.h"
 #include "GAS/Actors/CAP_TargetActor.h"
 #include "GAS/Actors/CAP_TargetRangeIndicator.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
@@ -18,6 +17,7 @@
 UGameplayability_TargetingAoE::UGameplayability_TargetingAoE()
 {
 	BlockAbilitiesWithTag.AddTag(UCAP_AbilitySystemStatics::GetBasicAttackTag());
+	ConfirmTag = FGameplayTag::RequestGameplayTag("Ability.Event.TargetConfirmed");
 	SpawnedRangeIndicator = nullptr;
 }
 
@@ -28,28 +28,32 @@ void UGameplayability_TargetingAoE::ActivateAbility(const FGameplayAbilitySpecHa
 
 	const FWeaponSkillData* SkillData = GetSkillDataFromContext(Handle, ActorInfo);
 	if (!SkillData)
+	{
+		K2_EndAbility();
 		return;
-	const FTargetingLogicData* TargetingLogic = SkillData->LogicData.GetPtr<FTargetingLogicData>();
-	if (!TargetingLogic)
-		return;
+	}
 	
-   	if (TargetingLogic->RangeIndicatorClass)
+   	if (RangeIndicatorClass)
    	{
    		FVector SpawnLoc = GetAvatarActorFromActorInfo()->GetActorLocation();
-   		SpawnedRangeIndicator = GetWorld()->SpawnActor<ACAP_TargetRangeIndicator>(TargetingLogic->RangeIndicatorClass.Get(), SpawnLoc, FRotator::ZeroRotator);
+   		SpawnedRangeIndicator = GetWorld()->SpawnActor<ACAP_TargetRangeIndicator>(RangeIndicatorClass.Get(), SpawnLoc, FRotator::ZeroRotator);
    		if (SpawnedRangeIndicator)
    		{
    			SpawnedRangeIndicator->AttachToActor(GetAvatarActorFromActorInfo(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-   			SpawnedRangeIndicator->Initialize(TargetingLogic->MaxTargetingRange);
+   			SpawnedRangeIndicator->Initialize(MaxTargetingRange);
    		}
    	}
 
-   	if (TargetingLogic->TargetActorClass)
-   	{
-   		TargetActorClass = TargetingLogic->TargetActorClass.Get();
-   	}
+	float ReticleRadius = 0.f;
+	if (SkillData->PayloadAbilityClass.Num() > 0 && SkillData->PayloadAbilityClass[0])
+	{
+		if (UGA_PayloadBase* PayloadCDO = Cast<UGA_PayloadBase>(SkillData->PayloadAbilityClass[0]->GetDefaultObject()))
+		{
+			ReticleRadius = PayloadCDO->GetPayloadTargetingRadius();
+		}
+	}
 
-   	UAbilityTask_TickRotToCursor* RotToCursor = UAbilityTask_TickRotToCursor::TickRotToCursor(this, 500.f);
+   	UAbilityTask_TickRotToCursor* RotToCursor = UAbilityTask_TickRotToCursor::TickRotToCursor(this, TickRotToCursorSpeed);
    	RotToCursor->ReadyForActivation();
 
 	UAbilityTask_WaitTargetData* WaitTargetData = UAbilityTask_WaitTargetData::WaitTargetData(this, NAME_None,EGameplayTargetingConfirmation::UserConfirmed,TargetActorClass);
@@ -62,7 +66,7 @@ void UGameplayability_TargetingAoE::ActivateAbility(const FGameplayAbilitySpecHa
 	ACAP_TargetActor* GroundPick = Cast<ACAP_TargetActor>(TargetActor);
    	if (GroundPick)
    	{
-   		GroundPick->Initialize(TargetingLogic->MaxTargetingRange, TargetingLogic->TargetAreaRadius);
+   		GroundPick->Initialize(MaxTargetingRange, ReticleRadius);
    	}
    	WaitTargetData->FinishSpawningActor(this, TargetActor);
 }
@@ -70,16 +74,25 @@ void UGameplayability_TargetingAoE::ActivateAbility(const FGameplayAbilitySpecHa
 void UGameplayability_TargetingAoE::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
 	   const FGameplayAbilityActivationInfo ActivationInfo,bool bReplicateEndAbility, bool bWasCancelled)
 {
-   	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
    	if (SpawnedRangeIndicator)
    		SpawnedRangeIndicator->Destroy();
-   	bIsCasting = false;
+   	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
    void UGameplayability_TargetingAoE::TargetConfirmed(const FGameplayAbilityTargetDataHandle& Data)
 {
    	if (SpawnedRangeIndicator)
    		SpawnedRangeIndicator->Destroy();
+
+	if (MontageTask)
+		MontageTask->OnInterrupted.RemoveDynamic(this, &UGameplayability_TargetingAoE::K2_EndAbility);
+	
+	FGameplayEventData EventData;
+	// 클릭 좌표 포함
+	EventData.TargetData = Data;
+	EventData.Instigator = GetAvatarActorFromActorInfo();
+	// Payload가 트리거를 받을 태그로 이벤트 보냄
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetAvatarActorFromActorInfo(), ConfirmTag, EventData);
 	
 	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());   	
    	if (!SkillData)
@@ -87,46 +100,29 @@ void UGameplayability_TargetingAoE::EndAbility(const FGameplayAbilitySpecHandle 
    		K2_EndAbility();
    		return;
    	}
-	const FTargetingLogicData* TargetingLogic = SkillData->LogicData.GetPtr<FTargetingLogicData>();
-	if (!TargetingLogic || !TargetingLogic->CastMontage.Get())
-		return;
-
-	bIsCasting = true;
-   	if (Data.Data.IsValidIndex(0))
-   	{
-   		const FHitResult* Hit = Data.Data[0]->GetHitResult();
-   		if (Hit)
-   			CachedTargetLocation = Hit->ImpactPoint;
-   	}
-   	
-   	// 포물선 투사체 타게팅
-   	if (TargetingLogic->ProjectileClass.Get())
-   	{
-   		ProjectileTargetingConfirmed();
-   	}
-   	else
-   	{
-   		InstantTargetingConfirmed(Data);
-   	}
 	
-   	UAbilityTask_PlayMontageAndWait* CastMontage = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, TargetingLogic->CastMontage.Get());
-   	CastMontage->OnCancelled.AddDynamic(this, &UGameplayability_TargetingAoE::K2_EndAbility);
-   	CastMontage->OnCompleted.AddDynamic(this, &UGameplayability_TargetingAoE::K2_EndAbility);
-   	CastMontage->OnBlendOut.AddDynamic(this, &UGameplayability_TargetingAoE::K2_EndAbility);
-   	CastMontage->OnInterrupted.AddDynamic(this, &UGameplayability_TargetingAoE::K2_EndAbility);
-   	CastMontage->ReadyForActivation();
+	if (CastMontage)
+	{
+		UAbilityTask_PlayMontageAndWait* PlayCastMontage = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None,CastMontage);
+		PlayCastMontage->OnCancelled.AddDynamic(this, &UGameplayability_TargetingAoE::K2_EndAbility);
+		PlayCastMontage->OnBlendOut.AddDynamic(this, &UGameplayability_TargetingAoE::K2_EndAbility);
+		PlayCastMontage->OnCompleted.AddDynamic(this, &UGameplayability_TargetingAoE::K2_EndAbility);
+		PlayCastMontage->OnInterrupted.AddDynamic(this, &UGameplayability_TargetingAoE::K2_EndAbility);
+		PlayCastMontage->ReadyForActivation();
+	}
 }
 
 void UGameplayability_TargetingAoE::TargetCancelled(const FGameplayAbilityTargetDataHandle& Data)
 {
    	K2_EndAbility();
 }
-
+/*
 void UGameplayability_TargetingAoE::ProjectileTargetingConfirmed()
 {
 	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
 	if (!SkillData)
 		return;
+	
 	const FTargetingLogicData* TargetingLogic = SkillData->LogicData.GetPtr<FTargetingLogicData>();
 	if (!TargetingLogic)
 		return;
@@ -165,6 +161,7 @@ void UGameplayability_TargetingAoE::InstantTargetingConfirmed(const FGameplayAbi
 	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
 	if (!SkillData)
 		return;
+	
 	const FTargetingLogicData* TargetingLogic = SkillData->LogicData.GetPtr<FTargetingLogicData>();
 	if (!TargetingLogic)
 		return;
@@ -200,3 +197,4 @@ void UGameplayability_TargetingAoE::InstantTargetingConfirmed(const FGameplayAbi
 		}
 	}
 }
+*/
