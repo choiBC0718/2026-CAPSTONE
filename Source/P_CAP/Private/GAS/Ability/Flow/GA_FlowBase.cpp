@@ -11,11 +11,23 @@
 #include "Data/CAP_AbilitySystemGenerics.h"
 #include "GameFramework/RootMotionSource.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
+#include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
 #include "GAS/Tasks/AbilityTask_RotateToCursor.h"
 
 UGA_FlowBase::UGA_FlowBase()
 {
+	RMSTag = UCAP_AbilitySystemStatics::GetRMSTag();
+	DataCooldownTag = UCAP_AbilitySystemStatics::GetDataCooldownTag();
+	
+	AnimHitTag = UCAP_AbilitySystemStatics::GetAnimHitTag();
+	AnimSpawnTag = UCAP_AbilitySystemStatics::GetAnimSpawnTag();
+	
+	DoDamageTag = UCAP_AbilitySystemStatics::GetDamageTag();
+	SpawnProjectileTag = UCAP_AbilitySystemStatics::GetSpawnProjectileTag();
+	
+	TriggerCastBasicTag = UCAP_AbilitySystemStatics::GetItemTriggerCastBasic();
+	TriggerCastAbilityTag = UCAP_AbilitySystemStatics::GetItemTriggerCastAbility();
 }
 
 void UGA_FlowBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
@@ -34,9 +46,7 @@ void UGA_FlowBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 		K2_EndAbility();
 		return;
 	}
-	
 	ChargedTime = 1.f;
-
 	float AttackSpeed = 1.f;
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 		AttackSpeed = ASC->GetNumericAttribute(UCAP_AttributeSet::GetAttackSpeedAttribute());
@@ -57,9 +67,18 @@ void UGA_FlowBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 	UAbilityTask_WaitGameplayEvent* WaitRMSTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, RMSTag);
 	WaitRMSTask->EventReceived.AddDynamic(this, &UGA_FlowBase::OnRMSTagReceived);
 	WaitRMSTask->ReadyForActivation();
-
+	
 	// 기본공격인지 스킬인지 Cast 트리거 전송
 	BroadcastTriggerEvent(IsBasicAttack()?TriggerCastBasicTag:TriggerCastAbilityTag);
+
+	// 애님 몽타주에서 Hit타격 시점을 기다림 -> 타격 범위 내 몬스터 데이터를 가지고 Payload클래스 트리거 시킴
+	UAbilityTask_WaitGameplayEvent* WaitAnimHitTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, AnimHitTag);
+	WaitAnimHitTask->EventReceived.AddDynamic(this, &UGA_FlowBase::OnAnimHitTagReceived);
+	WaitAnimHitTask->ReadyForActivation();
+
+	UAbilityTask_WaitGameplayEvent* WaitAnimSpawnTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, AnimSpawnTag);
+	WaitAnimSpawnTask->EventReceived.AddDynamic(this, &UGA_FlowBase::OnAnimSpawnTagReceived);
+	WaitAnimSpawnTask->ReadyForActivation();
 }
 
 void UGA_FlowBase::ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
@@ -125,5 +144,26 @@ void UGA_FlowBase::OnRMSTagReceived(FGameplayEventData Payload)
 			this, NAME_None,ForwardDir, RMSNotify->RMSStrength, RMSNotify->RMSDuration,false, nullptr,ERootMotionFinishVelocityMode::SetVelocity,
 			FVector::ZeroVector, 0.f, false);
 		RMTask->ReadyForActivation();
+	}
+}
+
+void UGA_FlowBase::OnAnimHitTagReceived(FGameplayEventData Payload)
+{
+	BroadcastTriggerEvent(DoDamageTag, Payload.TargetData ,ChargedTime);
+}
+
+void UGA_FlowBase::OnAnimSpawnTagReceived(FGameplayEventData Payload)
+{
+	BroadcastTriggerEvent(SpawnProjectileTag, Payload.TargetData ,ChargedTime);
+}
+
+void UGA_FlowBase::ChangeCurrentMontagePlayRate(float PlayRate)
+{
+	if (UAnimInstance* AnimInst = GetOwnerAnimInstance())
+	{
+		if (UAnimMontage* AnimMontage = AnimInst->GetCurrentActiveMontage())
+		{
+			AnimInst->Montage_SetPlayRate(AnimMontage, PlayRate);
+		}
 	}
 }

@@ -36,6 +36,7 @@ void UGA_Payload_SpawnProjectile::ExecutePayloadLogic(const FGameplayEventData& 
 			}
 		}
 	}
+	//UE_LOG(LogTemp,Warning,TEXT("투사체 목표 위치 = %f	  %f  %f"),TargetLoc.X, TargetLoc.Y,TargetLoc.Z);
 	
 	if (TargetLoc.IsZero())
 		TargetLoc = SpawnLoc + SpawnRot.Vector() * MaxDistance;
@@ -57,6 +58,7 @@ void UGA_Payload_SpawnProjectile::SpawnProjectile(FVector SpawnLoc, FRotator Spa
 	{
 		DamageSpecHandle.Data->SetSetByCallerMagnitude(BaseDamageDataTag, SkillData->BaseDamage);
 		DamageSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->DamageMultiplier);
+		DamageSpecHandle.Data->SetSetByCallerMagnitude(ChargeMultiplierDataTag, EventData.EventMagnitude);
 	}
 
 	FGameplayTag HitTag = IsBasicAttack() ? TriggerHitBasicTag : TriggerHitAbilityTag;

@@ -23,6 +23,8 @@ public:
 
 	static FGameplayTag GetBasicAttackTag();
 	static FGameplayTag GetSkillAttackTag();
+	static FGameplayTag GetAnimHitTag();
+	static FGameplayTag GetAnimSpawnTag();
 	static FGameplayTag GetDamageTag();
 	static FGameplayTag GetRMSTag();
 	static FGameplayTag GetSpawnProjectileTag();

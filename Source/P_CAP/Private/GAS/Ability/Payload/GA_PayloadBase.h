@@ -17,7 +17,7 @@ class UGA_PayloadBase : public UCAP_GameplayAbility
 	GENERATED_BODY()
 
 public:
-	UGA_PayloadBase(){}
+	UGA_PayloadBase();
 
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override
 	{
@@ -37,4 +37,11 @@ protected:
 	 * 순수 가상 함수 (=0)를 객체를 만드려고 하여 발생하는 에러 방지
 	 */
 	virtual void ExecutePayloadLogic(const FGameplayEventData& EventData) PURE_VIRTUAL(UGA_PayloadBase::ExecutePayloadLogic, );
+
+	FGameplayTag TriggerHitBasicTag;
+	FGameplayTag TriggerHitAbilityTag;
+	
+	FGameplayTag BaseDamageDataTag;
+	FGameplayTag DamageMultiplierDataTag;
+	FGameplayTag ChargeMultiplierDataTag;
 };

@@ -4,6 +4,18 @@
 #include "GAS/Ability/Payload/GA_PayloadBase.h"
 
 #include "AbilitySystemComponent.h"
+#include "GAS/Setting/CAP_AbilitySystemStatics.h"
+
+UGA_PayloadBase::UGA_PayloadBase()
+{
+	BaseDamageDataTag = UCAP_AbilitySystemStatics::GetDataDamageBaseTag();
+	DamageMultiplierDataTag = UCAP_AbilitySystemStatics::GetDataDamageMultiplierTag();
+	ChargeMultiplierDataTag = UCAP_AbilitySystemStatics::GetAbilityChargeTimeTag();
+
+	
+	TriggerHitBasicTag = UCAP_AbilitySystemStatics::GetItemTriggerHitBasic();
+	TriggerHitAbilityTag = UCAP_AbilitySystemStatics::GetItemTriggerHitAbility();
+}
 
 bool UGA_PayloadBase::CanActivateAbility(const FGameplayAbilitySpecHandle Handle,
                                          const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags,

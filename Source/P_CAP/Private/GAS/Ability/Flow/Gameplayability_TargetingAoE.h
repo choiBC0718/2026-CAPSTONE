@@ -40,12 +40,11 @@ private:
 	void TargetConfirmed(const FGameplayAbilityTargetDataHandle& Data);
 	UFUNCTION()
 	void TargetCancelled(const FGameplayAbilityTargetDataHandle& Data);
-	
-	//void ProjectileTargetingConfirmed();
-	//void InstantTargetingConfirmed(const FGameplayAbilityTargetDataHandle& Data);
 
 	FGameplayTag ConfirmTag;
 	
+	UPROPERTY()
+	class UAbilityTask_TickRotToCursor* RotToCursor;
 	UPROPERTY()
 	class ACAP_TargetRangeIndicator* SpawnedRangeIndicator;
 };

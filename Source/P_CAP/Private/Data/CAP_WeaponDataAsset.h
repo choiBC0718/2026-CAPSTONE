@@ -44,22 +44,22 @@ struct FWeaponSkillData : public FTableRowBase
 	TSoftObjectPtr<class UAnimMontage> AbilityMontage = nullptr;
 
 	// 타격 대상에게 적용시킬 이펙트 큐 태그
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data", meta=(Categories="GameplayCue.Hit"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Effect", meta=(Categories="GameplayCue.Hit"))
 	FGameplayTag GameplayCueTag;
 	/** 스킬 데미지 타입 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Damage")
 	ESkillDamageType DamageType = ESkillDamageType::Physical;
 	/** 스킬이 보장할 기본 데미지 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Damage")
 	float BaseDamage =0.f;
 	/** 스킬 데미지 배수*/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Damage")
 	float DamageMultiplier = 1.f;
 	/** 스킬 쿨타임*/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Cooldown")
 	float CooldownTime = 1.f;
 	/** 스킬 쿨타임*/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill Data", meta=(Categories="Ability.Cooldown"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Cooldown", meta=(Categories="Ability.Cooldown"))
 	FGameplayTag CooldownTag;
 	
 	/** 스킬 이름*/

@@ -18,6 +18,7 @@ ACAP_Character::ACAP_Character()
 
 	GetMesh()->SetupAttachment(GetRootComponent());
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetMesh()->SetReceivesDecals(false);
 
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Target, ECR_Ignore);
 	GetCapsuleComponent()->SetCollisionObjectType(ECC_Hitbox);

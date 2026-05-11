@@ -29,22 +29,9 @@ protected:
 	FVector GetMuzzleSocketLocation(FName SocketName);
 	void SendGameplayCueEvent(FHitResult HitResult, const struct FWeaponSkillData* InSkillData);
 	void ApplyStatusEffectsToTarget(AActor* TargetActor, const TArray<EStatusEffectType>& Effects);
-
-	FGameplayTag TriggerCastBasicTag;
-	FGameplayTag TriggerCastAbilityTag;
-	FGameplayTag TriggerHitBasicTag;
-	FGameplayTag TriggerHitAbilityTag;
 	
-	FGameplayTag BaseDamageDataTag;
-	FGameplayTag DamageMultiplierDataTag;
-	FGameplayTag ChargeMultiplierDataTag;
-	
-	FGameplayTag DamageTag;
-	FGameplayTag RMSTag;
-	FGameplayTag DataCooldownTag;
-
 	TSubclassOf<UGameplayEffect> GetDamageGE() const;
 	
 	bool IsBasicAttack() const;
-	void BroadcastTriggerEvent(FGameplayTag EventTag, FGameplayAbilityTargetDataHandle TargetData = FGameplayAbilityTargetDataHandle()) const;
+	void BroadcastTriggerEvent(FGameplayTag EventTag, FGameplayAbilityTargetDataHandle TargetData = FGameplayAbilityTargetDataHandle(), float EventMagnitude = 1.f) const;
 };

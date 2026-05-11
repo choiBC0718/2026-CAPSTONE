@@ -16,19 +16,6 @@
 
 UCAP_GameplayAbility::UCAP_GameplayAbility()
 {
-	DamageTag = UCAP_AbilitySystemStatics::GetDamageTag();
-	RMSTag = UCAP_AbilitySystemStatics::GetRMSTag();
-
-	BaseDamageDataTag = UCAP_AbilitySystemStatics::GetDataDamageBaseTag();
-	DamageMultiplierDataTag = UCAP_AbilitySystemStatics::GetDataDamageMultiplierTag();
-	ChargeMultiplierDataTag = UCAP_AbilitySystemStatics::GetAbilityChargeTimeTag();
-	DataCooldownTag = UCAP_AbilitySystemStatics::GetDataCooldownTag();
-
-	TriggerCastBasicTag = UCAP_AbilitySystemStatics::GetItemTriggerCastBasic();
-	TriggerCastAbilityTag = UCAP_AbilitySystemStatics::GetItemTriggerCastAbility();
-	TriggerHitBasicTag = UCAP_AbilitySystemStatics::GetItemTriggerHitBasic();
-	TriggerHitAbilityTag = UCAP_AbilitySystemStatics::GetItemTriggerHitAbility();
-	
 	ActivationOwnedTags.AddTag(UCAP_AbilitySystemStatics::GetMovementBlockStateTag());
 }
 
@@ -59,13 +46,14 @@ bool UCAP_GameplayAbility::IsBasicAttack() const
 	return TargetInputID == static_cast<int32>(EAbilityInputID::BasicAttack);
 }
 
-void UCAP_GameplayAbility::BroadcastTriggerEvent(FGameplayTag EventTag,	FGameplayAbilityTargetDataHandle TargetData) const
+void UCAP_GameplayAbility::BroadcastTriggerEvent(FGameplayTag EventTag,	FGameplayAbilityTargetDataHandle TargetData, float EventMagnitude) const
 {
 	if (!EventTag.IsValid()) return;
 
 	FGameplayEventData Payload;
 	Payload.Instigator = GetAvatarActorFromActorInfo();
 	Payload.TargetData = TargetData;
+	Payload.EventMagnitude = EventMagnitude;
 	//UE_LOG(LogTemp,Warning,TEXT("트리거 발생 태그 = %s"),*EventTag.ToString());
 	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetAvatarActorFromActorInfo(), EventTag, Payload);
 }

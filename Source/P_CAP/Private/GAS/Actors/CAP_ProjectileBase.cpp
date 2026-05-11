@@ -11,6 +11,7 @@
 #include "Engine/OverlapResult.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystemComponent.h"
 #include "P_CAP/P_CAP.h"
 
 
@@ -28,8 +29,12 @@ ACAP_ProjectileBase::ACAP_ProjectileBase()
 	ProjMovementComp->UpdatedComponent = CollisionComp;
 	ProjMovementComp->bRotationFollowsVelocity = true;
 	ProjMovementComp->bIsHomingProjectile = false;
+	ProjMovementComp->bInitialVelocityInLocalSpace = false;
 	ProjMovementComp->ProjectileGravityScale = 1.f;
 
+	TrailParticleComp = CreateDefaultSubobject<UParticleSystemComponent>("Trail Particle Comp");
+	TrailParticleComp->SetupAttachment(MeshComp);
+	
 	InitialLifeSpan = 5.f;
 }
 
@@ -56,7 +61,6 @@ void ACAP_ProjectileBase::InitProjectile(const FProjectileInitData& InitData)
 	FVector LaunchDir	= InitData.LaunchDir;
 	ProjMovementComp->InitialSpeed = ProjectileSpeed;
 	ProjMovementComp->MaxSpeed = ProjectileSpeed;
-	ProjMovementComp->bInitialVelocityInLocalSpace = false;
 
 	if (CollisionComp)
 	{
@@ -83,11 +87,13 @@ void ACAP_ProjectileBase::InitProjectile(const FProjectileInitData& InitData)
 				ProjMovementComp->InitialSpeed = 0.f;
 				ProjMovementComp->MaxSpeed = 0.f;
 				ProjMovementComp->Velocity = LaunchVel;
+				ProjMovementComp->ProjectileGravityScale = 1.f;
 			}
 			break;
 		}
 		case EProjectileType::Falling:
 		{
+			ProjMovementComp->ProjectileGravityScale = 1.f;
 			ProjMovementComp->Velocity = LaunchDir.GetSafeNormal() * ProjectileSpeed;
 			break;
 		}
@@ -182,6 +188,10 @@ void ACAP_ProjectileBase::ProcessExplosiveHit(const FHitResult& SweepResult)
 		Destroy();
 		return;
 	}
+	
+	if (HitVFX != nullptr)
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitVFX, SweepResult.ImpactPoint);
+	
 	FGameplayEventData Payload;
 	Payload.Instigator = GetInstigator();
 

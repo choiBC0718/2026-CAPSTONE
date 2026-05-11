@@ -18,11 +18,6 @@ void UGameplayAbility_ChargeAttack::ActivateAbility(const FGameplayAbilitySpecHa
  	const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	if (!K2_CommitAbility())
-	{
-		K2_EndAbility();
-		return;
-	}
 	if (!IsActive())
 		return;
 	
@@ -66,6 +61,7 @@ void UGameplayAbility_ChargeAttack::ExecuteAttack(float ChargeTime)
   	}
   	bIsExecuted = true;
   	ChargedTime = ChargeTime;
+	
   	UAnimInstance* AnimInst = GetOwnerAnimInstance();
   	if (AnimInst)
   	{

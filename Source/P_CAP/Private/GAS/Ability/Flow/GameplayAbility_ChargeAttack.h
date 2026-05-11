@@ -35,7 +35,6 @@ private:
 	UPROPERTY()
 	class UAbilityTask_TickRotToCursor* TickRotTask;
 
-	float ChargeStartTime = 0.f;
 	// 회전 속도
 	UPROPERTY(EditDefaultsOnly, Category = "Ability")
 	float TickRotSpeed = 100.f;

@@ -5,13 +5,16 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Abilities/GameplayAbilityTypes.h"
+#include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "P_CAP/P_CAP.h"
 
 UANS_MeleeHitCheck::UANS_MeleeHitCheck()
 {
-	TargetSocketNames.Add("Hit_Start");
-	TargetSocketNames.Add("Hit_End");
+	TargetSocketNames.Add("FX_WeaponBase_R");
+	TargetSocketNames.Add("FX_WeaponTip_R");
+
+	EventTag = UCAP_AbilitySystemStatics::GetAnimHitTag();
 }
 
 void UANS_MeleeHitCheck::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,

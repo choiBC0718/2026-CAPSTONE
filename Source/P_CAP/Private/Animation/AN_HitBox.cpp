@@ -4,9 +4,15 @@
 #include "Animation/AN_HitBox.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
+#include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "P_CAP/P_CAP.h"
 
+
+UAN_HitBox::UAN_HitBox()
+{
+	EventTag = UCAP_AbilitySystemStatics::GetAnimHitTag();
+}
 
 void UAN_HitBox::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
                         const FAnimNotifyEventReference& EventReference)
