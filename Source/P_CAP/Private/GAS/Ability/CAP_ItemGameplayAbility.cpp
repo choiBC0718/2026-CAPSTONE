@@ -32,7 +32,7 @@ void UCAP_ItemGameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle 
 	{
 		if (Behavior)
 		{
-			UE_LOG(LogTemp,Warning,TEXT("아이템 장착됨"));
+			//UE_LOG(LogTemp,Warning,TEXT("아이템 장착됨"));
 			Behavior->OnEquipped(ItemInst,ASC);
 		}
 	}
@@ -51,7 +51,7 @@ void UCAP_ItemGameplayAbility::EndAbility(const FGameplayAbilitySpecHandle Handl
 		{
 			if (Behavior)
 			{
-				UE_LOG(LogTemp,Warning,TEXT("아이템 해제됨"));
+				//UE_LOG(LogTemp,Warning,TEXT("아이템 해제됨"));
 				Behavior->OnUnequipped(ItemInst,ASC);
 			}
 		}

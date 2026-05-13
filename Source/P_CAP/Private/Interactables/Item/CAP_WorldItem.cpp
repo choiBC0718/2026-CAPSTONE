@@ -15,16 +15,6 @@ ACAP_WorldItem::ACAP_WorldItem()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	
-	RootCollision = CreateDefaultSubobject<USphereComponent>("RootCollision");
-	SetRootComponent(RootCollision);
-	RootCollision->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-	RootCollision->SetCollisionResponseToAllChannels(ECR_Ignore);
-	RootCollision->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
-	RootCollision->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
-	RootCollision->SetSimulatePhysics(true);
-	
-	InteractionSphere->SetupAttachment(RootCollision);
-	
 	ItemMesh=CreateDefaultSubobject<UStaticMeshComponent>("ItemMesh");
 	ItemMesh->SetupAttachment(InteractionSphere);
 	ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -43,7 +33,6 @@ void ACAP_WorldItem::BeginPlay()
 		ItemInstance = NewObject<UCAP_ItemInstance>(this);
 		ItemInstance->Initialize(ItemDA);
 	}
-	RootCollision->OnComponentHit.AddDynamic(this, &ACAP_WorldItem::OnRootCollisionHit);
 
 	if (ItemDA)
 	{
@@ -106,18 +95,19 @@ FInteractionPayload ACAP_WorldItem::GetInteractionPayload() const
 	Payload.ActionData.LongActionText = TEXT("파괴하기");
 	Payload.ActionData.bShowCurrency = true;
 	Payload.ActionData.ActionCurrencyType = CachedRewardCurrencyType;
-	Payload.ActionData.CurrencyAmount = CachedBaseRewardAmount;
+	Payload.ActionData.CurrencyAmount = CachedBaseRewardAmount; 
 	
 	return Payload;
 }
 
 void ACAP_WorldItem::DropItem()
 {
-	if (RootCollision)
+	if (InteractionSphere)
 	{
 		FVector DropImpulse = FVector(0.f,0.f, 600.f);
-		RootCollision->AddImpulse(DropImpulse, NAME_None, true);
+		InteractionSphere->AddImpulse(DropImpulse, NAME_None, true);
 	}
+	SetItemStaticMesh();
 }
 
 void ACAP_WorldItem::InitializeItemData(UCAP_ItemDataAsset* NewItemDA)
@@ -125,8 +115,11 @@ void ACAP_WorldItem::InitializeItemData(UCAP_ItemDataAsset* NewItemDA)
 	ItemDA=NewItemDA;
 }
 
-void ACAP_WorldItem::OnRootCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
-                                        UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+void ACAP_WorldItem::SetItemStaticMesh()
 {
-	RootCollision->SetSimulatePhysics(false);
+	if (ItemInstance && ItemInstance->GetItemDA())
+	{
+		ItemMesh->SetStaticMesh(ItemDA->ItemMesh.LoadSynchronous());
+		ItemMesh->SetRelativeScale3D(ItemDA->MeshScale);
+	}
 }

@@ -44,7 +44,7 @@ void UCAP_WeaponComponent::BeginPlay()
 		BasicWeapon->InitializeWeapon(DefaultBasicWeapon);
 		EquippedWeapons[0] = BasicWeapon;
 		
-		BasicWeapon->LoadWeaponAssets(FStreamableDelegate::CreateLambda([this, BasicWeapon]()
+		BasicWeapon->LoadWeaponAssets(FStreamableDelegate::CreateWeakLambda(this,[this, BasicWeapon]()
 		{
 			ApplyWeaponData(BasicWeapon);
 		}));
@@ -69,24 +69,16 @@ void UCAP_WeaponComponent::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst
 			break;
 		}
 	}
-
-	// 빈 슬롯이 있다면 (현재 무기 하나 사용 중인 경우)
-	if (EmptySlotIndex != INDEX_NONE)
+	// 빈칸 없다면 현재 들고있는 무기 버림
+	if (EmptySlotIndex == INDEX_NONE)
 	{
-		// 슬롯에 바로 장착 및 데이터 적용
-		EquippedWeapons[EmptySlotIndex] = NewWeaponInst;
-		CurrentWeaponIndex = EmptySlotIndex;
-	}
-	// 빈 슬롯이 없다면 (현재 무기 두개 사용 중인 경우)
-	else
-	{
-		// 현재 들고있는 무기 땅에 드랍
-		UCAP_WeaponInstance* WeaponToDrop = EquippedWeapons[CurrentWeaponIndex];
+		EmptySlotIndex = CurrentWeaponIndex;
+		UCAP_WeaponInstance* WeaponToDrop = EquippedWeapons[EmptySlotIndex];
 		if (WeaponToDrop)
 		{
-			FVector DropLocation = GetOwner()->GetActorLocation();
+			FVector DropLocation = GetOwner()->GetActorLocation() + FVector::UpVector*10.f;
 			FTransform SpawnTransform(FRotator::ZeroRotator, DropLocation);
-			
+
 			ACAP_WorldWeapon* DroppedWeapon = GetWorld()->SpawnActorDeferred<ACAP_WorldWeapon>(ACAP_WorldWeapon::StaticClass(), SpawnTransform);
 			if (DroppedWeapon)
 			{
@@ -95,15 +87,15 @@ void UCAP_WeaponComponent::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst
 				DroppedWeapon->DropItem();
 			}
 			WeaponToDrop->UnloadWeaponAssets();
-			RemoveWeaponAbilities(WeaponToDrop);
 		}
-
-		// 무기 슬롯에 상호작용한 무기 장착 및 데이터 적용
-		EquippedWeapons[CurrentWeaponIndex] = NewWeaponInst;
 	}
-
+	ClearAbilities(EquippedWeapons[CurrentWeaponIndex]);
+	// 무기 장착
+	EquippedWeapons[EmptySlotIndex] = NewWeaponInst;
+	CurrentWeaponIndex = EmptySlotIndex;
+	
 	// 즉시 ApplyWeaponData가 아닌, 메모리에 로딩 후에 Apply ** 무기 획득이 처음인 경우에만 해당 (무기 교체시엔 적용 x)
-	NewWeaponInst->LoadWeaponAssets(FStreamableDelegate::CreateLambda([this, NewWeaponInst]()
+	NewWeaponInst->LoadWeaponAssets(FStreamableDelegate::CreateWeakLambda(this,[this, NewWeaponInst]()
 	{
 		ApplyWeaponData(NewWeaponInst);
 	}));
@@ -114,9 +106,7 @@ void UCAP_WeaponComponent::SwapWeapon()
 	int32 NextIndex = (CurrentWeaponIndex ==0) ? 1:0;
 	if (EquippedWeapons[NextIndex] == nullptr)
 		return;
-
-	if (ASC)
-		ASC->CancelAllAbilities();
+	ClearAbilities(EquippedWeapons[CurrentWeaponIndex]);
 
 	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
 	if (OwnerCharacter && OwnerCharacter->GetMesh())
@@ -148,7 +138,6 @@ class USkeletalMeshComponent* UCAP_WeaponComponent::GetWeaponMesh(EEquipHand Han
 
 void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInstance)
 {
-	ClearCurrentWeaponVisuals();
 	if (!WeaponInstance)
 		return;
 
@@ -159,6 +148,39 @@ void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
 	if (!OwnerCharacter)
 		return;
+	
+	if (UCAP_AnimInstance* AnimInst = Cast<UCAP_AnimInstance>(OwnerCharacter->GetMesh()->GetAnimInstance()))
+	{
+		AnimInst->UpdateWeaponAnimData(WeaponDA);
+	}
+	AttachWeaponMesh(WeaponDA);
+	GrantAbilities(WeaponInstance);
+
+	if (OnWeaponChanged.IsBound())
+	{
+		int32 StandbyIdx = (CurrentWeaponIndex ==0) ? 1:0;
+		UCAP_WeaponInstance* StandbyWeapon = nullptr;
+		if (EquippedWeapons.IsValidIndex(StandbyIdx))
+			StandbyWeapon = EquippedWeapons[StandbyIdx];
+		
+		// 현재 변경된 무기 인스턴스를 방송
+		OnWeaponChanged.Broadcast(WeaponInstance, StandbyWeapon);
+	}
+}
+
+void UCAP_WeaponComponent::AttachWeaponMesh(class UCAP_WeaponDataAsset* WeaponDA)
+{
+	if (!WeaponDA)
+		return;
+
+	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+	if (!OwnerCharacter)
+		return;
+	
+	if (WeaponMesh_R)
+		WeaponMesh_R->SetSkeletalMesh(nullptr);
+	if (WeaponMesh_L)
+		WeaponMesh_L->SetSkeletalMesh(nullptr);
 	
 	// DA에 설정한 메시, 위치로 설정
 	for (const FWeaponVisualInfo& VisualInfo :WeaponDA->WeaponVisualInfos)
@@ -184,85 +206,49 @@ void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 			TargetMesh->SetRelativeTransform(FinalTransform);
 		}
 	}
-	
-	if (UCAP_AnimInstance* AnimInst = Cast<UCAP_AnimInstance>(OwnerCharacter->GetMesh()->GetAnimInstance()))
-	{
-		AnimInst->UpdateWeaponAnimData(WeaponDA);
-	}
-
-	GrantWeaponAbilities(WeaponInstance);
-
-	if (OnWeaponChanged.IsBound())
-	{
-		int32 StandbyIdx = (CurrentWeaponIndex ==0) ? 1:0;
-		UCAP_WeaponInstance* StandbyWeapon = nullptr;
-		if (EquippedWeapons.IsValidIndex(StandbyIdx))
-			StandbyWeapon = EquippedWeapons[StandbyIdx];
-		
-		// 현재 변경된 무기 인스턴스를 방송
-		OnWeaponChanged.Broadcast(WeaponInstance, StandbyWeapon);
-	}
 }
 
-void UCAP_WeaponComponent::ClearCurrentWeaponVisuals()
-{
-	if (WeaponMesh_R)
-		WeaponMesh_R->SetSkeletalMesh(nullptr);
-	if (WeaponMesh_L)
-		WeaponMesh_L->SetSkeletalMesh(nullptr);
-}
-
-void UCAP_WeaponComponent::GrantWeaponAbilities(class UCAP_WeaponInstance* WeaponInst)
+void UCAP_WeaponComponent::GrantAbilities(class UCAP_WeaponInstance* WeaponInst)
 {
 	if (!ASC || !WeaponInst || WeaponInst->GrantedAbilityHandles.Num() > 0)
 		return;
 
 	const int32 PAYLOAD_INPUT_OFFSET = 100;
-	// WeaponInstance에 부여받은 능력을 추가하기
-	const FWeaponSkillData* BasicAttack = WeaponInst->GetBasicAttack();
-	if (BasicAttack)
-	{
-		int32 BasicInputID = static_cast<int32>(EAbilityInputID::BasicAttack);
-		if (BasicAttack->InputAbilityClass)
-		{
-			FGameplayAbilitySpec Spec(BasicAttack->InputAbilityClass, 1, BasicInputID, GetOwner());
-			WeaponInst->GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
-		}
-		for (TSubclassOf<UGA_PayloadBase> PayloadClass : BasicAttack->PayloadAbilityClass)
-		{
-			if (PayloadClass)
-			{
-				FGameplayAbilitySpec PayloadSpec(PayloadClass, 1, BasicInputID + PAYLOAD_INPUT_OFFSET, GetOwner());
-				WeaponInst->GrantedAbilityHandles.Add(ASC->GiveAbility(PayloadSpec));
-			}
-		}
-	}
 
-	int32 SkillInputIndex = static_cast<int32>(EAbilityInputID::Skill1);
-	for (const FWeaponSkillData& SkillData : WeaponInst->GetGrantedSkills())
+	// WeaponInstance에 부여받은 능력을 추가하기
+	auto GrantSkillFunc = [&](const FWeaponSkillData* SkillData, int32 InputID)
 	{
-		if (SkillData.InputAbilityClass)
+		if (!SkillData)
+			return;
+		if (SkillData->InputAbilityClass)
 		{
-			FGameplayAbilitySpec Spec(SkillData.InputAbilityClass, 1, SkillInputIndex, GetOwner());
+			FGameplayAbilitySpec Spec(SkillData->InputAbilityClass, 1, InputID, GetOwner());
 			WeaponInst->GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
 		}
-		
-		for (TSubclassOf<UGA_PayloadBase> PayloadClass : SkillData.PayloadAbilityClass)
+		for (TSubclassOf<UGA_PayloadBase> PayloadClass : SkillData->PayloadAbilityClass)
 		{
 			if (PayloadClass)
 			{
-				FGameplayAbilitySpec PayloadSpec(PayloadClass, 1, SkillInputIndex + PAYLOAD_INPUT_OFFSET, GetOwner());
-				WeaponInst->GrantedAbilityHandles.Add(ASC->GiveAbility(PayloadSpec));
+				FGameplayAbilitySpec Spec(PayloadClass, 1, InputID+PAYLOAD_INPUT_OFFSET, GetOwner());
+				WeaponInst->GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
 			}
 		}
+	};
+	
+	GrantSkillFunc(WeaponInst->GetBasicAttack(), static_cast<int32>(EAbilityInputID::BasicAttack));
+	
+	int32 SkillInputIndex = static_cast<int32>(EAbilityInputID::Skill1);
+	for (const FWeaponSkillData& Skill : WeaponInst->GetGrantedSkills())
+	{
+		GrantSkillFunc(&Skill, SkillInputIndex);
 		SkillInputIndex++;
 	}
 }
 
-void UCAP_WeaponComponent::RemoveWeaponAbilities(class UCAP_WeaponInstance* WeaponInst)
+void UCAP_WeaponComponent::ClearAbilities(class UCAP_WeaponInstance* WeaponInst)
 {
 	if (!ASC || !WeaponInst) return;
-
+	
 	for (const FGameplayAbilitySpecHandle& Handle : WeaponInst->GrantedAbilityHandles)
 	{
 		ASC->ClearAbility(Handle);
@@ -278,6 +264,3 @@ class UCAP_WeaponInstance* UCAP_WeaponComponent::GetCurrentWeaponInstance() cons
 	}
 	return nullptr;
 }
-
-
-

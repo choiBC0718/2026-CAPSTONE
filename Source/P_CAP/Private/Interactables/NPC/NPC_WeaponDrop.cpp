@@ -59,13 +59,3 @@ ENPCActionResult ANPC_WeaponDrop::ExecuteSpecialAction(AActor* Actor)
 	}
 	return ENPCActionResult::Failed;
 }
-
-bool ANPC_WeaponDrop::GetSpecialActionCost(AActor* Actor, int32& OutCost)
-{
-	if (InteractionCount == 1)
-	{
-		OutCost = CostMagicStone;
-		return true;
-	}
-	return false;
-}

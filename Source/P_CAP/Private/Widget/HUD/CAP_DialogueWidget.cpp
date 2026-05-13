@@ -14,8 +14,10 @@ void UCAP_DialogueWidget::NativeConstruct()
 	Super::NativeConstruct();
 
 	Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
-	if (!Player)
-		return;
+	if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
+	{
+		InteractComp->OnDialogueTriggered.AddDynamic(this, &UCAP_DialogueWidget::OnNPCDialogueStarted);
+	}
 
 	SetIsFocusable(true);
 
@@ -43,6 +45,13 @@ void UCAP_DialogueWidget::OnAnimationFinished_Implementation(const UWidgetAnimat
 	if (Animation == StartDialogueAnim && bIsClosing)
 	{
 		SetVisibility(ESlateVisibility::Collapsed);
+
+		if (APlayerController* PC = GetOwningPlayer())
+		{
+			Player->EnableInput(PC);
+			FInputModeGameAndUI InputMode;
+			PC->SetInputMode(InputMode);
+		}
 	}
 }
 
@@ -84,10 +93,28 @@ FReply UCAP_DialogueWidget::NativeOnKeyDown(const FGeometry& Geometry, const FKe
 	return Super::NativeOnKeyDown(Geometry, KeyEvent);
 }
 
+FReply UCAP_DialogueWidget::NativeOnMouseButtonDown(const FGeometry& Geometry, const FPointerEvent& MouseEvent)
+{
+	SetKeyboardFocus();
+	return FReply::Handled();
+}
+
 void UCAP_DialogueWidget::StartDialogue()
 {
 	bIsClosing = false;
 	PlayAnimation(StartDialogueAnim);
+
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		Player->DisableInput(PC);
+		
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(TakeWidget());
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		PC->SetInputMode(InputMode);
+
+		SetKeyboardFocus();
+	}
 }
 
 void UCAP_DialogueWidget::UpdateDialogueUI(const FNPCData& Data)
@@ -152,6 +179,7 @@ void UCAP_DialogueWidget::OnSpecialBtnClicked()
 		
 		ENPCActionResult Result = InteractComp->ExecuteNPCSpecialAction();
 		FString ResultText = TEXT("");
+		
 		if (const FString* FoundText = CachedNPCData.ResultDialogues.Find(Result))
 		{
 			ResultText = *FoundText;
@@ -162,12 +190,12 @@ void UCAP_DialogueWidget::OnSpecialBtnClicked()
 		bIsConfirming = false;
 		ChangeToRewardState(ResultText);
 	}
-	UE_LOG(LogTemp, Warning, TEXT("NPC 특수 로직 실행"));
 }	
 
 void UCAP_DialogueWidget::OnTalkBtnClicked()
 {
 	UE_LOG(LogTemp, Warning, TEXT("NPC 떠들기 시작"));
+	DialogueText->SetText(FText::FromString(CachedNPCData.SmallTalkText));
 }
 
 void UCAP_DialogueWidget::OnQuitBtnClicked()
@@ -189,6 +217,19 @@ void UCAP_DialogueWidget::OnBtnHovered()
 			RefreshButtonVisuals();
 			break;
 		}
+	}
+}
+
+void UCAP_DialogueWidget::OnNPCDialogueStarted(const FNPCData& NPCData)
+{
+	SetVisibility(ESlateVisibility::Visible);
+	StartDialogue();
+	UpdateDialogueUI(NPCData);
+
+	if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
+	{
+		OnDialogueFinished.RemoveDynamic(InteractComp, &UCAP_InteractionComponent::EndDialogueCamera);
+		OnDialogueFinished.AddDynamic(InteractComp, &UCAP_InteractionComponent::EndDialogueCamera);
 	}
 }
 

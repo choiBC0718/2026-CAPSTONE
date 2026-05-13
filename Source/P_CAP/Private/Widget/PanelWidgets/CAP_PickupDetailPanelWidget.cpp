@@ -3,26 +3,22 @@
 
 #include "Widget/PanelWidgets/CAP_PickupDetailPanelWidget.h"
 
-#include "AbilitySystemBlueprintLibrary.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Component/CAP_InteractionComponent.h"
 #include "Components/TextBlock.h"
-#include "GAS/Setting/CAP_AttributeSet.h"
-#include "Interactables/Weapon/CAP_WeaponInstance.h"
 #include "Interface/CAP_InteractInterface.h"
 #include "Widget/Common/CAP_ItemInteraction.h"
 
 void UCAP_PickupDetailPanelWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
 	
-	if (Player)
+	if (ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>())
 	{
 		if (UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent())
 		{
-			InteractionComp->OnInteractProgressUpdated.AddDynamic(this, &UCAP_PickupDetailPanelWidget::HandleUpdateInteractProgress);
 			InteractionComp->OnInteractableChanged.AddDynamic(this, &UCAP_PickupDetailPanelWidget::HandleInteractableChanged);
+			InteractionComp->OnDialogueTriggered.AddDynamic(this, &UCAP_PickupDetailPanelWidget::OnNPCDialogueStarted);
 		}
 	}
 }
@@ -36,16 +32,7 @@ void UCAP_PickupDetailPanelWidget::UpdateInteractionUI(bool bVisible, const FInt
 	if (InteractTextWidget)
 	{
 		InteractTextWidget->SetInteractKeyText(KeyName);
-		int32 FinalAmount = Payload.ActionData.CurrencyAmount;
-		if (Player && Payload.ActionData.bShowCurrency)
-		{
-			if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player))
-			{
-				float BonusMul = ASC->GetNumericAttribute(UCAP_AttributeSet::GetDisassembleBonusMultiplierAttribute());
-				FinalAmount = FMath::RoundToInt(FinalAmount * (1.f + BonusMul));
-			}
-		}
-		InteractTextWidget->UpdateActionTexts(Payload, FinalAmount);		
+		InteractTextWidget->UpdateActionTexts(Payload);		
 	}
 	if (ItemDetailPanelWidget)
 	{
@@ -61,29 +48,29 @@ void UCAP_PickupDetailPanelWidget::UpdateInteractionUI(bool bVisible, const FInt
 	}
 }
 
-void UCAP_PickupDetailPanelWidget::HandleUpdateInteractProgress(float Progress)
-{
-	if (InteractTextWidget)
-		InteractTextWidget->UpdateInteractProgress(Progress);
-}
 
 void UCAP_PickupDetailPanelWidget::HandleInteractableChanged(AActor* InteractableActor)
 {
-	if (!Player)
-		return;
-	
-	if (InteractableActor)
+	if (ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>())
 	{
-		if (ICAP_InteractInterface* Interface = Cast<ICAP_InteractInterface>(InteractableActor))
+		if (InteractableActor)
 		{
-			FInteractionPayload Payload= Interface->GetInteractionPayload();
-			FString KeyName = Player->GetInteractKeyName();
-			UpdateInteractionUI(true,Payload,KeyName);
+			if (ICAP_InteractInterface* Interface = Cast<ICAP_InteractInterface>(InteractableActor))
+			{
+				FInteractionPayload Payload= Interface->GetInteractionPayload();
+				FString KeyName = Player->GetInteractKeyName();
+				UpdateInteractionUI(true,Payload,KeyName);
+			}
+		}
+		else
+		{
+			UpdateInteractionUI(false);
 		}
 	}
-	else
-	{
-		UpdateInteractionUI(false,FInteractionPayload(),"");
-	}
+}
+
+void UCAP_PickupDetailPanelWidget::OnNPCDialogueStarted(const FNPCData& NPCData)
+{
+	SetVisibility(ESlateVisibility::Collapsed);
 }
 

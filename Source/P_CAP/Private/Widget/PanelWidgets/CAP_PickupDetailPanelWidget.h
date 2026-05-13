@@ -18,7 +18,6 @@ class UCAP_PickupDetailPanelWidget : public UUserWidget
 public:
 	virtual void NativeConstruct() override;
 
-	void UpdateInteractionUI(bool bVisible, const FInteractionPayload& Payload, const FString& KeyName);
 protected:
 	UPROPERTY(meta=(BindWidget))
 	class UCAP_SwapDetailPanelWIdget* ItemDetailPanelWidget;
@@ -26,11 +25,10 @@ protected:
 	class UCAP_ItemInteraction* InteractTextWidget;
 
 private:
-	UPROPERTY()
-	ACAP_PlayerCharacter* Player;
-	
-	UFUNCTION()
-	void HandleUpdateInteractProgress(float Progress);
 	UFUNCTION()
 	void HandleInteractableChanged(AActor* InteractableActor);
+	UFUNCTION()
+	void OnNPCDialogueStarted(const FNPCData& NPCData);
+
+	void UpdateInteractionUI(bool bVisible, const FInteractionPayload& Payload = FInteractionPayload(), const FString& KeyName = "");
 };

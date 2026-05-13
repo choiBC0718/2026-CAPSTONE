@@ -32,14 +32,14 @@ void UCAP_GameplayWidget::NativeConstruct()
 		// 위젯 닫힘 델리게이트 연결
 		CharacterMenuWidget->OnMenuClosed.AddDynamic(this, &UCAP_GameplayWidget::CompleteDeactivateSwitcher);
 	}
+	if (ItemSwapWidget)
+	{
+		ItemSwapWidget->OnMenuClosed.AddDynamic(this, &UCAP_GameplayWidget::CompleteDeactivateSwapWidget);
+	}
 	if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
 	{
 		InvComp->OnInventoryFull.AddDynamic(this, &UCAP_GameplayWidget::HandleInventoryFull);
 	}
-	if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
-	{
-		InteractComp->OnDialogueTriggered.AddDynamic(this, &UCAP_GameplayWidget::HandleDialogueTriggered);
-	}		
 	if (HealthBar)
 	{
 		HealthBar->SetAndBoundToGameplayAttribute(OwnerASC, UCAP_AttributeSet::GetHealthAttribute(), UCAP_AttributeSet::GetMaxHealthAttribute());
@@ -61,16 +61,6 @@ void UCAP_GameplayWidget::NativeConstruct()
 	{
 		BuffListPanel->InitializeWidget(Player);
 	}
-}
-
-bool UCAP_GameplayWidget::IsCharacterMenuOpen()
-{
-	return MenuSwitcher && MenuSwitcher->GetVisibility() == ESlateVisibility::Visible && MenuSwitcher->GetActiveWidget() == CharacterMenuWidget;
-}
-
-bool UCAP_GameplayWidget::IsItemSwapMenuOpen()
-{
-	return MenuSwitcher && MenuSwitcher->GetVisibility() == ESlateVisibility::Visible && MenuSwitcher->GetActiveWidget() == ItemSwapWidget;
 }
 
 // WidgetSwitcher 활성화, UI 오픈 애니메이션 재생
@@ -109,38 +99,16 @@ void UCAP_GameplayWidget::HandleInventoryFull(class UCAP_ItemInstance* NewItem)
 	if (ItemSwapWidget && Player)
 	{
 		ShowMenuWidget(ItemSwapWidget);
+		ItemSwapWidget->SetVisibility(ESlateVisibility::Visible);
 		ItemSwapWidget->InitSwapUI(Player, NewItem);
-	}
-}
-
-void UCAP_GameplayWidget::HandleDialogueTriggered(const FNPCData& NPCData)
-{
-	if (!DialogueWidget)
-		return;
-
-	DialogueWidget->SetVisibility(ESlateVisibility::Visible);
-	DialogueWidget->StartDialogue();
-	DialogueWidget->UpdateDialogueUI(NPCData);
-	InteractPanelWidget->SetVisibility(ESlateVisibility::Collapsed);
-
-	if (APlayerController* PC = GetOwningPlayer())
-	{
-		FInputModeGameAndUI InputMode;
-		InputMode.SetWidgetToFocus(DialogueWidget->TakeWidget());
-		PC->SetInputMode(InputMode);
-	}
-	if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
-	{
-		DialogueWidget->OnDialogueFinished.RemoveDynamic(InteractComp, &UCAP_InteractionComponent::EndDialogueCamera);
-		DialogueWidget->OnDialogueFinished.AddDynamic(InteractComp, &UCAP_InteractionComponent::EndDialogueCamera);
 	}
 }
 
 void UCAP_GameplayWidget::RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime)
 {
-	if (IsItemSwapMenuOpen() && ItemSwapWidget)
+	if (IsItemSwapMenuOpen() && ItemSwapWidget && ItemSwapWidget->IsVisible())
 	{
-		if (TriggerEvent == ETriggerEvent::Triggered || TriggerEvent == ETriggerEvent::Completed)
+		if (TriggerEvent == ETriggerEvent::Started)
 		{
 			ItemSwapWidget->ConfirmSwap();
 		}
@@ -193,7 +161,20 @@ void UCAP_GameplayWidget::CompleteDeactivateSwitcher()
 
 void UCAP_GameplayWidget::HandleDialogueFinished()
 {
-	InteractPanelWidget->SetVisibility(ESlateVisibility::Visible);
+	if (UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent())
+	{
+		if (InteractionComp->GetNearbyInteractable() != nullptr)
+			InteractPanelWidget->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void UCAP_GameplayWidget::CompleteDeactivateSwapWidget()
+{
+	if (ItemSwapWidget)
+	{
+		ItemSwapWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	ExitUIMode();
 }
 
 void UCAP_GameplayWidget::EnterUIMode()
@@ -206,4 +187,19 @@ void UCAP_GameplayWidget::ExitUIMode()
 {
 	if (APlayerController* PC = GetOwningPlayer())
 		PC->SetPause(false);
+}
+
+bool UCAP_GameplayWidget::IsCharacterMenuOpen()
+{
+	return MenuSwitcher && MenuSwitcher->GetVisibility() == ESlateVisibility::Visible && MenuSwitcher->GetActiveWidget() == CharacterMenuWidget;
+}
+
+bool UCAP_GameplayWidget::IsItemSwapMenuOpen()
+{
+	return MenuSwitcher && MenuSwitcher->GetVisibility() == ESlateVisibility::Visible && MenuSwitcher->GetActiveWidget() == ItemSwapWidget;
+}
+
+bool UCAP_GameplayWidget::IsDialogueWidgetOpen()
+{
+	return DialogueWidget && DialogueWidget->GetVisibility() == ESlateVisibility::Visible;
 }

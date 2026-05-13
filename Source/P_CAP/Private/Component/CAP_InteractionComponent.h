@@ -22,7 +22,6 @@ class UCAP_InteractionComponent : public UActorComponent
 
 public:	
 	UCAP_InteractionComponent();
-
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	
 	AActor* GetNearbyInteractable() const {return NearbyInteractable;}
@@ -43,10 +42,20 @@ public:
 	FOnInteractProgressUpdated OnInteractProgressUpdated;
 	UPROPERTY()
 	FOnDialogueTriggered OnDialogueTriggered;
+
+	void AddInteractable(AActor* NewActor);
+	void RemoveInteractable(AActor* TargetActor);
+	// 가장 가까이에 있는 액터로 업데이트
+	void UpdateNearbyInteractable();
+	bool CanInteract() const;
+
+	bool bIsInDialogue = false;
 	
 private:
 	UPROPERTY()
 	AActor* NearbyInteractable;
+	UPROPERTY()
+	TArray<AActor*> OverlappedInteractable;
 
 	// 아이템 장착 허용 시간
 	UPROPERTY(EditDefaultsOnly, Category="Input")
@@ -55,15 +64,4 @@ private:
 	// 아이템 분해 완료 시간
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	float HoldThreshold = 1.0f;
-
-	float OriginArmLength;
-	FRotator OriginArmRotation;
-	FVector OriginSocketOffset;
-	bool bIsDialogueCameraActive = false;
-
-	float TargetArmLength;
-	FRotator TargetArmRotation;
-	FVector TargetSocketOffset;
-
-	void UpdateDialogueCamera(float DeltaTime);
 };

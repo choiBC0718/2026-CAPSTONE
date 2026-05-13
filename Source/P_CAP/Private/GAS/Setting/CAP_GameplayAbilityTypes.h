@@ -57,38 +57,3 @@ public:
 	UPROPERTY(EditAnywhere)		float BaseCooldownMultiplier=0.f;
 	UPROPERTY(EditAnywhere)		float BaseWeaponSwapCooldownMultiplier=0.f;
 };
-
-USTRUCT(BlueprintType)
-struct FActionPromptData
-{
-	GENERATED_BODY()
-
-	// 짧게 누르기 텍스트 (줍기, 구매하기, 대화하기 등)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)	FString ShortActionText = "";
-	// 길게 누르기 텍스트 (파괴하기 / 비어있으면 Hidden처리)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)	FString LongActionText = "";
-	// 재화를 표시할지
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)	bool bShowCurrency=false;
-	// 표시할 재화 종류
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)	ECurrencyType ActionCurrencyType = ECurrencyType::Gold;
-	// 재화 수치
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)	int32 CurrencyAmount=0;
-};
-
-USTRUCT(BlueprintType)
-struct FInteractionPayload
-{
-	GENERATED_BODY()
-
-	// 상단 패널용 데이터 (아이템 정보, 무기 정보_ Instance / 없으면 숨김처리)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)	UObject* DetailData =nullptr;
-	// 하단 패널 설정
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)	FActionPromptData ActionData;
-};
-
-UENUM(BlueprintType)
-enum class EInteractAction : uint8
-{
-	Tap     UMETA(DisplayName = "Tap (짧게 누르기)"),
-	Hold    UMETA(DisplayName = "Hold (길게 누르기)")
-};

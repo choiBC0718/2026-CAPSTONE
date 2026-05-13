@@ -4,13 +4,13 @@
 #include "Component/CAP_InteractionComponent.h"
 
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "GAS/CAP_AbilitySystemComponent.h"
 #include "Interface/CAP_InteractInterface.h"
-#include "Kismet/KismetMathLibrary.h"
 
 UCAP_InteractionComponent::UCAP_InteractionComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
-	PrimaryComponentTick.bStartWithTickEnabled = false;
+	PrimaryComponentTick.bStartWithTickEnabled = true;
 	NearbyInteractable = nullptr;
 }
 
@@ -18,12 +18,13 @@ void UCAP_InteractionComponent::TickComponent(float DeltaTime, enum ELevelTick T
 	FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	if (bIsDialogueCameraActive)
-		UpdateDialogueCamera(DeltaTime);
+	if (CanInteract())
+		UpdateNearbyInteractable();
 }
 
 void UCAP_InteractionComponent::SetNearbyInteractable(AActor* NewActor)
 {
+
 	if (NearbyInteractable != NewActor)
 	{
 		NearbyInteractable = NewActor;
@@ -70,53 +71,26 @@ void UCAP_InteractionComponent::ProcessInteractInput(ETriggerEvent TriggerEvent,
 }
 
 void UCAP_InteractionComponent::BeginDialogue(const struct FNPCData& InNPCData)
-{	// NPC 상호작용 시 카메라 처리
-	if (!NearbyInteractable)
-		return;
-	SetComponentTickEnabled(true);
-	
-	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner());
-	AActor* NPC = NearbyInteractable;
-	if (!Player || !NPC)
-		return;
-
-	FVector PlayerLoc = Player->GetActorLocation();
-	FVector NPCLoc = NPC->GetActorLocation();
-
-	FRotator PlayerLookAtRot = UKismetMathLibrary::FindLookAtRotation(PlayerLoc, NPCLoc);
-	PlayerLookAtRot.Pitch = 0.f;
-	Player->SetActorRotation(PlayerLookAtRot);
-
-	FRotator NPCLookAtRot = UKismetMathLibrary::FindLookAtRotation(NPCLoc, PlayerLoc);
-	NPCLookAtRot.Pitch = 0.f;
-	NPC->SetActorRotation(NPCLookAtRot);
-
-	USpringArmComponent* Arm = Player->GetSpringArmComponent();
-	if (Arm)
+{
+	if (NearbyInteractable)
 	{
-		OriginArmLength = Arm->TargetArmLength;
-		OriginArmRotation = Arm->GetRelativeRotation();
-		OriginSocketOffset = Arm->SocketOffset;
-
-		FVector Dir = (PlayerLoc - NPCLoc).GetSafeNormal();
-		FVector SideDir = FVector (-Dir.Y, Dir.X,0.f);
-		float DistanceToNPC = FVector::Distance(PlayerLoc, NPCLoc);
-		TargetArmLength = FMath::Max(300.f, DistanceToNPC * 1.5f);
-		TargetArmRotation = SideDir.Rotation();
-
-		TargetSocketOffset = FVector(-20.f, DistanceToNPC*0.5f, 50.f);
-		bIsDialogueCameraActive = true;
+		if (UCAP_DialogueComponent* DialogueComp = NearbyInteractable->FindComponentByClass<UCAP_DialogueComponent>())
+		{
+			DialogueComp->BeginDialogue(Cast<ACAP_PlayerCharacter>(GetOwner()));
+			bIsInDialogue = true;
+			// 대화 시작 방송 -> GameplayWidget이 듣고 Dialogue Widget 업데이트
+			OnDialogueTriggered.Broadcast(InNPCData);
+		}
 	}
-	OnDialogueTriggered.Broadcast(InNPCData);
 }
 
 ENPCActionResult UCAP_InteractionComponent::ExecuteNPCSpecialAction()
 {
 	if (NearbyInteractable)
 	{
-		if (ICAP_InteractInterface* InteractObj = Cast<ICAP_InteractInterface>(NearbyInteractable))
+		if (UCAP_DialogueComponent* DialogueComp = NearbyInteractable->FindComponentByClass<UCAP_DialogueComponent>())
 		{
-			return InteractObj->ExecuteSpecialAction(GetOwner());
+			return DialogueComp->ExecuteSpecialAction(GetOwner());
 		}
 	}
 	return ENPCActionResult::Failed;
@@ -126,46 +100,91 @@ bool UCAP_InteractionComponent::GetNPCSpecialActionCost(int32& OutCost)
 {
 	if (NearbyInteractable)
 	{
-		if (ICAP_InteractInterface* InteractObj = Cast<ICAP_InteractInterface>(NearbyInteractable))
-			return InteractObj->GetSpecialActionCost(GetOwner(), OutCost);
+		if (UCAP_DialogueComponent* DialogueComp = NearbyInteractable->FindComponentByClass<UCAP_DialogueComponent>())
+			return DialogueComp->GetSpecialActionCost(OutCost);
 	}
 	return false;
 }
 
 void UCAP_InteractionComponent::EndDialogueCamera()
-{	// NPC 대화 종료 시 카메라 원래대로 돌려놓기
-	TargetArmLength = OriginArmLength;
-	TargetArmRotation = OriginArmRotation;
-	TargetSocketOffset = OriginSocketOffset;
-	
-	bIsDialogueCameraActive = true;
-	SetComponentTickEnabled(true);
-}
-
-void UCAP_InteractionComponent::UpdateDialogueCamera(float DeltaTime)
-{
-	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner()))
-	{
-		if (USpringArmComponent* Arm = Player->GetSpringArmComponent())
+{	
+	if (NearbyInteractable)
 		{
-			Arm->TargetArmLength = FMath::FInterpTo(Arm->TargetArmLength, TargetArmLength, DeltaTime,2.5f);
-			Arm->SetRelativeRotation(FMath::RInterpTo(Arm->GetRelativeRotation(), TargetArmRotation, DeltaTime,2.5f));
-			Arm->SocketOffset = FMath::VInterpTo(Arm->SocketOffset, TargetSocketOffset, DeltaTime,2.5f);
-
-			bool LengthDone = FMath::IsNearlyEqual(Arm->TargetArmLength, OriginArmLength,1.f);
-			bool bRotDone = Arm->GetRelativeRotation().Equals(TargetArmRotation, 0.5f);
-			bool bOffsetDone = Arm->SocketOffset.Equals(TargetSocketOffset, 1.f);
-
-			if (LengthDone && bRotDone && bOffsetDone)
+			if (UCAP_DialogueComponent* DialogueComp = NearbyInteractable->FindComponentByClass<UCAP_DialogueComponent>())
 			{
-				Arm->TargetArmLength = TargetArmLength;
-				Arm->SetRelativeRotation(TargetArmRotation);
-				Arm->SocketOffset = TargetSocketOffset;
-
-				bIsDialogueCameraActive = false;
-				SetComponentTickEnabled(false);
+				DialogueComp->EndDialogue();
 			}
 		}
+		
+		bIsInDialogue = false;
+		SetNearbyInteractable(nullptr);
+		UpdateNearbyInteractable();
+}
+
+void UCAP_InteractionComponent::AddInteractable(AActor* NewActor)
+{
+	if (NewActor && !OverlappedInteractable.Contains(NewActor))
+	{
+		OverlappedInteractable.Add(NewActor);
+		UpdateNearbyInteractable();
 	}
 }
 
+void UCAP_InteractionComponent::RemoveInteractable(AActor* TargetActor)
+{
+	if (TargetActor && OverlappedInteractable.Contains(TargetActor))
+	{
+		OverlappedInteractable.Remove(TargetActor);
+		UpdateNearbyInteractable();
+	}
+}
+
+void UCAP_InteractionComponent::UpdateNearbyInteractable()
+{
+	if (bIsInDialogue)
+		return;
+	if (!CanInteract() || OverlappedInteractable.IsEmpty())
+	{
+		SetNearbyInteractable(nullptr);
+		return;
+	}
+
+	AActor* ClosestActor = nullptr;
+	float MinDist = TNumericLimits<float>::Max();
+	FVector PlayerLoc = GetOwner()->GetActorLocation();
+
+	for (AActor* Actor : OverlappedInteractable)
+	{
+		if (Actor)
+		{
+			float Dist = FVector::DistSquared(PlayerLoc, Actor->GetActorLocation());
+			if (Dist<MinDist)
+			{
+				MinDist = Dist;
+				ClosestActor = Actor;
+			}
+		}
+	}
+	SetNearbyInteractable(ClosestActor);
+}
+
+bool UCAP_InteractionComponent::CanInteract() const
+{
+	if (bIsInDialogue)
+		return false;
+/*
+	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner());
+	if (Player)
+	{
+		UCAP_AbilitySystemComponent* ASC = Player->GetComponentByClass<UCAP_AbilitySystemComponent>();
+		if (ASC)
+		{
+			if (ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag("")))
+				return false;
+
+				특정 태그 있는 상황에서 상호작용 불가능하도록 설정
+		}
+	}
+	*/
+	return true;
+}

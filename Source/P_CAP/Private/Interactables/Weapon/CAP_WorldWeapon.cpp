@@ -14,16 +14,6 @@
 ACAP_WorldWeapon::ACAP_WorldWeapon()
 {
 	PrimaryActorTick.bCanEverTick = false;
-
-	RootCollision = CreateDefaultSubobject<USphereComponent>("RootCollision");
-	SetRootComponent(RootCollision);
-	RootCollision->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-	RootCollision->SetCollisionResponseToAllChannels(ECR_Ignore);
-	RootCollision->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
-	RootCollision->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
-	RootCollision->SetSimulatePhysics(true);
-	
-	InteractionSphere->SetupAttachment(RootCollision);
 	
 	MeshContainer=CreateDefaultSubobject<USceneComponent>("MeshContainer");
 	MeshContainer->SetupAttachment(InteractionSphere);
@@ -53,7 +43,6 @@ void ACAP_WorldWeapon::BeginPlay()
 		WeaponInstance->InitializeWeapon(WeaponDA);
 		WeaponInstance->LoadWeaponAssets(FStreamableDelegate::CreateLambda([](){}));
 	}
-	RootCollision->OnComponentHit.AddDynamic(this, &ACAP_WorldWeapon::OnRootCollisionHit);
 	
 	if (WeaponInstance)
 	{
@@ -136,22 +125,37 @@ FInteractionPayload ACAP_WorldWeapon::GetInteractionPayload() const
 	return Payload;
 }
 
-void ACAP_WorldWeapon::InitializeWeaponData(class UCAP_WeaponDataAsset* NewWeaponDA)
-{
-	WeaponDA = NewWeaponDA;
-}
-
 void ACAP_WorldWeapon::DropItem()
 {
-	if (RootCollision)
+	if (InteractionSphere)
 	{
 		FVector DropImpulse = FVector(0.f,0.f, 600.f);
-		RootCollision->AddImpulse(DropImpulse, NAME_None, true);
+		InteractionSphere->AddImpulse(DropImpulse, NAME_None, true);
+	}
+	SetWeaponSkeletalMesh();
+}
+
+void ACAP_WorldWeapon::SetWeaponSkeletalMesh()
+{
+	if (WeaponInstance && WeaponInstance->GetWeaponDA())
+	{
+		for (const FWeaponVisualInfo& VisualInfo : WeaponInstance->GetWeaponDA()->WeaponVisualInfos)
+		{
+			if (VisualInfo.EquipHand == EEquipHand::Left)
+			{
+				WeaponMesh_L->SetSkeletalMesh(VisualInfo.WeaponMesh.LoadSynchronous());
+				WeaponMesh_L->SetRelativeTransform(VisualInfo.ConstructionOffset);
+			}
+			else
+			{
+				WeaponMesh_R->SetSkeletalMesh(VisualInfo.WeaponMesh.LoadSynchronous());
+				WeaponMesh_R->SetRelativeTransform(VisualInfo.ConstructionOffset);
+			}
+		}
 	}
 }
 
-void ACAP_WorldWeapon::OnRootCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
-                                          UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+void ACAP_WorldWeapon::InitializeWeaponData(class UCAP_WeaponDataAsset* NewWeaponDA)
 {
-	RootCollision->SetSimulatePhysics(false);
+	WeaponDA = NewWeaponDA;
 }

@@ -9,18 +9,28 @@
 ENPCActionResult ANPC_ItemDrop::ExecuteSpecialAction(AActor* Actor)
 {
 	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(Actor);
+	UE_LOG(LogTemp,Warning,TEXT("스페셜 액션 시작"));
 	if (DripItemDataAssets.IsEmpty() || !ItemClass || !Player)
+	{
+		UE_LOG(LogTemp,Warning,TEXT("비어있거나 클래스 없거나 플레이어 없어서 실패"));
 		return ENPCActionResult::Failed;
+	}
 	
 	if (InteractionCount >= 2)
+	{
+		UE_LOG(LogTemp,Warning,TEXT("이미 두번 받아감"));
 		return ENPCActionResult::AlreadyReceived;
+	}
 
 	if (InteractionCount==1)
 	{
 		if (UCAP_CurrencyComponent* CurrComp = Player->GetCurrencyComponent())
 		{
 			if (!CurrComp->ConsumeCurrency(ECurrencyType::MagicStone, CostMagicStone))
+			{
+				UE_LOG(LogTemp,Warning,TEXT("재화 부족함"));
 				return ENPCActionResult::InsufficientCurrency;
+			}
 		}
 	}
 	
@@ -38,17 +48,9 @@ ENPCActionResult ANPC_ItemDrop::ExecuteSpecialAction(AActor* Actor)
 			SpawnedItem->FinishSpawning(SpawnTrans);
 		}
 		InteractionCount++;
+		UE_LOG(LogTemp,Warning,TEXT("오케이 통과"));
 		return ENPCActionResult::Success;
 	}
+	UE_LOG(LogTemp,Warning,TEXT("그냥 최종 결과가 실패임"));
 	return ENPCActionResult::Failed;
-}
-
-bool ANPC_ItemDrop::GetSpecialActionCost(AActor* Actor, int32& OutCost)
-{
-	if (InteractionCount == 1)
-	{
-		OutCost = CostMagicStone;
-		return true;
-	}
-	return false;
 }

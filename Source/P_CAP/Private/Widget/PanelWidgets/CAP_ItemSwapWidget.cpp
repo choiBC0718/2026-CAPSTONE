@@ -128,6 +128,7 @@ void UCAP_ItemSwapWidget::ConfirmSwap()
 				DroppedItem->FinishSpawning(SpawnTransform);
 				DroppedItem->DropItem();
 			}
+			NewItemToSwap=nullptr;
 		}
 		NativeCloseMenu();
 	}

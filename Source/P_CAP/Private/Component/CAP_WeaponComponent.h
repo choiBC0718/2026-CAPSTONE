@@ -50,7 +50,7 @@ private:
 	class UCAP_WeaponDataAsset* DefaultBasicWeapon;
 	
 	void ApplyWeaponData(class UCAP_WeaponInstance* WeaponInstance);
-	void ClearCurrentWeaponVisuals();
+	void AttachWeaponMesh(class UCAP_WeaponDataAsset* WeaponDA);
 	
 	UPROPERTY(EditDefaultsOnly, Category="Weapon")
 	int MaxWeaponCount = 2;
@@ -59,7 +59,7 @@ private:
 	class UCAP_AbilitySystemComponent* ASC;
 
 	// 무기 획득시 능력을 GiveAbility
-	void GrantWeaponAbilities(class UCAP_WeaponInstance* WeaponInst);
+	void GrantAbilities(class UCAP_WeaponInstance* WeaponInst);
 	// 무기 드랍 시에 ClearAbility
-	void RemoveWeaponAbilities(class UCAP_WeaponInstance* WeaponInst);
+	void ClearAbilities(class UCAP_WeaponInstance* WeaponInst);
 };

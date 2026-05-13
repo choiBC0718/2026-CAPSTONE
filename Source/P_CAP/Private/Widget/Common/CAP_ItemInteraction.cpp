@@ -3,12 +3,15 @@
 
 #include "Widget/Common/CAP_ItemInteraction.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystemComponent.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
 #include "Components/Border.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/WidgetComponent.h"
-#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
+#include "GAS/Setting/CAP_AttributeSet.h"
 
 
 void UCAP_ItemInteraction::NativeConstruct()
@@ -17,6 +20,11 @@ void UCAP_ItemInteraction::NativeConstruct()
 	if (InteractProgressImage)
 	{
 		ProgressMID = InteractProgressImage->GetDynamicMaterial();
+	}
+	if (ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>())
+	{
+		if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
+			InteractComp->OnInteractProgressUpdated.AddDynamic(this, &UCAP_ItemInteraction::UpdateInteractProgress);
 	}
 }
 
@@ -60,7 +68,7 @@ void UCAP_ItemInteraction::SetInteractKeyText(const FString& KeyName)
 	}
 }
 
-void UCAP_ItemInteraction::UpdateActionTexts(const FInteractionPayload& Payload, int32 FinalCurrencyAmount)
+void UCAP_ItemInteraction::UpdateActionTexts(const FInteractionPayload& Payload)
 {
 	EquipText->SetText(FText::FromString(Payload.ActionData.ShortActionText));
 	
@@ -75,7 +83,13 @@ void UCAP_ItemInteraction::UpdateActionTexts(const FInteractionPayload& Payload,
 		FString LongText = Payload.ActionData.LongActionText;
 		if (Payload.ActionData.bShowCurrency)
 		{
-			LongText=FString::Printf(TEXT("%s (+%d)"), *LongText, FinalCurrencyAmount);
+			int32 FinalAmount = Payload.ActionData.CurrencyAmount;
+			if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwningPlayerPawn<ACAP_PlayerCharacter>()))
+			{
+				float BonusMul = ASC->GetNumericAttribute(UCAP_AttributeSet::GetDisassembleBonusMultiplierAttribute());
+				FinalAmount = FMath::RoundToInt(FinalAmount * (1.f + BonusMul));
+			}
+			LongText=FString::Printf(TEXT("%s (+%d)"), *LongText, FinalAmount);
 		}
 		DisassembleText->SetText(FText::FromString(LongText));
 	}

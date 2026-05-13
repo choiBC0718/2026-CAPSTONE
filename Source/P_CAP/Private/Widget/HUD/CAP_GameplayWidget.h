@@ -19,6 +19,7 @@ class UCAP_GameplayWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
+	
 	virtual void NativeConstruct() override;
 	
 	FORCEINLINE UCAP_CharacterMenuWidget* GetCharacterMenuWidget() const {return CharacterMenuWidget;}
@@ -39,8 +40,6 @@ public:
 
 	UFUNCTION()
 	void HandleInventoryFull(class UCAP_ItemInstance* NewItem);	// 인벤토리 꽉 찼을 때 변경을 위한 위젯 활성화
-	UFUNCTION()
-	void HandleDialogueTriggered(const FNPCData& NPCData);		// NPC와 상호작용 시 델리게이트
 
 protected:
 	// Hp 바
@@ -77,9 +76,13 @@ private:
 	ACAP_PlayerCharacter* Player;
 	UPROPERTY()
 	class UAbilitySystemComponent* OwnerASC;
-	
+
 	UFUNCTION()
 	void CompleteDeactivateSwitcher();
 	UFUNCTION()
 	void HandleDialogueFinished();
+	UFUNCTION()
+	void CompleteDeactivateSwapWidget();
+
+	bool IsDialogueWidgetOpen();
 };

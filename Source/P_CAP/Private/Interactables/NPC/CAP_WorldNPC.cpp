@@ -4,6 +4,7 @@
 #include "Interactables/NPC/CAP_WorldNPC.h"
 
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "Component/CAP_DialogueComponent.h"
 #include "Components/SphereComponent.h"
 
 ACAP_WorldNPC::ACAP_WorldNPC()
@@ -11,24 +12,42 @@ ACAP_WorldNPC::ACAP_WorldNPC()
 	NPCMesh = CreateDefaultSubobject<USkeletalMeshComponent>("NPCMesh");
 	NPCMesh->SetupAttachment(InteractionSphere);
 	NPCMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	InteractionSphere->SetSphereRadius(250.f);
+
+	DialogueComponent = CreateDefaultSubobject<UCAP_DialogueComponent>("DialogueComponent");
+}
+
+void ACAP_WorldNPC::BeginPlay()
+{
+	Super::BeginPlay();
+	DialogueComponent->OnExecuteSpecialAction.BindUObject(this, &ACAP_WorldNPC::ExecuteSpecialAction);
+	DialogueComponent->OnGetSpecialActionCost.BindUObject(this, &ACAP_WorldNPC::GetSpecialActionCost);
 }
 
 void ACAP_WorldNPC::Interact(AActor* InsActor, EInteractAction ActionType)
 {
 	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(InsActor);
-	if (!Player)
-		return;
-
-	if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
-		InteractComp->BeginDialogue(NPCData);
+	{
+		if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
+			InteractComp->BeginDialogue(DialogueComponent->NPCData);
+	}
 }
 
 FInteractionPayload ACAP_WorldNPC::GetInteractionPayload() const
 {
 	FInteractionPayload Payload;
 	Payload.ActionData.ShortActionText = TEXT("대화하기");
-	Payload.ActionData.bShowCurrency = false; 
-	Payload.DetailData = nullptr;
 	
 	return Payload;
+}
+
+bool ACAP_WorldNPC::GetSpecialActionCost(int& OutCost)
+{
+	if (InteractionCount == 1)
+	{
+		OutCost = CostMagicStone;
+		return true;
+	}
+	return false;
 }
