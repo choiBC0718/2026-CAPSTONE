@@ -10,7 +10,7 @@
 UCAP_InteractionComponent::UCAP_InteractionComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
-	PrimaryComponentTick.bStartWithTickEnabled = true;
+	PrimaryComponentTick.bStartWithTickEnabled = false;
 	NearbyInteractable = nullptr;
 }
 
@@ -18,13 +18,11 @@ void UCAP_InteractionComponent::TickComponent(float DeltaTime, enum ELevelTick T
 	FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	if (CanInteract())
-		UpdateNearbyInteractable();
+	UpdateNearbyInteractable();
 }
 
 void UCAP_InteractionComponent::SetNearbyInteractable(AActor* NewActor)
 {
-
 	if (NearbyInteractable != NewActor)
 	{
 		NearbyInteractable = NewActor;
@@ -126,6 +124,11 @@ void UCAP_InteractionComponent::AddInteractable(AActor* NewActor)
 	if (NewActor && !OverlappedInteractable.Contains(NewActor))
 	{
 		OverlappedInteractable.Add(NewActor);
+		
+		if (OverlappedInteractable.Num() > 0 && !IsComponentTickEnabled())
+		{
+			SetComponentTickEnabled(true);
+		}
 		UpdateNearbyInteractable();
 	}
 }
@@ -135,7 +138,12 @@ void UCAP_InteractionComponent::RemoveInteractable(AActor* TargetActor)
 	if (TargetActor && OverlappedInteractable.Contains(TargetActor))
 	{
 		OverlappedInteractable.Remove(TargetActor);
-		UpdateNearbyInteractable();
+
+		if (OverlappedInteractable.IsEmpty())
+		{
+			SetComponentTickEnabled(false);
+			SetNearbyInteractable(nullptr);
+		}
 	}
 }
 

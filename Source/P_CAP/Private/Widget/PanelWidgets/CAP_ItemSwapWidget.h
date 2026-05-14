@@ -20,15 +20,14 @@ public:
 	virtual void OnAnimationFinished_Implementation(const UWidgetAnimation* Animation) override;
 	
 	void InitSwapUI(class ACAP_PlayerCharacter* Player, class UCAP_ItemInstance* NewItemInst);
-	void MoveSelection(FVector2D InputVal);
-	
-	void ConfirmSwap();
 
 	virtual void NativeOpenMenu() override;
 	virtual void NativeCloseMenu() override;
-	virtual FOnMenuClosedSignature& GetOnMenuClosedDelegate() override;
+	virtual FOnMenuClosedSignature& GetOnMenuClosedDelegate() override {return OnMenuClosed;}
+	virtual void HandleUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime = 0) override;
+	virtual void HandleChangeSelectedSlot(FVector2D InputVal) override;
 
-	UPROPERTY(BlueprintAssignable)
+	UPROPERTY()
 	FOnMenuClosedSignature OnMenuClosed;
 
 private:

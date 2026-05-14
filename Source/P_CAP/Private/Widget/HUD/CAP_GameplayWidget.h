@@ -27,19 +27,20 @@ public:
 	
 	bool IsCharacterMenuOpen();		// 인벤토리 메뉴 열려있는지 확인
 	bool IsItemSwapMenuOpen();		// 아이템 변경 메뉴 열려있는지 확인
+	bool IsMenuSwitcherVisible();
 	
 	void ActivateSwitcher();		// 인벤토리 메뉴 열기 (MenuSwitch 켜기)
-	void DeactivateSwitcher();		// MenuSwitch 끄기
 	void SwitchCharacterMenuTab();	
+	void HideMenu();
 	
 	void RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime);
-
-	void ShowMenuWidget(UUserWidget* TargetMenuWidget);
+	
 	void EnterUIMode();
 	void ExitUIMode();
 
 	UFUNCTION()
 	void HandleInventoryFull(class UCAP_ItemInstance* NewItem);	// 인벤토리 꽉 찼을 때 변경을 위한 위젯 활성화
+	void UINavigationHandle(FVector2D InputVal);	// UI 내부 WASD로 슬롯 포커스 변경
 
 protected:
 	// Hp 바
@@ -76,13 +77,16 @@ private:
 	ACAP_PlayerCharacter* Player;
 	UPROPERTY()
 	class UAbilitySystemComponent* OwnerASC;
-
-	UFUNCTION()
-	void CompleteDeactivateSwitcher();
+	UPROPERTY()
+	UUserWidget* CurrentActiveMenu;
+	
 	UFUNCTION()
 	void HandleDialogueFinished();
-	UFUNCTION()
-	void CompleteDeactivateSwapWidget();
 
 	bool IsDialogueWidgetOpen();
+
+	void ShowMenu(UUserWidget* TargetMenuWidget);
+
+	UFUNCTION()
+	void OnActiveMenuClosed();
 };

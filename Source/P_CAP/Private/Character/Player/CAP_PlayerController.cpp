@@ -75,26 +75,15 @@ void ACAP_PlayerController::ToggleCharacterMenu()
 void ACAP_PlayerController::UINavigationHandle(const FInputActionValue& InputActionValue)
 {
 	FVector2D InputVal = InputActionValue.Get<FVector2D>();
-	if (!GameplayWidget)
-		return;
-
-	if (GameplayWidget->IsCharacterMenuOpen())
-	{
-		GameplayWidget->GetCharacterMenuWidget()->NavigationInput(InputVal);
-	}
-	else if (GameplayWidget->IsItemSwapMenuOpen())
-	{
-		GameplayWidget->GetItemSwapWidget()->MoveSelection(InputVal);
-	}
+	if (GameplayWidget->IsMenuSwitcherVisible())
+		GameplayWidget->UINavigationHandle(InputVal);
 }
 
 void ACAP_PlayerController::UICloseHandle(const FInputActionValue& InputActionValue)
 {
-	if (!GameplayWidget) return;
-
-	if (GameplayWidget->IsItemSwapMenuOpen() || GameplayWidget->IsCharacterMenuOpen())
+	if (GameplayWidget->IsMenuSwitcherVisible())
 	{
-		GameplayWidget->DeactivateSwitcher();
+		GameplayWidget->HideMenu();
 	}
 }
 
