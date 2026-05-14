@@ -11,6 +11,13 @@
 class ACharacter;
 class URoomMonsterSpawnDataAsset;
 struct FRoomMonsterSpawnRule;
+struct FRoomMonsterSpawnEntry;
+
+struct FRoomMonsterSpawnPick
+{
+	TSubclassOf<ACharacter> MonsterClass;
+	int32 MaxMonstersPerCell = 1;
+};
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class URoomMonsterSpawnerComponent : public UActorComponent
@@ -19,6 +26,8 @@ class URoomMonsterSpawnerComponent : public UActorComponent
 
 public:
 	URoomMonsterSpawnerComponent();
+
+	void SetSpawnDataAsset(URoomMonsterSpawnDataAsset* InSpawnDataAsset);
 
 	void SpawnMonsters(
 		const FRoomData& RoomData,
@@ -50,11 +59,11 @@ private:
 	UPROPERTY()
 	TArray<TObjectPtr<ACharacter>> SpawnedMonsters;
 
-	TArray<TSubclassOf<ACharacter>> BuildMonsterSpawnList(
+	TArray<FRoomMonsterSpawnPick> BuildMonsterSpawnList(
 		const FRoomMonsterSpawnRule& SpawnRule,
 		FRandomStream& RandomStream) const;
 
-	TSubclassOf<ACharacter> PickMonsterClass(
+	const FRoomMonsterSpawnEntry* PickMonsterEntry(
 		const FRoomMonsterSpawnRule& SpawnRule,
 		const TMap<TSubclassOf<ACharacter>, int32>& SelectedCounts,
 		int32 RemainingScore,

@@ -6,9 +6,28 @@
 #include "GameFramework/Character.h"
 #include "Map/RoomActor/Monster/RoomMonsterSpawnDataAsset.h"
 
+namespace
+{
+	struct FRoomMonsterCellPlacement
+	{
+		FRoomMonsterSpawnPick SpawnPick;
+		int32 CellIndex = INDEX_NONE;
+		int32 MonsterIndexInCell = 0;
+		int32 MonsterCountInCell = 1;
+	};
+}
+
 URoomMonsterSpawnerComponent::URoomMonsterSpawnerComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+}
+
+void URoomMonsterSpawnerComponent::SetSpawnDataAsset(URoomMonsterSpawnDataAsset* InSpawnDataAsset)
+{
+	if (InSpawnDataAsset)
+	{
+		SpawnDataAsset = InSpawnDataAsset;
+	}
 }
 
 void URoomMonsterSpawnerComponent::SpawnMonsters(
@@ -37,7 +56,7 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 	}
 
 	FRandomStream RandomStream = MakeRoomRandomStream(RoomData, MapSeed);
-	TArray<TSubclassOf<ACharacter>> MonsterSpawnList = BuildMonsterSpawnList(*SpawnRule, RandomStream);
+	TArray<FRoomMonsterSpawnPick> MonsterSpawnList = BuildMonsterSpawnList(*SpawnRule, RandomStream);
 	if (MonsterSpawnList.IsEmpty())
 	{
 		return;
@@ -51,19 +70,66 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 
 	SortCellsByCenterBias(SpawnableCells, InteriorLayout, RandomStream);
 
-	const int32 MaxMonstersPerCell = FMath::Max(1, SpawnRule->MaxMonstersPerCell);
-	const int32 MaxSpawnableMonsterCount = SpawnableCells.Num() * MaxMonstersPerCell;
-	const int32 ActualSpawnCount = FMath::Min(MonsterSpawnList.Num(), MaxSpawnableMonsterCount);
+	TArray<TMap<TSubclassOf<ACharacter>, int32>> CellMonsterCounts;
+	CellMonsterCounts.SetNum(SpawnableCells.Num());
 
-	for (int32 MonsterIndex = 0; MonsterIndex < ActualSpawnCount; ++MonsterIndex)
+	TArray<TSubclassOf<ACharacter>> CellMonsterClasses;
+	CellMonsterClasses.SetNum(SpawnableCells.Num());
+
+	TArray<FRoomMonsterCellPlacement> Placements;
+	Placements.Reserve(MonsterSpawnList.Num());
+
+	for (const FRoomMonsterSpawnPick& SpawnPick : MonsterSpawnList)
 	{
-		const int32 CellIndex = MonsterIndex / MaxMonstersPerCell;
-		const int32 MonsterIndexInCell = MonsterIndex % MaxMonstersPerCell;
-		const int32 RemainingMonsters = ActualSpawnCount - (CellIndex * MaxMonstersPerCell);
-		const int32 MonsterCountInCell = FMath::Min(MaxMonstersPerCell, RemainingMonsters);
+		for (int32 CellIndex = 0; CellIndex < SpawnableCells.Num(); ++CellIndex)
+		{
+			if (CellMonsterClasses[CellIndex] && CellMonsterClasses[CellIndex] != SpawnPick.MonsterClass)
+			{
+				continue;
+			}
 
-		FVector LocalLocation = GetCellLocalCenter(InteriorLayout, SpawnableCells[CellIndex]);
-		LocalLocation += GetFormationOffset(MonsterIndexInCell, MonsterCountInCell, InteriorLayout.CellSize);
+			const int32 CurrentCellCount = CellMonsterCounts[CellIndex].FindRef(SpawnPick.MonsterClass);
+			if (CurrentCellCount >= FMath::Max(1, SpawnPick.MaxMonstersPerCell))
+			{
+				continue;
+			}
+
+			FRoomMonsterCellPlacement& Placement = Placements.AddDefaulted_GetRef();
+			Placement.SpawnPick = SpawnPick;
+			Placement.CellIndex = CellIndex;
+			Placement.MonsterIndexInCell = CurrentCellCount;
+
+			CellMonsterCounts[CellIndex].FindOrAdd(SpawnPick.MonsterClass)++;
+			CellMonsterClasses[CellIndex] = SpawnPick.MonsterClass;
+			break;
+		}
+	}
+
+	TArray<int32> TotalMonsterCountsByCell;
+	TotalMonsterCountsByCell.Init(0, SpawnableCells.Num());
+	for (const FRoomMonsterCellPlacement& Placement : Placements)
+	{
+		if (TotalMonsterCountsByCell.IsValidIndex(Placement.CellIndex))
+		{
+			TotalMonsterCountsByCell[Placement.CellIndex]++;
+		}
+	}
+
+	TArray<int32> SpawnedMonsterCountsByCell;
+	SpawnedMonsterCountsByCell.Init(0, SpawnableCells.Num());
+
+	for (FRoomMonsterCellPlacement& Placement : Placements)
+	{
+		if (!SpawnableCells.IsValidIndex(Placement.CellIndex))
+		{
+			continue;
+		}
+
+		Placement.MonsterIndexInCell = SpawnedMonsterCountsByCell[Placement.CellIndex]++;
+		Placement.MonsterCountInCell = TotalMonsterCountsByCell[Placement.CellIndex];
+
+		FVector LocalLocation = GetCellLocalCenter(InteriorLayout, SpawnableCells[Placement.CellIndex]);
+		LocalLocation += GetFormationOffset(Placement.MonsterIndexInCell, Placement.MonsterCountInCell, InteriorLayout.CellSize);
 		LocalLocation.X += RandomStream.FRandRange(-SpawnJitter, SpawnJitter);
 		LocalLocation.Y += RandomStream.FRandRange(-SpawnJitter, SpawnJitter);
 		LocalLocation.Z += SpawnZOffset;
@@ -73,7 +139,7 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
 		ACharacter* SpawnedMonster = World->SpawnActor<ACharacter>(
-			MonsterSpawnList[MonsterIndex],
+			Placement.SpawnPick.MonsterClass,
 			RoomTransform.TransformPosition(LocalLocation),
 			FRotator(0.f, RandomStream.FRandRange(0.f, 360.f), 0.f),
 			SpawnParams);
@@ -99,11 +165,11 @@ void URoomMonsterSpawnerComponent::ClearSpawnedMonsters()
 	SpawnedMonsters.Empty();
 }
 
-TArray<TSubclassOf<ACharacter>> URoomMonsterSpawnerComponent::BuildMonsterSpawnList(
+TArray<FRoomMonsterSpawnPick> URoomMonsterSpawnerComponent::BuildMonsterSpawnList(
 	const FRoomMonsterSpawnRule& SpawnRule,
 	FRandomStream& RandomStream) const
 {
-	TArray<TSubclassOf<ACharacter>> MonsterSpawnList;
+	TArray<FRoomMonsterSpawnPick> MonsterSpawnList;
 
 	const int32 MinScore = FMath::Max(0, FMath::Min(SpawnRule.ScoreRange.X, SpawnRule.ScoreRange.Y));
 	const int32 MaxScore = FMath::Max(0, FMath::Max(SpawnRule.ScoreRange.X, SpawnRule.ScoreRange.Y));
@@ -117,41 +183,29 @@ TArray<TSubclassOf<ACharacter>> URoomMonsterSpawnerComponent::BuildMonsterSpawnL
 
 	while (RemainingScore > 0)
 	{
-		TSubclassOf<ACharacter> PickedMonsterClass = PickMonsterClass(
+		const FRoomMonsterSpawnEntry* PickedEntry = PickMonsterEntry(
 			SpawnRule,
 			SelectedCounts,
 			RemainingScore,
 			RandomStream);
 
-		if (!PickedMonsterClass)
+		if (!PickedEntry || !PickedEntry->MonsterClass)
 		{
 			break;
 		}
 
-		const FRoomMonsterSpawnEntry* PickedEntry = nullptr;
-		for (const FRoomMonsterSpawnEntry& Entry : SpawnRule.MonsterPool)
-		{
-			if (Entry.MonsterClass == PickedMonsterClass)
-			{
-				PickedEntry = &Entry;
-				break;
-			}
-		}
+		FRoomMonsterSpawnPick& SpawnPick = MonsterSpawnList.AddDefaulted_GetRef();
+		SpawnPick.MonsterClass = PickedEntry->MonsterClass;
+		SpawnPick.MaxMonstersPerCell = PickedEntry->MaxMonstersPerCell;
 
-		if (!PickedEntry)
-		{
-			break;
-		}
-
-		MonsterSpawnList.Add(PickedMonsterClass);
-		SelectedCounts.FindOrAdd(PickedMonsterClass)++;
+		SelectedCounts.FindOrAdd(PickedEntry->MonsterClass)++;
 		RemainingScore -= FMath::Max(1, PickedEntry->Cost);
 	}
 
 	return MonsterSpawnList;
 }
 
-TSubclassOf<ACharacter> URoomMonsterSpawnerComponent::PickMonsterClass(
+const FRoomMonsterSpawnEntry* URoomMonsterSpawnerComponent::PickMonsterEntry(
 	const FRoomMonsterSpawnRule& SpawnRule,
 	const TMap<TSubclassOf<ACharacter>, int32>& SelectedCounts,
 	int32 RemainingScore,
@@ -199,7 +253,7 @@ TSubclassOf<ACharacter> URoomMonsterSpawnerComponent::PickMonsterClass(
 		RunningWeight += Entry.Weight;
 		if (RandomPick <= RunningWeight)
 		{
-			return Entry.MonsterClass;
+			return &Entry;
 		}
 	}
 

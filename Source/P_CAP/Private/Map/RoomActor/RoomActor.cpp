@@ -25,11 +25,19 @@ ARoomActor::ARoomActor()
 	MonsterSpawnerComponent = CreateDefaultSubobject<URoomMonsterSpawnerComponent>(TEXT("MonsterSpawnerComponent"));
 }
 
-void ARoomActor::InitializeRoom(const FRoomData& InRoomData, int32 InMapSeed)
+void ARoomActor::InitializeRoom(
+	const FRoomData& InRoomData,
+	int32 InMapSeed,
+	URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset)
 {
 	/* 현재 방 정보와 맵 시드를 캐싱 */
 	CachedRoomData = InRoomData;
 	CachedMapSeed = InMapSeed;
+
+	if (MonsterSpawnerComponent)
+	{
+		MonsterSpawnerComponent->SetSpawnDataAsset(InMonsterSpawnDataAsset);
+	}
 
 	/* 재초기화 상황을 대비해 기존 문/경로 액터를 정리 */
 	ClearSpawnedDoors();

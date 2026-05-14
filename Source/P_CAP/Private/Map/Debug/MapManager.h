@@ -11,6 +11,7 @@
 #include "MapManager.generated.h"
 
 class AStageExitActor;
+class URoomMonsterSpawnDataAsset;
 struct FStageConfig;
 
 UCLASS()
@@ -78,6 +79,9 @@ private:
 
 	UPROPERTY()
 	TArray<TObjectPtr<AStageExitActor>> SpawnedStageExits;
+
+	UPROPERTY()
+	TObjectPtr<URoomMonsterSpawnDataAsset> CurrentMonsterSpawnDataAsset;
 
 	/* 좌표 기반 빠른 조회용 */
 	UPROPERTY()

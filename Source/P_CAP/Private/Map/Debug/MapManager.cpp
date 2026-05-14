@@ -70,6 +70,7 @@ void AMapManager::GenerateStage(const FStageConfig& StageConfig)
 {
 	CurrentRoomCount = StageConfig.RoomCount;
 	CurrentSeed = StageConfig.bUseRandomSeed ? FMath::Rand() : StageConfig.FixedSeed;
+	CurrentMonsterSpawnDataAsset = StageConfig.MonsterSpawnDataAsset;
 
 	GenerateMapAndSpawnRooms();
 	MovePlayerToStartRoom();
@@ -170,7 +171,7 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 			continue;
 		}
 
-		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed);
+		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed, CurrentMonsterSpawnDataAsset);
 		SpawnedRooms.Add(SpawnedRoom);
 		SpawnedRoomMap.Add(RoomData.GridPos, SpawnedRoom);
 

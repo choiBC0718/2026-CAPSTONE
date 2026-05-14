@@ -25,6 +25,9 @@ struct FRoomMonsterSpawnEntry
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Monster", meta=(ClampMin="1"))
 	int32 MaxCount = 99;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Monster", meta=(ClampMin="1"))
+	int32 MaxMonstersPerCell = 1;
 };
 
 USTRUCT(BlueprintType)
@@ -37,9 +40,6 @@ struct FRoomMonsterSpawnRule
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room", meta=(ClampMin="0"))
 	FIntPoint ScoreRange = FIntPoint(10, 20);
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room", meta=(ClampMin="1"))
-	int32 MaxMonstersPerCell = 3;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room")
 	TArray<FRoomMonsterSpawnEntry> MonsterPool;

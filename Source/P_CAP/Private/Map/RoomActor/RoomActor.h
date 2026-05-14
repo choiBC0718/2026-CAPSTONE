@@ -16,6 +16,8 @@
 #include "Map/RoomActor/DoorActor.h"
 #include "RoomActor.generated.h"
 
+class URoomMonsterSpawnDataAsset;
+
 UCLASS()
 class ARoomActor : public AActor
 {
@@ -24,7 +26,10 @@ class ARoomActor : public AActor
 public:
 	ARoomActor();
 
-	void InitializeRoom(const FRoomData& InRoomData, int32 InMapSeed);
+	void InitializeRoom(
+		const FRoomData& InRoomData,
+		int32 InMapSeed,
+		URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset = nullptr);
 	FVector GetEntrancePoint(EDoorDirection Direction) const;
 	virtual void Destroyed() override;
 	
