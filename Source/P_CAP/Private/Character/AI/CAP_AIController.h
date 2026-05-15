@@ -4,10 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
-#include "Perception/AIPerceptionTypes.h"
 #include "CAP_AIController.generated.h"
-
-struct FAIStimulus;
 
 /**
  * 
@@ -40,12 +37,6 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category="AI Behavior")
 	class UBehaviorTree* BehaviorTree;
-	
-	UPROPERTY(VisibleDefaultsOnly, Category="Perception")
-	class UAIPerceptionComponent* AIPerceptionComp;
-	
-	UPROPERTY(VisibleDefaultsOnly, Category="Perception")
-	class UAISenseConfig_Sight* SightConfig;
 
 	UPROPERTY(VisibleInstanceOnly, Category="AI Behavior")
 	bool bAIEnabled = false;
@@ -53,18 +44,7 @@ private:
 	UPROPERTY()
 	TObjectPtr<AActor> CachedTargetActor;
 
-	UFUNCTION()
-	void TargetPerceptionUpdated(AActor* TargetActor, FAIStimulus Stimulus);
-
-	UFUNCTION()
-	void TargetForgotten(AActor* ForgottenActor);
-
-	const UObject* GetCurrentTarget() const;
 	void SetCurrentTarget(AActor* NewTarget);
-	AActor* GetNextPerceivedActor() const;
-	void ForgetActorIfDead(AActor* ActorToForget);
 
-	void ClearAndDisableAllSenses();
-	void EnableAllSenses();
 	void ApplyBlackboardValues();
 };

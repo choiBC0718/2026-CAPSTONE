@@ -32,31 +32,9 @@ public:
 	void OnRoomDeactivated();
 	virtual void OnRoomDeactivated_Implementation();
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Enemy|Combat")
-	void PerformAttack(AActor* TargetActor);
-	virtual void PerformAttack_Implementation(AActor* TargetActor);
-
-	UFUNCTION(BlueprintCallable, Category="Enemy|Combat")
-	bool TryPerformAttack(AActor* TargetActor);
-
-	UFUNCTION(BlueprintPure, Category="Enemy|Combat")
-	float GetAttackRange() const { return AttackRange; }
-
-	UFUNCTION(BlueprintPure, Category="Enemy|Combat")
-	float GetAttackCooldown() const { return AttackCooldown; }
-
 protected:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnDead() override;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Combat", meta=(ClampMin="0.0"))
-	float AttackRange = 200.f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Combat", meta=(ClampMin="0.0"))
-	float AttackCooldown = 1.0f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Combat", meta=(ClampMin="0.0"))
-	float AttackDamage = 10.f;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Enemy|AI")
 	bool bEnemyAIEnabled = false;
@@ -64,6 +42,4 @@ protected:
 private:
 	UPROPERTY()
 	TObjectPtr<AActor> CurrentTargetActor;
-
-	double LastAttackTime = -1000.0;
 };

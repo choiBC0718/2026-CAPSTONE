@@ -5,7 +5,6 @@
 
 #include "Character/AI/CAP_AIController.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
-#include "Kismet/GameplayStatics.h"
 
 ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 {
@@ -56,34 +55,6 @@ void ACAP_EnemyCharacter::OnRoomActivated_Implementation(AActor* TargetActor)
 void ACAP_EnemyCharacter::OnRoomDeactivated_Implementation()
 {
 	SetEnemyAIEnabled(false);
-}
-
-void ACAP_EnemyCharacter::PerformAttack_Implementation(AActor* TargetActor)
-{
-	if (!TargetActor)
-	{
-		return;
-	}
-
-	UGameplayStatics::ApplyDamage(TargetActor, AttackDamage, GetController(), this, nullptr);
-}
-
-bool ACAP_EnemyCharacter::TryPerformAttack(AActor* TargetActor)
-{
-	if (!TargetActor || !GetWorld())
-	{
-		return false;
-	}
-
-	const double CurrentTime = GetWorld()->GetTimeSeconds();
-	if (CurrentTime - LastAttackTime < AttackCooldown)
-	{
-		return false;
-	}
-
-	LastAttackTime = CurrentTime;
-	PerformAttack(TargetActor);
-	return true;
 }
 
 void ACAP_EnemyCharacter::OnDead()
