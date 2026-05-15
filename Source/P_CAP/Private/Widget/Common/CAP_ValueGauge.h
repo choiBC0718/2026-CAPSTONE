@@ -40,6 +40,6 @@ private:
 	UPROPERTY(VisibleAnywhere, meta = (BindWidget))
 	class UProgressBar* ProgressBar;
 
-	UPROPERTY(VisibleAnywhere, meta = (BindWidget))
+	UPROPERTY(VisibleAnywhere, meta = (BindWidgetOptional))
 	class UTextBlock* ValueText;
 };

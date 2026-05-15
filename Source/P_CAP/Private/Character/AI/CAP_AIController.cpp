@@ -4,7 +4,6 @@
 #include "Character/AI/CAP_AIController.h"
 
 #include "BehaviorTree/BlackboardComponent.h"
-#include "Kismet/GameplayStatics.h"
 
 ACAP_AIController::ACAP_AIController()
 {
@@ -14,7 +13,7 @@ void ACAP_AIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 
-	SetAIEnabled(true);
+	SetAIEnabled(false);
 }
 
 void ACAP_AIController::BeginPlay()
@@ -32,10 +31,6 @@ void ACAP_AIController::SetAIEnabled(bool bEnabled)
 	{
 		StopMovement();
 		CachedTargetActor = nullptr;
-	}
-	else if (!CachedTargetActor)
-	{
-		CachedTargetActor = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
 	}
 
 	ApplyBlackboardValues();

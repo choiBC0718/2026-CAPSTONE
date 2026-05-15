@@ -4,10 +4,17 @@
 #include "Character/AI/CAP_EnemyCharacter.h"
 
 #include "Character/AI/CAP_AIController.h"
+#include "Components/WidgetComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
+#include "Widget/Common/CAP_OverheadStatsGauge.h"
 
 ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 {
+	HealthBarWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("Health Bar Widget Component"));
+	HealthBarWidgetComponent->SetupAttachment(GetRootComponent());
+	HealthBarWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	HealthBarWidgetComponent->SetDrawSize(FVector2D(120.f, 16.f));
+	HealthBarWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, 120.f));
 }
 
 void ACAP_EnemyCharacter::BeginPlay()
@@ -20,6 +27,8 @@ void ACAP_EnemyCharacter::BeginPlay()
 		ASC->InitAbilityActorInfo(this,this);
 		ASC->InitComponent(CharacterStatRowName);
 	}
+
+	InitializeHealthBarWidget();
 }
 
 void ACAP_EnemyCharacter::SetEnemyAIEnabled(bool bEnabled, AActor* TargetActor)
@@ -60,4 +69,25 @@ void ACAP_EnemyCharacter::OnRoomDeactivated_Implementation()
 void ACAP_EnemyCharacter::OnDead()
 {
 	SetEnemyAIEnabled(false);
+}
+
+void ACAP_EnemyCharacter::InitializeHealthBarWidget()
+{
+	if (!HealthBarWidgetComponent)
+	{
+		return;
+	}
+
+	if (HealthBarWidgetClass)
+	{
+		HealthBarWidgetComponent->SetWidgetClass(HealthBarWidgetClass);
+	}
+
+	UCAP_OverheadStatsGauge* HealthBarWidget = Cast<UCAP_OverheadStatsGauge>(HealthBarWidgetComponent->GetWidget());
+	if (!HealthBarWidget)
+	{
+		return;
+	}
+
+	HealthBarWidget->ConfigureWithASC(GetAbilitySystemComponent());
 }

@@ -15,7 +15,10 @@ void UCAP_ValueGauge::NativeConstruct()
 	ProgressBar->SetVisibility(bProgressBarVisible ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
 
 	//ValueText->SetFont(ValueTextFont);
-	ValueText->SetVisibility(bValueTextVisible ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+	if (ValueText)
+	{
+		ValueText->SetVisibility(bValueTextVisible ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+	}
 }
 
 void UCAP_ValueGauge::SetAndBoundToGameplayAttribute(class UAbilitySystemComponent* ASC, const FGameplayAttribute& Attribute, const FGameplayAttribute& MaxAttribute)
@@ -47,11 +50,14 @@ void UCAP_ValueGauge::SetValue(float NewValue, float NewMaxValue)
 	ProgressBar->SetPercent(NewPercent);
 	FNumberFormattingOptions FormatOps = FNumberFormattingOptions().SetMaximumFractionalDigits(0);
 
-	ValueText->SetText(
-		FText::Format(
-			FTextFormat::FromString("{0} / {1}"),
-			FText::AsNumber(NewValue, &FormatOps),
-			FText::AsNumber(NewMaxValue, &FormatOps)));
+	if (ValueText)
+	{
+		ValueText->SetText(
+			FText::Format(
+				FTextFormat::FromString("{0} / {1}"),
+				FText::AsNumber(NewValue, &FormatOps),
+				FText::AsNumber(NewMaxValue, &FormatOps)));
+	}
 }
 
 void UCAP_ValueGauge::ValueChanged(const FOnAttributeChangeData& ChangedData)

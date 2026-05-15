@@ -14,7 +14,8 @@
 
 ARoomActor::ARoomActor()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	SetActorTickEnabled(false);
 
 	/* 방의 기준이 되는 루트 */
 	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
@@ -47,6 +48,18 @@ void ARoomActor::BeginPlay()
 	}
 
 	CheckPlayerInsideRoom();
+	SetActorTickEnabled(true);
+}
+
+void ARoomActor::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	CheckPlayerInsideRoom();
+	if (bRoomActivated)
+	{
+		SetActorTickEnabled(false);
+	}
 }
 
 void ARoomActor::InitializeRoom(
@@ -152,7 +165,7 @@ void ARoomActor::UpdateRoomEnterTriggerExtent()
 
 void ARoomActor::CheckPlayerInsideRoom()
 {
-	if (!RoomEnterTrigger || bRoomActivated)
+	if (bRoomActivated)
 	{
 		return;
 	}
@@ -163,8 +176,20 @@ void ARoomActor::CheckPlayerInsideRoom()
 		return;
 	}
 
-	RoomEnterTrigger->UpdateOverlaps();
-	if (RoomEnterTrigger->IsOverlappingActor(PlayerPawn))
+	if (RoomEnterTrigger)
+	{
+		RoomEnterTrigger->UpdateOverlaps();
+		if (RoomEnterTrigger->IsOverlappingActor(PlayerPawn))
+		{
+			ActivateRoom(PlayerPawn);
+			return;
+		}
+	}
+
+	const FVector LocalPlayerLocation = GetActorTransform().InverseTransformPosition(PlayerPawn->GetActorLocation());
+	const float TriggerHalfExtent = FMath::Max(100.f, RoomHalfExtent - 50.f);
+	if (FMath::Abs(LocalPlayerLocation.X) <= TriggerHalfExtent &&
+		FMath::Abs(LocalPlayerLocation.Y) <= TriggerHalfExtent)
 	{
 		ActivateRoom(PlayerPawn);
 	}

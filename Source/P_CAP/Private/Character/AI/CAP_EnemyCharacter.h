@@ -36,10 +36,18 @@ protected:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnDead() override;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy|UI")
+	TObjectPtr<class UWidgetComponent> HealthBarWidgetComponent;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|UI")
+	TSubclassOf<class UCAP_OverheadStatsGauge> HealthBarWidgetClass;
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Enemy|AI")
 	bool bEnemyAIEnabled = false;
 
 private:
+	void InitializeHealthBarWidget();
+
 	UPROPERTY()
 	TObjectPtr<AActor> CurrentTargetActor;
 };
