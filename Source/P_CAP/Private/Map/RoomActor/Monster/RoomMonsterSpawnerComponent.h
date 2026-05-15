@@ -37,6 +37,9 @@ public:
 
 	void ClearSpawnedMonsters();
 
+	void ActivateSpawnedMonsters(AActor* TargetActor);
+	void DeactivateSpawnedMonsters();
+
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Monster Spawn", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<URoomMonsterSpawnDataAsset> SpawnDataAsset;

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Map/RoomActor/Interior/RoomInteriorGenerator.h"
@@ -32,13 +33,27 @@ public:
 		URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset = nullptr);
 	FVector GetEntrancePoint(EDoorDirection Direction) const;
 	virtual void Destroyed() override;
+
+	UFUNCTION(BlueprintCallable, Category="Room")
+	void ActivateRoom(AActor* TargetActor);
+
+	UFUNCTION(BlueprintCallable, Category="Room")
+	void DeactivateRoom();
+
+	UFUNCTION(BlueprintPure, Category="Room")
+	bool IsRoomActivated() const { return bRoomActivated; }
 	
 protected:
+	virtual void BeginPlay() override;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Room")
 	USceneComponent* Root;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Room")
 	UStaticMeshComponent* FloorMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Room|Trigger")
+	TObjectPtr<UBoxComponent> RoomEnterTrigger;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Room|Monster")
 	TObjectPtr<URoomMonsterSpawnerComponent> MonsterSpawnerComponent;
@@ -74,6 +89,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
 	bool bDrawInteriorCellDebug = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Trigger", meta=(ClampMin="0.0"))
+	float RoomEnterTriggerHeight = 300.f;
+
 	/* 큰 구조물 메쉬 후보를 담는 데이터 에셋 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
 	TObjectPtr<URoomInteriorPropSet> LargeStructurePropSet;
@@ -106,6 +124,21 @@ protected:
 	TObjectPtr<URoomInteriorGenerator> InteriorGenerator;
 
 private:
+	UPROPERTY()
+	bool bRoomActivated = false;
+
+	UFUNCTION()
+	void OnRoomEnterTriggerBeginOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComponent,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult);
+
+	void UpdateRoomEnterTriggerExtent();
+	void CheckPlayerInsideRoom();
+
 	void ClearSpawnedDoors();
 	/* 이 방이 소유하는 경로 액터들을 정리 */
 	void ClearSpawnedPathActors();
