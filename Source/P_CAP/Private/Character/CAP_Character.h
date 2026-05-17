@@ -36,6 +36,7 @@ protected:
 
 public:
 	bool IsDead() const;
+	bool IsAlive() const;
 	
 private:
 	void BindGASChangeDelegates();

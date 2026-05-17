@@ -4,6 +4,7 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/PrimitiveComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "GameFramework/Character.h"
 #include "Map/Debug/MapManager.h"
 #include "Kismet/GameplayStatics.h"
@@ -12,7 +13,8 @@
 
 ADoorActor::ADoorActor()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	SetActorTickEnabled(false);
 
 	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	SetRootComponent(Root);
@@ -20,6 +22,10 @@ ADoorActor::ADoorActor()
 	DoorMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DoorMesh"));
 	DoorMesh->SetupAttachment(Root);
 	DoorMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	PortalMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PortalMesh"));
+	PortalMesh->SetupAttachment(DoorMesh);
+	PortalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	TriggerBox = CreateDefaultSubobject<UBoxComponent>(TEXT("TriggerBox"));
 	TriggerBox->SetupAttachment(Root);
@@ -41,9 +47,76 @@ void ADoorActor::BeginPlay()
 {
 	Super::BeginPlay();
 
+	InitializePortalMaterialInstances();
+	SetPortalEnabled(true);
+
 	if (TriggerBox)
 	{
 		TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &ADoorActor::OnTriggerBeginOverlap);
+	}
+}
+
+void ADoorActor::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if (FMath::IsNearlyEqual(CurrentPortalAlphaCutoff, TargetPortalAlphaCutoff, KINDA_SMALL_NUMBER))
+	{
+		SetPortalAlphaCutoff(TargetPortalAlphaCutoff);
+		SetActorTickEnabled(false);
+		return;
+	}
+
+	const float InterpSpeed = 1.f / FMath::Max(PortalTransitionDuration, KINDA_SMALL_NUMBER);
+	const float NewAlphaCutoff = FMath::FInterpConstantTo(
+		CurrentPortalAlphaCutoff,
+		TargetPortalAlphaCutoff,
+		DeltaSeconds,
+		InterpSpeed);
+	SetPortalAlphaCutoff(NewAlphaCutoff);
+}
+
+void ADoorActor::SetPortalEnabled(bool bEnabled)
+{
+	InitializePortalMaterialInstances();
+
+	TargetPortalAlphaCutoff = bEnabled ? 0.f : 1.f;
+	SetActorTickEnabled(true);
+
+	if (TriggerBox)
+	{
+		TriggerBox->SetCollisionEnabled(bEnabled ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
+	}
+}
+
+void ADoorActor::SetPortalAlphaCutoff(float NewAlphaCutoff)
+{
+	CurrentPortalAlphaCutoff = FMath::Clamp(NewAlphaCutoff, 0.f, 1.f);
+
+	for (UMaterialInstanceDynamic* MaterialInstance : PortalMaterialInstances)
+	{
+		if (MaterialInstance)
+		{
+			MaterialInstance->SetScalarParameterValue(TEXT("Alpha_Cutof"), CurrentPortalAlphaCutoff);
+		}
+	}
+}
+
+void ADoorActor::InitializePortalMaterialInstances()
+{
+	if (!PortalMesh || PortalMaterialInstances.Num() > 0)
+	{
+		return;
+	}
+
+	const int32 MaterialCount = PortalMesh->GetNumMaterials();
+	PortalMaterialInstances.Reserve(MaterialCount);
+	for (int32 MaterialIndex = 0; MaterialIndex < MaterialCount; ++MaterialIndex)
+	{
+		if (UMaterialInstanceDynamic* MaterialInstance = PortalMesh->CreateAndSetMaterialInstanceDynamic(MaterialIndex))
+		{
+			PortalMaterialInstances.Add(MaterialInstance);
+		}
 	}
 }
 

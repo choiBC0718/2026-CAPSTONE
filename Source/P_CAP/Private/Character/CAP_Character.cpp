@@ -49,6 +49,11 @@ bool ACAP_Character::IsDead() const
 	return GetAbilitySystemComponent()->HasMatchingGameplayTag(UCAP_AbilitySystemStatics::GetDeadStateTag());
 }
 
+bool ACAP_Character::IsAlive() const
+{
+	return IsValid(CAPAttributeSet) && CAPAttributeSet->GetHealth() > 0.f;
+}
+
 void ACAP_Character::BindGASChangeDelegates()
 {
 	if (CAPAbilitySystemComponent)

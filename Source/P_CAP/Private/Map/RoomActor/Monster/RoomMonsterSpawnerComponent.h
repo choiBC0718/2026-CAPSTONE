@@ -39,6 +39,8 @@ public:
 
 	void ActivateSpawnedMonsters(AActor* TargetActor);
 	void DeactivateSpawnedMonsters();
+	bool HasSpawnedMonsters() const;
+	bool AreAllSpawnedMonstersDefeated() const;
 
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Monster Spawn", meta=(AllowPrivateAccess="true"))

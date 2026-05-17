@@ -3,6 +3,7 @@
 #include "Map/RoomActor/Monster/RoomMonsterSpawnerComponent.h"
 
 #include "Character/AI/CAP_EnemyCharacter.h"
+#include "Character/CAP_Character.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "Map/RoomActor/Monster/RoomMonsterSpawnDataAsset.h"
@@ -188,6 +189,42 @@ void URoomMonsterSpawnerComponent::DeactivateSpawnedMonsters()
 			EnemyCharacter->OnRoomDeactivated();
 		}
 	}
+}
+
+bool URoomMonsterSpawnerComponent::HasSpawnedMonsters() const
+{
+	for (const ACharacter* Monster : SpawnedMonsters)
+	{
+		if (IsValid(Monster))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool URoomMonsterSpawnerComponent::AreAllSpawnedMonstersDefeated() const
+{
+	bool bHasAnyMonster = false;
+
+	for (const ACharacter* Monster : SpawnedMonsters)
+	{
+		if (!IsValid(Monster))
+		{
+			continue;
+		}
+
+		bHasAnyMonster = true;
+
+		const ACAP_Character* CAPCharacter = Cast<ACAP_Character>(Monster);
+		if (!CAPCharacter || CAPCharacter->IsAlive())
+		{
+			return false;
+		}
+	}
+
+	return bHasAnyMonster;
 }
 
 TArray<FRoomMonsterSpawnPick> URoomMonsterSpawnerComponent::BuildMonsterSpawnList(

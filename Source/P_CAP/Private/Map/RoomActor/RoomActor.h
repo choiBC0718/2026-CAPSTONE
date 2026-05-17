@@ -127,6 +127,8 @@ protected:
 private:
 	UPROPERTY()
 	bool bRoomActivated = false;
+	UPROPERTY()
+	bool bRoomCleared = false;
 
 	UFUNCTION()
 	void OnRoomEnterTriggerBeginOverlap(
@@ -139,6 +141,9 @@ private:
 
 	void UpdateRoomEnterTriggerExtent();
 	void CheckPlayerInsideRoom();
+	void CheckRoomClear();
+	bool ShouldLockPortalsForCombat() const;
+	void SetSpawnedDoorsPortalEnabled(bool bEnabled);
 
 	void ClearSpawnedDoors();
 	/* 이 방이 소유하는 경로 액터들을 정리 */

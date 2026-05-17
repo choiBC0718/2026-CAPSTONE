@@ -11,6 +11,7 @@
 class USceneComponent;
 class UStaticMeshComponent;
 class UBoxComponent;
+class UMaterialInstanceDynamic;
 
 UCLASS()
 class ADoorActor : public AActor
@@ -21,6 +22,7 @@ public:
 	ADoorActor();
 
 	void InitializeDoor(const FIntPoint& InSourceRoomPos, const FIntPoint& InTargetRoomPos, EDoorDirection InDirection);
+	void SetPortalEnabled(bool bEnabled);
 
 	FIntPoint GetSourceRoomPos() const { return SourceRoomPos; }
 	FIntPoint GetTargetRoomPos() const { return TargetRoomPos; }
@@ -28,6 +30,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Door")
@@ -35,6 +38,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Door")
 	UStaticMeshComponent* DoorMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Door")
+	UStaticMeshComponent* PortalMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Door")
 	UBoxComponent* TriggerBox;
@@ -50,8 +56,20 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Door")
 	bool bIsProcessingMove = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Door|Portal", meta=(ClampMin="0.01"))
+	float PortalTransitionDuration = 1.0f;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> PortalMaterialInstances;
 	
 private:
+	void InitializePortalMaterialInstances();
+	void SetPortalAlphaCutoff(float NewAlphaCutoff);
+
 	UFUNCTION()
 	void OnTriggerBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	float CurrentPortalAlphaCutoff = 0.f;
+	float TargetPortalAlphaCutoff = 0.f;
 };

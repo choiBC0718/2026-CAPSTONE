@@ -58,7 +58,7 @@ void ARoomActor::Tick(float DeltaSeconds)
 	CheckPlayerInsideRoom();
 	if (bRoomActivated)
 	{
-		SetActorTickEnabled(false);
+		CheckRoomClear();
 	}
 }
 
@@ -71,6 +71,7 @@ void ARoomActor::InitializeRoom(
 	CachedRoomData = InRoomData;
 	CachedMapSeed = InMapSeed;
 	bRoomActivated = false;
+	bRoomCleared = false;
 	UpdateRoomEnterTriggerExtent();
 
 	if (MonsterSpawnerComponent)
@@ -90,6 +91,7 @@ void ARoomActor::InitializeRoom(
 	/* 방 정보 기준으로 문과 경로를 다시 생성 */
 	SpawnConnectedDoors();
 	GenerateAndSpawnInterior();
+	SetSpawnedDoorsPortalEnabled(true);
 
 	if (UWorld* World = GetWorld())
 	{
@@ -115,6 +117,17 @@ void ARoomActor::ActivateRoom(AActor* TargetActor)
 	{
 		MonsterSpawnerComponent->ActivateSpawnedMonsters(TargetActor);
 	}
+
+	if (ShouldLockPortalsForCombat())
+	{
+		SetSpawnedDoorsPortalEnabled(false);
+		SetActorTickEnabled(true);
+	}
+	else
+	{
+		bRoomCleared = true;
+		SetSpawnedDoorsPortalEnabled(true);
+	}
 }
 
 void ARoomActor::DeactivateRoom()
@@ -129,6 +142,8 @@ void ARoomActor::DeactivateRoom()
 	{
 		MonsterSpawnerComponent->DeactivateSpawnedMonsters();
 	}
+
+	SetSpawnedDoorsPortalEnabled(true);
 }
 
 void ARoomActor::OnRoomEnterTriggerBeginOverlap(
@@ -192,6 +207,40 @@ void ARoomActor::CheckPlayerInsideRoom()
 		FMath::Abs(LocalPlayerLocation.Y) <= TriggerHalfExtent)
 	{
 		ActivateRoom(PlayerPawn);
+	}
+}
+
+void ARoomActor::CheckRoomClear()
+{
+	if (bRoomCleared || !ShouldLockPortalsForCombat())
+	{
+		SetActorTickEnabled(false);
+		return;
+	}
+
+	if (MonsterSpawnerComponent && MonsterSpawnerComponent->AreAllSpawnedMonstersDefeated())
+	{
+		bRoomCleared = true;
+		SetSpawnedDoorsPortalEnabled(true);
+		SetActorTickEnabled(false);
+	}
+}
+
+bool ARoomActor::ShouldLockPortalsForCombat() const
+{
+	return CachedRoomData.RoomType == ERoomType::Normal &&
+		MonsterSpawnerComponent &&
+		MonsterSpawnerComponent->HasSpawnedMonsters();
+}
+
+void ARoomActor::SetSpawnedDoorsPortalEnabled(bool bEnabled)
+{
+	for (ADoorActor* Door : SpawnedDoors)
+	{
+		if (IsValid(Door))
+		{
+			Door->SetPortalEnabled(bEnabled);
+		}
 	}
 }
 
