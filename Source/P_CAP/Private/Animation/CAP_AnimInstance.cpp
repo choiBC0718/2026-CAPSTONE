@@ -23,6 +23,13 @@ void UCAP_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	{
 		Velocity = OwnerCharacter->GetVelocity();
 		Speed = Velocity.Length();
+		Direction = 0.f;
+
+		if (Speed > KINDA_SMALL_NUMBER)
+		{
+			const FVector LocalVelocity = OwnerCharacter->GetActorRotation().UnrotateVector(Velocity);
+			Direction = FMath::RadiansToDegrees(FMath::Atan2(LocalVelocity.Y, LocalVelocity.X));
+		}
 
 		if (APlayerController* PC = Cast<APlayerController>(OwnerCharacter->GetController()))
 		{

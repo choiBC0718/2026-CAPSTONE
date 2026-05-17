@@ -10,6 +10,8 @@
 
 ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 {
+	bCanRespawn = false;
+
 	HealthBarWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("Health Bar Widget Component"));
 	HealthBarWidgetComponent->SetupAttachment(GetRootComponent());
 	HealthBarWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);

@@ -158,21 +158,30 @@ void UCAP_GameplayAbility::OnDamageTagReceived(FGameplayEventData Payload)
 		return;
 	
 	int HitResultCount = UAbilitySystemBlueprintLibrary::GetDataCountFromTargetData(Payload.TargetData);
-	FGameplayEffectContextHandle EffectContext = MakeEffectContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
-	FGameplayEffectSpecHandle DamageSpecHandle = MakeOutgoingGameplayEffectSpec(GetDamageGE(), GetAbilityLevel(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo()));
-
-	DamageSpecHandle.Data->SetSetByCallerMagnitude(BaseDamageDataTag, SkillData->BaseDamage);
-	DamageSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->DamageMultiplier);
-	DamageSpecHandle.Data->SetSetByCallerMagnitude(ChargeMultiplierDataTag, ChargedTime);
+	TSubclassOf<UGameplayEffect> DamageGE = GetDamageGE();
+	if (!DamageGE)
+		return;
 
 	for (int i =0; i<HitResultCount; i++)
 	{
 		FHitResult HitResult = UAbilitySystemBlueprintLibrary::GetHitResultFromTargetData(Payload.TargetData, i);
+		AActor* HitActor = HitResult.GetActor();
+		if (!HitActor)
+			continue;
 		
+		FGameplayEffectContextHandle EffectContext = MakeEffectContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
 		EffectContext.AddHitResult(HitResult);
-		DamageSpecHandle.Data -> SetContext(EffectContext);
+		
+		FGameplayEffectSpecHandle DamageSpecHandle = MakeOutgoingGameplayEffectSpec(DamageGE, GetAbilityLevel(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo()));
+		if (!DamageSpecHandle.IsValid())
+			continue;
 
-		ApplyGameplayEffectSpecToTarget(GetCurrentAbilitySpecHandle(), CurrentActorInfo, CurrentActivationInfo, DamageSpecHandle, UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(HitResult.GetActor()));
+		DamageSpecHandle.Data->SetSetByCallerMagnitude(BaseDamageDataTag, SkillData->BaseDamage);
+		DamageSpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierDataTag, SkillData->DamageMultiplier);
+		DamageSpecHandle.Data->SetSetByCallerMagnitude(ChargeMultiplierDataTag, ChargedTime);
+		DamageSpecHandle.Data->SetContext(EffectContext);
+
+		ApplyGameplayEffectSpecToTarget(GetCurrentAbilitySpecHandle(), CurrentActorInfo, CurrentActivationInfo, DamageSpecHandle, UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(HitActor));
 		SendGameplayCueEvent(HitResult, SkillData);
 	}
 

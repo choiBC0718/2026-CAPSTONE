@@ -68,7 +68,10 @@ void ACAP_Character::DeadTagUpdated(FGameplayTag GameplayTag, int32 NewCount)
 	}
 	else
 	{
-		Respawn();
+		if (bCanRespawn)
+		{
+			Respawn();
+		}
 	}
 }
 

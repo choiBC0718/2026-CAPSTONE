@@ -24,6 +24,9 @@ public:
 	FORCEINLINE float GetSpeed() const {return Speed;}
 
 	UFUNCTION(BlueprintCallable, meta=(BlueprintThreadSafe))
+	FORCEINLINE float GetDirection() const {return Direction;}
+
+	UFUNCTION(BlueprintCallable, meta=(BlueprintThreadSafe))
 	FORCEINLINE bool IsMoving() const {return Speed !=0;}
 	UFUNCTION(BlueprintCallable, meta=(BlueprintThreadSafe))
 	FORCEINLINE bool IsNotMoving() const {return Speed ==0;}
@@ -51,6 +54,7 @@ private:
 	class UCharacterMovementComponent* OwnerMovementComp;
 
 	FVector Velocity;
-	float Speed;
-	float AimYaw;
+	float Speed = 0.f;
+	float Direction = 0.f;
+	float AimYaw = 0.f;
 };

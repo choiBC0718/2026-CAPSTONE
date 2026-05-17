@@ -61,7 +61,6 @@ void UANS_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSeque
 	if (!TargetMesh)
 		return;
 
-	FGameplayEventData Payload;
 	TSet<AActor*>* HitActors = HitActorsMap.Find(MeshComp);
 	TArray<FVector>* PrevLocs = PrevSocketLocationMap.Find(MeshComp);
 
@@ -122,6 +121,7 @@ void UANS_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSeque
 			{
 				HitActors->Add(HitActor); 
 
+				FGameplayEventData Payload;
 				Payload.Instigator = OwnerActor;
 				Payload.Target = HitActor;
 
