@@ -6,6 +6,7 @@
 #include "CAP_GameplayWidget.h"
 #include "Components/Button.h"
 #include "Components/Image.h"
+#include "Components/NamedSlot.h"
 #include "Components/TextBlock.h"
 #include "Interactables/NPC/CAP_WorldNPC.h"
 
@@ -25,13 +26,7 @@ void UCAP_DialogueWidget::NativeConstruct()
 	TalkBtn->OnClicked.AddDynamic(this, &UCAP_DialogueWidget::OnTalkBtnClicked);
 	QuitBtn->OnClicked.AddDynamic(this, &UCAP_DialogueWidget::OnQuitBtnClicked);
 	
-	ActiveTextBlocks.Add(Talk);
-	ActiveTextBlocks.Add(SpecialActionText);
-	ActiveTextBlocks.Add(Quit);
-	
-	ActiveButtons.Add(TalkBtn);
-	ActiveButtons.Add(SpecialBtn);
-	ActiveButtons.Add(QuitBtn);
+	SetupActiveButtons(true,true,true);
 	
 	for (int32 i = 0; i < ActiveButtons.Num(); i++)
 	{
@@ -120,11 +115,12 @@ void UCAP_DialogueWidget::StartDialogue()
 void UCAP_DialogueWidget::UpdateDialogueUI(const FNPCData& Data)
 {
 	CachedNPCData = Data;
-	bIsConfirming = false;
 
 	bool bShowSpecial = !Data.SpecialActionText.IsEmpty();
 	SetupActiveButtons(true, bShowSpecial, true);
-	
+
+	if (Quit)
+		Quit->SetText(FText::FromString(TEXT("대화종료")));
 	if (bShowSpecial)
 		SpecialActionText->SetText(FText::FromString(Data.SpecialActionText));
 	
@@ -142,59 +138,51 @@ void UCAP_DialogueWidget::UpdateDialogueUI(const FNPCData& Data)
 	DialogueText->SetText(FText::FromString(Data.DefaultDialogue));
 }
 
-void UCAP_DialogueWidget::ChangeToRewardState(const FString& ResultText)
-{
-	SetupActiveButtons(false,false,true);
-	DialogueText->SetText(FText::FromString(ResultText));
-	
-	Quit->SetText(FText::FromString(TEXT("대화종료")));
-}
-
 void UCAP_DialogueWidget::OnSpecialBtnClicked()
 {
-	if (bIsClosing || !Player)
+	if (!Player)
 		return;
 	
-	if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
-	{
-		if (!bIsConfirming)
-		{
-			int32 RequiredCost = 0;
-			if (InteractComp->GetNPCSpecialActionCost(RequiredCost))
-			{
-				if (const FString* ConfirmFormat = CachedNPCData.ResultDialogues.Find(ENPCActionResult::RequireConfirm))
-				{	// 재화 얼마 소모되는지 보여주는 메세지로 교체
-					FString FormatMsg = ConfirmFormat->Replace(TEXT("{Cost}"), *FString::FromInt(RequiredCost));
-					// 이 안에서 bIsConfirming = true바꾸고, SpecialBtn 누르면 해당 메소드 재실행 (이부분은 스킵) 
-					ChangeToConfirmState(FormatMsg);
-					return;
-				}
-				else
-				{	//설정 안한 경우 크래시 방지
-					ChangeToConfirmState(FString::Printf(TEXT("마석 %d개가 필요하다. 지불하겠나?"), RequiredCost));
-					return;
-				}
-			}
-		}
-		
-		ENPCActionResult Result = InteractComp->ExecuteNPCSpecialAction();
-		FString ResultText = TEXT("");
-		
-		if (const FString* FoundText = CachedNPCData.ResultDialogues.Find(Result))
-		{
-			ResultText = *FoundText;
-		}
-		else
-			return;
+	UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent();
+	if (!InteractComp)
+		return;
 
-		bIsConfirming = false;
-		ChangeToRewardState(ResultText);
+	ENPCActionResult Result = InteractComp->ExecuteNPCSpecialAction();
+	switch (Result)
+	{
+	case ENPCActionResult::OpenCustomWidget:
+		OpenCustomWidget();
+		break;
+
+	case ENPCActionResult::FirstInteraction:
+		HandleFirstInteraction(Result);
+		break;
+
+	case ENPCActionResult::RequireConfirm:
+		HandleRequireConfirm(Result);
+		break;
+
+	case ENPCActionResult::Success:
+		{
+			FString ResultText=TEXT("NPC DialogueComponent에서 Success 시 대사 설정필요");
+			if (const FString* FoundText = CachedNPCData.ResultDialogues.Find(Result))
+				ResultText=*FoundText;
+			ChangeToRewardState(ResultText);
+		}
+		break;
+		
+	case ENPCActionResult::InsufficientCurrency:
+	case ENPCActionResult::AlreadyReceived:
+	case ENPCActionResult::Failed:
+		HandleFailedInteraction(Result);
+		break;
+	default:
+		break;
 	}
 }	
 
 void UCAP_DialogueWidget::OnTalkBtnClicked()
 {
-	UE_LOG(LogTemp, Warning, TEXT("NPC 떠들기 시작"));
 	DialogueText->SetText(FText::FromString(CachedNPCData.SmallTalkText));
 }
 
@@ -220,17 +208,67 @@ void UCAP_DialogueWidget::OnBtnHovered()
 	}
 }
 
+// 대화가 시작되면 'Visible', 카메라 시점 전환
 void UCAP_DialogueWidget::OnNPCDialogueStarted(const FNPCData& NPCData)
 {
 	SetVisibility(ESlateVisibility::Visible);
 	StartDialogue();
-	UpdateDialogueUI(NPCData);
+	UpdateDialogueUI(NPCData);	// 상호작용 한 NPC의 설정에 맞게 텍스트, 이미지 설정
 
 	if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
 	{
+		// 대화 종료 시점 구독후 기다림 (카메라 시점 전환 및 InputMode 변경)
 		OnDialogueFinished.RemoveDynamic(InteractComp, &UCAP_InteractionComponent::EndDialogueCamera);
 		OnDialogueFinished.AddDynamic(InteractComp, &UCAP_InteractionComponent::EndDialogueCamera);
+
+		if (ACAP_WorldNPC* NPC = Cast<ACAP_WorldNPC>(InteractComp->GetNearbyInteractable()))
+			NPC->ResetActionPending();
 	}
+}
+
+void UCAP_DialogueWidget::OpenCustomWidget()
+{
+	ACAP_WorldNPC* TargetNPC = Cast<ACAP_WorldNPC>(Player->GetInteractionComponent()->GetNearbyInteractable());
+	if (TargetNPC && TargetNPC->NPCSpecialActionWidgetClass)
+	{
+		if (ActiveCustomWidget)
+			ActiveCustomWidget->RemoveFromParent();
+		ActiveCustomWidget = CreateWidget<UUserWidget>(this, TargetNPC->NPCSpecialActionWidgetClass);
+		
+		if (CustomMenuWidget)
+			CustomMenuWidget->AddChild(ActiveCustomWidget);
+
+		SetupActiveButtons(false,false,true);
+	}
+}
+
+void UCAP_DialogueWidget::HandleFirstInteraction(ENPCActionResult Result)
+{
+	FString ResultText = TEXT("NPC DialogueComponent에서 FirstInteraction 시 대사 설정필요");
+	if (const FString* FoundText = CachedNPCData.ResultDialogues.Find(Result))
+		ResultText=*FoundText;
+	ChangeToConfirmState(ResultText);
+}
+
+void UCAP_DialogueWidget::HandleRequireConfirm(ENPCActionResult Result)
+{
+	int32 RequiredCost = 0;
+	Player->GetInteractionComponent()->GetNPCSpecialActionCost(RequiredCost);
+
+	FString ConfirmMsg= TEXT("NPC DialogueComponent에서 RequireConfirmed 시 대사 설정필요");
+	if (const FString* ConfirmFormat = CachedNPCData.ResultDialogues.Find(Result))
+		ConfirmMsg = ConfirmFormat->Replace(TEXT("{Cost}"), *FString::FromInt(RequiredCost));
+
+	ChangeToConfirmState(ConfirmMsg);
+}
+
+void UCAP_DialogueWidget::HandleFailedInteraction(ENPCActionResult Result)
+{
+	FString ResultText = TEXT("NPC DialogueComponent에서 (재료 부족/기회 소진/Failed) 시 대사 설정필요");
+	if (const FString* FoundText = CachedNPCData.ResultDialogues.Find(Result))
+		ResultText = *FoundText;
+	
+	ChangeToRewardState(ResultText);
 }
 
 void UCAP_DialogueWidget::RefreshButtonVisuals()
@@ -267,13 +305,20 @@ void UCAP_DialogueWidget::RefreshButtonVisuals()
 
 void UCAP_DialogueWidget::ChangeToConfirmState(const FString& ConfirmText)
 {
-	bIsConfirming = true;
 	DialogueText->SetText(FText::FromString(ConfirmText));
 
 	SpecialActionText->SetText(FText::FromString(TEXT("수락")));
 	Quit->SetText(FText::FromString(TEXT("거절")));
 
 	SetupActiveButtons(false,true,true);
+}
+
+void UCAP_DialogueWidget::ChangeToRewardState(const FString& ResultText)
+{
+	SetupActiveButtons(false,false,true);
+	DialogueText->SetText(FText::FromString(ResultText));
+	
+	Quit->SetText(FText::FromString(TEXT("대화종료")));
 }
 
 void UCAP_DialogueWidget::SetupActiveButtons(bool bShowTalk, bool bShowSpecial, bool bShowQuit)

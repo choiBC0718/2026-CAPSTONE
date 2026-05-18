@@ -27,7 +27,7 @@ void UGameplayability_TargetingAoE::ActivateAbility(const FGameplayAbilitySpecHa
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
 	const FWeaponSkillData* SkillData = GetSkillDataFromContext(Handle, ActorInfo);
-	if (!SkillData)
+	if (!SkillData || !TargetActorClass)
 	{
 		K2_EndAbility();
 		return;

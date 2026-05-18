@@ -9,11 +9,13 @@
 UENUM(BlueprintType)
 enum class ENPCActionResult : uint8
 {
-	Success					UMETA(DisplayName = "Success (특수 로직 성공)"),
+	Success					UMETA(DisplayName = "Success (SpecialAction 성공 시)"),
+	FirstInteraction		UMETA(DisplayName = "FirstInteraction (첫 SpecialAction)"),
+	RequireConfirm			UMETA(DisplayName = "RequireConfirm (두번째 SpecialAction)"),
 	InsufficientCurrency	UMETA(DisplayName = "InsufficientCurrency (재화 부족)"),
-	AlreadyReceived			UMETA(DisplayName = "AlreadyReceived (특수 로직 기회 없음)"),
+	AlreadyReceived			UMETA(DisplayName = "AlreadyReceived (SpecialAction 기회 없음)"),
 	Failed					UMETA(DisplayName = "Failed (실패)"),
-	RequireConfirm			UMETA(DisplayName = "RequireConfirm (비용 확인 대사)"),
+	OpenCustomWidget		UMETA(DisplayName = "OpenCustomWidget (또 다른 위젯 여는 NPC)"),
 };
 
 USTRUCT(BlueprintType)

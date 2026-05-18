@@ -32,9 +32,7 @@ protected:
 	void StartDialogue();
 	// 버튼과 NPCData를 통한 여러 텍스트 초기화
 	void UpdateDialogueUI(const struct FNPCData& Data);
-	// SpecialBtn 선택 시 종료를 위한 상태로 만들기
-	void ChangeToRewardState(const FString& ResultText);
-	
+
 	UFUNCTION()
 	void OnSpecialBtnClicked();
 	UFUNCTION()
@@ -73,6 +71,13 @@ private:
 	UPROPERTY(meta=(BindWidgetAnim), Transient)
 	class UWidgetAnimation* StartDialogueAnim;
 
+	// 특정 위젯 바인딩 X, 빈 상자를 배치함
+	UPROPERTY(meta=(BindWidget))
+	class UNamedSlot* CustomMenuWidget;
+	// 빈 상자에 들어갈 위젯을 기억할 포인터
+	UPROPERTY()
+	class UUserWidget* ActiveCustomWidget;
+
 	bool bIsClosing = false;
 	// 현재 포커스 되있는 버튼 인덱스
 	int32 CurrentSelectedIndex = 0;
@@ -82,7 +87,6 @@ private:
 	UPROPERTY()
 	TArray<class UButton*> ActiveButtons;
 	
-	void RefreshButtonVisuals();
 
 	// 포커스 상태의 버튼 색
 	UPROPERTY(EditDefaultsOnly, Category="Visuals")
@@ -108,8 +112,16 @@ private:
 	UPROPERTY()
 	FNPCData CachedNPCData;
 
-	bool bIsConfirming = false;
+	void OpenCustomWidget();
+	void HandleFirstInteraction(ENPCActionResult Result);
+	void HandleRequireConfirm(ENPCActionResult Result);
+	void HandleFailedInteraction(ENPCActionResult Result);
+	
+	void RefreshButtonVisuals();
+	// SpecialBtn 선택 시 대화 버튼 없앰, '수락' '거절' 텍스트로 수정
 	void ChangeToConfirmState(const FString& ConfirmText);
+	// SpecialBtn 선택 시 종료를 위한 상태로 만들기
+	void ChangeToRewardState(const FString& ResultText);
 
 	void SetupActiveButtons(bool bShowTalk, bool bShowSpecial,bool bShowQuit);
 };

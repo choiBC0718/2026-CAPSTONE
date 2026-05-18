@@ -29,15 +29,23 @@ void UCAP_ItemSwapWidget::OnAnimationFinished_Implementation(const UWidgetAnimat
 	Super::OnAnimationFinished_Implementation(Animation);
 	if (Animation == CloseAnim)
 	{
+		if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn()))
+		{
+			if (UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent())
+			{
+				InteractionComp->SetComponentTickEnabled(true);
+			}
+		}
 		OnMenuClosed.Broadcast();
 	}
 }
 
-void UCAP_ItemSwapWidget::InitSwapUI(class ACAP_PlayerCharacter* Player, class UCAP_ItemInstance* NewItemInst)
+void UCAP_ItemSwapWidget::InitSwapUI(class ACAP_PlayerCharacter* Player, class AActor* InInteractActor, class UCAP_ItemInstance* NewItemInst)
 {
 	if (!Player || !NewItemInst)
 		return;
 
+	TargetInteractActor = InInteractActor;
 	NewItemToSwap = NewItemInst;
 	UCAP_InventoryComponent* Inventory = Player->GetInventoryComponent();
 	if (!Inventory || !ItemWrapBox || !ItemSlotWidgetClass)
@@ -243,6 +251,13 @@ void UCAP_ItemSwapWidget::NativeCloseMenu()
 	}
 	else
 	{
+		if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn()))
+		{
+			if (UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent())
+			{
+				InteractionComp->SetComponentTickEnabled(true);
+			}
+		}
 		OnMenuClosed.Broadcast();
 	}
 }
@@ -253,7 +268,6 @@ void UCAP_ItemSwapWidget::HandleUIConfirmInput(ETriggerEvent TriggerEvent, float
 	if (CurrentSelectedSlot && CurrentSelectedSlot->SlotItemData && NewItemToSwap && Player)
 	{
 		UCAP_ItemInstance* OldItem = Cast<UCAP_ItemInstance>(CurrentSelectedSlot->SlotItemData);
-		AActor* InteractActor = Player->GetInteractionComponent()->GetNearbyInteractable();
 
 		UCAP_InventoryComponent* InventoryComp = Player->GetInventoryComponent();
 		UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent();
@@ -262,10 +276,11 @@ void UCAP_ItemSwapWidget::HandleUIConfirmInput(ETriggerEvent TriggerEvent, float
 		
 		if (InventoryComp->SwapItem(OldItem, NewItemToSwap))
 		{
-			if (InteractActor)
+			InteractionComp->SetNearbyInteractable(nullptr);
+			if (TargetInteractActor)
 			{
-				InteractActor->Destroy();
-				InteractionComp->SetNearbyInteractable(nullptr);
+				TargetInteractActor->Destroy();
+				TargetInteractActor = nullptr;
 			}
 			FVector SpawnLoc = Player->GetActorLocation();
 			FTransform SpawnTransform(FRotator::ZeroRotator, SpawnLoc);

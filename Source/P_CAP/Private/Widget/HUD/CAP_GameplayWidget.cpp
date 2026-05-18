@@ -74,7 +74,8 @@ void UCAP_GameplayWidget::HandleInventoryFull(class UCAP_ItemInstance* NewItem)
 	if (ItemSwapWidget && Player)
 	{
 		ShowMenu(ItemSwapWidget);
-		ItemSwapWidget->InitSwapUI(Player, NewItem);
+		if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
+			ItemSwapWidget->InitSwapUI(Player, InteractComp->LastInventoryFullActor,NewItem);
 	}
 }
 
@@ -155,8 +156,8 @@ void UCAP_GameplayWidget::ShowMenu(UUserWidget* TargetMenuWidget)
 		
 		Interface->NativeOpenMenu();
 		Interface->GetOnMenuClosedDelegate().AddUniqueDynamic(this, &UCAP_GameplayWidget::OnActiveMenuClosed);
-		EnterUIMode();
 	}
+	EnterUIMode();
 	
 	InteractPanelWidget->SetVisibility(ESlateVisibility::Collapsed);
 }

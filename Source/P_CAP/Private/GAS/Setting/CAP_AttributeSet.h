@@ -44,6 +44,8 @@ public:
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, WeaponSwapSpeed);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CurrentDodgeCount);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxDodgeCount);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, ReviveCount);
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxReviveCount);
 
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CachedHealthPercent);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, Damage);
@@ -67,6 +69,8 @@ private:
 	UPROPERTY()	FGameplayAttributeData WeaponSwapSpeed;
 	UPROPERTY()	FGameplayAttributeData CurrentDodgeCount;
 	UPROPERTY()	FGameplayAttributeData MaxDodgeCount;
+	UPROPERTY()	FGameplayAttributeData ReviveCount;
+	UPROPERTY()	FGameplayAttributeData MaxReviveCount;
 	
 	UPROPERTY()	FGameplayAttributeData CachedHealthPercent;
 	UPROPERTY()	FGameplayAttributeData Shield;

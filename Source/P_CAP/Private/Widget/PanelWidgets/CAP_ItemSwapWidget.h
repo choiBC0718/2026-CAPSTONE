@@ -19,7 +19,7 @@ public:
 	virtual void NativeConstruct() override;
 	virtual void OnAnimationFinished_Implementation(const UWidgetAnimation* Animation) override;
 	
-	void InitSwapUI(class ACAP_PlayerCharacter* Player, class UCAP_ItemInstance* NewItemInst);
+	void InitSwapUI(class ACAP_PlayerCharacter* Player, class AActor* InInteractActor, class UCAP_ItemInstance* NewItemInst);
 
 	virtual void NativeOpenMenu() override;
 	virtual void NativeCloseMenu() override;
@@ -59,6 +59,8 @@ private:
 	class UCAP_ItemSlotWidget* CurrentSelectedSlot;
 	UPROPERTY()
 	class UCAP_ItemInstance* NewItemToSwap;
+	UPROPERTY()
+	AActor* TargetInteractActor = nullptr;
 
 	void HandleSlotLeftClicked(class UCAP_ItemSlotWidget* ClickedSlot);
 	void InitNearbySlot();

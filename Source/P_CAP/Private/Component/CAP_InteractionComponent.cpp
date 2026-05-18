@@ -12,6 +12,11 @@ UCAP_InteractionComponent::UCAP_InteractionComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 	NearbyInteractable = nullptr;
+	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner()))
+	{
+		if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
+			InvComp->OnInventoryFull.AddDynamic(this, &UCAP_InteractionComponent::HandleInventoryFull);
+	}
 }
 
 void UCAP_InteractionComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
@@ -68,15 +73,17 @@ void UCAP_InteractionComponent::ProcessInteractInput(ETriggerEvent TriggerEvent,
 	}
 }
 
+// 상호작용 인터페이스 메소드의 Interact, CAP_WorldNPC가 override하여 호출되는 부분
 void UCAP_InteractionComponent::BeginDialogue(const struct FNPCData& InNPCData)
 {
 	if (NearbyInteractable)
 	{
 		if (UCAP_DialogueComponent* DialogueComp = NearbyInteractable->FindComponentByClass<UCAP_DialogueComponent>())
 		{
-			DialogueComp->BeginDialogue(Cast<ACAP_PlayerCharacter>(GetOwner()));
 			bIsInDialogue = true;
-			// 대화 시작 방송 -> GameplayWidget이 듣고 Dialogue Widget 업데이트
+			// NPC의 Dialogue Component를 통해 카메라 시점 전환
+			DialogueComp->BeginDialogue(Cast<ACAP_PlayerCharacter>(GetOwner()));
+			// 대화 시작 방송 -> Dialogue Widget이 구독하여 대화 시작 이벤트 준비
 			OnDialogueTriggered.Broadcast(InNPCData);
 		}
 	}
@@ -117,6 +124,13 @@ void UCAP_InteractionComponent::EndDialogueCamera()
 		bIsInDialogue = false;
 		SetNearbyInteractable(nullptr);
 		UpdateNearbyInteractable();
+}
+
+void UCAP_InteractionComponent::HandleInventoryFull(class UCAP_ItemInstance* OverflowItem)
+{
+	LastInventoryFullActor = NearbyInteractable;
+	SetNearbyInteractable(nullptr);
+	SetComponentTickEnabled(false);
 }
 
 void UCAP_InteractionComponent::AddInteractable(AActor* NewActor)

@@ -72,8 +72,8 @@ void ACAP_WorldItem::Interact(AActor* InsActor, EInteractAction ActionType)
 	{
 		if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
 		{
-			InvComp->AddItem(ItemInstance);
-			Destroy();
+			if (InvComp->AddItem(ItemInstance))
+				Destroy();
 		}
 	}
 	else

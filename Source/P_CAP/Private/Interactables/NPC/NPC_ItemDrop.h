@@ -16,10 +16,12 @@ class ANPC_ItemDrop : public ACAP_WorldNPC
 
 public:
 	virtual ENPCActionResult ExecuteSpecialAction(AActor* Actor) override;
+	
+	virtual void ResetActionPending() override {bIsActionPending = false;}
 
 protected:
 	UPROPERTY(EditAnywhere, Category="Drop")
 	TSubclassOf<class ACAP_WorldItem> ItemClass;
 	UPROPERTY(EditAnywhere, Category="Drop")
-	TArray<class UCAP_ItemDataAsset*> DripItemDataAssets;
+	TArray<class UCAP_ItemDataAsset*> DropItemDataAssets;
 };

@@ -9,48 +9,73 @@
 ENPCActionResult ANPC_ItemDrop::ExecuteSpecialAction(AActor* Actor)
 {
 	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(Actor);
-	UE_LOG(LogTemp,Warning,TEXT("스페셜 액션 시작"));
-	if (DripItemDataAssets.IsEmpty() || !ItemClass || !Player)
-	{
-		UE_LOG(LogTemp,Warning,TEXT("비어있거나 클래스 없거나 플레이어 없어서 실패"));
+	if (!Player || DropItemDataAssets.IsEmpty() || !ItemClass)
 		return ENPCActionResult::Failed;
-	}
 	
 	if (InteractionCount >= 2)
-	{
-		UE_LOG(LogTemp,Warning,TEXT("이미 두번 받아감"));
 		return ENPCActionResult::AlreadyReceived;
+
+	if (InteractionCount == 0)
+	{
+		if (!bIsActionPending)
+		{
+			bIsActionPending = true;
+			return ENPCActionResult::FirstInteraction;
+		}
+		
+		bIsActionPending = false;
+		int32 RandIdx = FMath::RandRange(0, DropItemDataAssets.Num() - 1);
+		UCAP_ItemDataAsset* SelectedItemDA = DropItemDataAssets[RandIdx];
+
+		if (SelectedItemDA)
+		{
+			FVector SpawnLoc = GetActorLocation() + GetActorForwardVector() * 150.f;
+			FTransform SpawnTrans(GetActorRotation(), SpawnLoc);
+			ACAP_WorldItem* SpawnedItem = GetWorld()->SpawnActorDeferred<ACAP_WorldItem>(ItemClass, SpawnTrans);
+			if (SpawnedItem)
+			{
+				SpawnedItem->InitializeItemData(SelectedItemDA);
+				SpawnedItem->FinishSpawning(SpawnTrans);
+			}
+			InteractionCount++;
+			return ENPCActionResult::Success;
+		}
+		return ENPCActionResult::Failed;
 	}
 
-	if (InteractionCount==1)
+	if (InteractionCount == 1)
 	{
+		if (!bIsPaymentPending)
+		{
+			bIsPaymentPending = true;
+			return ENPCActionResult::RequireConfirm;
+		}
+		
+		bIsPaymentPending = false;
+
 		if (UCAP_CurrencyComponent* CurrComp = Player->GetCurrencyComponent())
 		{
 			if (!CurrComp->ConsumeCurrency(ECurrencyType::MagicStone, CostMagicStone))
-			{
-				UE_LOG(LogTemp,Warning,TEXT("재화 부족함"));
 				return ENPCActionResult::InsufficientCurrency;
-			}
 		}
-	}
 	
-	int32 RandIdx = FMath::RandRange(0,DripItemDataAssets.Num()-1);
-	UCAP_ItemDataAsset* SelectedItemDA = DripItemDataAssets[RandIdx];
+		int32 RandIdx = FMath::RandRange(0, DropItemDataAssets.Num() - 1);
+		UCAP_ItemDataAsset* SelectedItemDA = DropItemDataAssets[RandIdx];
 
-	if (SelectedItemDA)
-	{
-		FVector SpawnLoc = GetActorLocation() + GetActorForwardVector() * 100.f;
-		FTransform SpawnTrans(GetActorRotation(), SpawnLoc);
-		ACAP_WorldItem* SpawnedItem = GetWorld()->SpawnActorDeferred<ACAP_WorldItem>(ItemClass, SpawnTrans);
-		if (SpawnedItem)
+		if (SelectedItemDA)
 		{
-			SpawnedItem->InitializeItemData(SelectedItemDA);
-			SpawnedItem->FinishSpawning(SpawnTrans);
+			FVector SpawnLoc = GetActorLocation() + GetActorForwardVector() * 150.f;
+			FTransform SpawnTrans(GetActorRotation(), SpawnLoc);
+			ACAP_WorldItem* SpawnedItem = GetWorld()->SpawnActorDeferred<ACAP_WorldItem>(ItemClass, SpawnTrans);
+			if (SpawnedItem)
+			{
+				SpawnedItem->InitializeItemData(SelectedItemDA);
+				SpawnedItem->FinishSpawning(SpawnTrans);
+			}
+			InteractionCount++;
+			return ENPCActionResult::Success;
 		}
-		InteractionCount++;
-		UE_LOG(LogTemp,Warning,TEXT("오케이 통과"));
-		return ENPCActionResult::Success;
 	}
-	UE_LOG(LogTemp,Warning,TEXT("그냥 최종 결과가 실패임"));
+
 	return ENPCActionResult::Failed;
 }

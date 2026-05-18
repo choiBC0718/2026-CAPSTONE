@@ -27,7 +27,7 @@ void ACAP_WorldNPC::BeginPlay()
 
 void ACAP_WorldNPC::Interact(AActor* InsActor, EInteractAction ActionType)
 {
-	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(InsActor);
+	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(InsActor))
 	{
 		if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
 			InteractComp->BeginDialogue(DialogueComponent->NPCData);

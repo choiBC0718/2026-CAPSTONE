@@ -24,17 +24,25 @@ public:
 	virtual void Interact(AActor* InsActor, EInteractAction ActionType) override;
 	virtual FInteractionPayload GetInteractionPayload() const override;
 
+	UPROPERTY(EditAnywhere, Category="SpecialAction")
+	TSubclassOf<class UUserWidget> NPCSpecialActionWidgetClass;
+
+	virtual void ResetActionPending() {bIsActionPending = false;}
+	
 protected:
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class USkeletalMeshComponent* NPCMesh;
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class UCAP_DialogueComponent* DialogueComponent;
 	
-	virtual ENPCActionResult ExecuteSpecialAction(AActor* Actor) {return ENPCActionResult::Success;}
+	virtual ENPCActionResult ExecuteSpecialAction(AActor* Actor) {return ENPCActionResult::FirstInteraction;}
 	bool GetSpecialActionCost(int& OutCost);
-
+	
 	UPROPERTY(EditAnywhere, Category="Drop")
 	int32 CostMagicStone = 10;
 
 	int32 InteractionCount = 0;
+
+	bool bIsPaymentPending = false;
+	bool bIsActionPending = false;
 };

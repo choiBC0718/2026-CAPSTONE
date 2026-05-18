@@ -17,6 +17,8 @@ class ANPC_WeaponDrop : public ACAP_WorldNPC
 public:
 	virtual ENPCActionResult ExecuteSpecialAction(AActor* Actor) override;
 
+	virtual void ResetActionPending() override {bIsActionPending = false;}
+	
 protected:
 	UPROPERTY(EditAnywhere, Category="Drop")
 	TSubclassOf<class ACAP_WorldWeapon> WeaponClass;
@@ -25,4 +27,5 @@ protected:
 
 	UPROPERTY()
 	class UCAP_WeaponDataAsset* FirstDroppedWeapon = nullptr;
+
 };

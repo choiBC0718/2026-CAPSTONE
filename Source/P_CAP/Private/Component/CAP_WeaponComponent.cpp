@@ -36,6 +36,7 @@ void UCAP_WeaponComponent::BeginPlay()
 		WeaponMesh_L->ComponentTags.Add("LeftHand");
 		WeaponMesh_L->RegisterComponent();
 	}
+	MaxWeaponCount = FMath::Max(1, MaxWeaponCount);
 	EquippedWeapons.SetNum(MaxWeaponCount);
 	
 	if (DefaultBasicWeapon)
@@ -49,10 +50,9 @@ void UCAP_WeaponComponent::BeginPlay()
 			ApplyWeaponData(BasicWeapon);
 		}));
 	}
-	EquippedWeapons[1] = nullptr;
 	CurrentWeaponIndex =0;
 
-	ASC = OwnerCharacter->GetComponentByClass<UCAP_AbilitySystemComponent>();
+	ASC = OwnerCharacter ? OwnerCharacter->GetComponentByClass<UCAP_AbilitySystemComponent>() : nullptr;
 }
 
 void UCAP_WeaponComponent::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst)
@@ -89,7 +89,8 @@ void UCAP_WeaponComponent::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst
 			WeaponToDrop->UnloadWeaponAssets();
 		}
 	}
-	ClearAbilities(EquippedWeapons[CurrentWeaponIndex]);
+	if (EquippedWeapons.IsValidIndex(CurrentWeaponIndex))
+		ClearAbilities(EquippedWeapons[CurrentWeaponIndex]);
 	// 무기 장착
 	EquippedWeapons[EmptySlotIndex] = NewWeaponInst;
 	CurrentWeaponIndex = EmptySlotIndex;
@@ -146,7 +147,7 @@ void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 		return;
 
 	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
-	if (!OwnerCharacter)
+	if (!OwnerCharacter || !OwnerCharacter->GetMesh())
 		return;
 	
 	if (UCAP_AnimInstance* AnimInst = Cast<UCAP_AnimInstance>(OwnerCharacter->GetMesh()->GetAnimInstance()))
@@ -174,7 +175,7 @@ void UCAP_WeaponComponent::AttachWeaponMesh(class UCAP_WeaponDataAsset* WeaponDA
 		return;
 
 	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
-	if (!OwnerCharacter)
+	if (!OwnerCharacter || !OwnerCharacter->GetMesh())
 		return;
 	
 	if (WeaponMesh_R)

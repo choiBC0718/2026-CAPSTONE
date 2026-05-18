@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "EnhancedInputComponent.h"
 #include "Components/ActorComponent.h"
+#include "Interactables/Item/CAP_ItemInstance.h"
 #include "Interactables/NPC/CAP_WorldNPC.h"
 #include "CAP_InteractionComponent.generated.h"
 
@@ -20,7 +21,7 @@ class UCAP_InteractionComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:	
+public:
 	UCAP_InteractionComponent();
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	
@@ -35,6 +36,8 @@ public:
 	
 	UFUNCTION()
 	void EndDialogueCamera();
+	UFUNCTION()
+	void HandleInventoryFull(class UCAP_ItemInstance* OverflowItem);
 
 	UPROPERTY()
 	FOnInteractableChanged OnInteractableChanged;
@@ -50,6 +53,9 @@ public:
 	bool CanInteract() const;
 
 	bool bIsInDialogue = false;
+
+	UPROPERTY()
+	AActor* LastInventoryFullActor = nullptr;
 	
 private:
 	UPROPERTY()

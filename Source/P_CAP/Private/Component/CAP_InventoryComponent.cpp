@@ -64,10 +64,11 @@ bool UCAP_InventoryComponent::AddItem(class UCAP_ItemInstance* NewItem)
 		return false;
 	}
 	
-
-	//UE_LOG(LogTemp, Warning, TEXT("새로운 아이템 착용"));
-	// 아이템 추가 후 새로고침
-	InventoryItems.Add(NewItem);
+	if (TargetIndex != INDEX_NONE)
+		InventoryItems[TargetIndex] = NewItem;
+	else
+		InventoryItems.Add(NewItem);
+	
 	ApplyItemStatEffects(NewItem);
 	RefreshSynergies();
 	GiveItemAbility(NewItem);
@@ -91,6 +92,7 @@ bool UCAP_InventoryComponent::SwapItem(class UCAP_ItemInstance* OldItem, class U
 		
 		//UE_LOG(LogTemp, Warning, TEXT("새로운 아이템 효과 적용"));
 		InventoryItems[Index] = NewItem;
+		ApplyItemStatEffects(NewItem);
 		RefreshSynergies();
 		GiveItemAbility(NewItem);
 		

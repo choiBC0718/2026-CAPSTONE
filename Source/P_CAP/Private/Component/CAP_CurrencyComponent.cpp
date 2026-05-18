@@ -77,7 +77,7 @@ bool UCAP_CurrencyComponent::ConsumeCurrency(ECurrencyType Type, int32 Amount)
 	return true;
 }
 
-int32 UCAP_CurrencyComponent::GetCurreny(ECurrencyType Type)
+int32 UCAP_CurrencyComponent::GetCurreny(ECurrencyType Type) const
 {
 	if (const int32* AmountPtr = CurrencyMap.Find(Type))
 		return *AmountPtr;
