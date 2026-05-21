@@ -9,6 +9,7 @@
 #include "Components/NamedSlot.h"
 #include "Components/TextBlock.h"
 #include "Interactables/NPC/CAP_WorldNPC.h"
+#include "Widget/PanelWidgets/CAP_StatEnhancePanelWidget.h"
 
 void UCAP_DialogueWidget::NativeConstruct()
 {
@@ -44,14 +45,25 @@ void UCAP_DialogueWidget::OnAnimationFinished_Implementation(const UWidgetAnimat
 		if (APlayerController* PC = GetOwningPlayer())
 		{
 			Player->EnableInput(PC);
-			FInputModeGameAndUI InputMode;
-			PC->SetInputMode(InputMode);
 		}
+	}
+	if (Animation == ChangeToCustomView && bIsCustomWidgetClosing)
+	{
+		if (ActiveCustomWidget)
+		{
+			ActiveCustomWidget->RemoveFromParent();
+			ActiveCustomWidget=nullptr;
+		}
+		bIsCustomWidgetClosing = false;
 	}
 }
 
 FReply UCAP_DialogueWidget::NativeOnKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent)
 {
+	if (ActiveCustomWidget)
+	{
+		return Super::NativeOnKeyDown(Geometry, KeyEvent);
+	}
 	FKey Key = KeyEvent.GetKey();
 	if (Key == EKeys::W || Key == EKeys::Up)
 	{
@@ -94,6 +106,25 @@ FReply UCAP_DialogueWidget::NativeOnMouseButtonDown(const FGeometry& Geometry, c
 	return FReply::Handled();
 }
 
+void UCAP_DialogueWidget::SetButtonVisualFocus(class UButton* FocusedBtn)
+{
+	for (int32 i = 0; i < ActiveButtons.Num(); i++)
+	{
+		if (ActiveButtons[i] == FocusedBtn)
+		{
+			CurrentSelectedIndex = i;
+			RefreshButtonVisuals();
+			break;
+		}
+	}
+}
+
+void UCAP_DialogueWidget::ClearButtonVisualFocus()
+{
+	CurrentSelectedIndex = -1;
+	RefreshButtonVisuals();
+}
+
 void UCAP_DialogueWidget::StartDialogue()
 {
 	bIsClosing = false;
@@ -102,11 +133,6 @@ void UCAP_DialogueWidget::StartDialogue()
 	if (APlayerController* PC = GetOwningPlayer())
 	{
 		Player->DisableInput(PC);
-		
-		FInputModeUIOnly InputMode;
-		InputMode.SetWidgetToFocus(TakeWidget());
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		PC->SetInputMode(InputMode);
 
 		SetKeyboardFocus();
 	}
@@ -122,7 +148,7 @@ void UCAP_DialogueWidget::UpdateDialogueUI(const FNPCData& Data)
 	if (Quit)
 		Quit->SetText(FText::FromString(TEXT("대화종료")));
 	if (bShowSpecial)
-		SpecialActionText->SetText(FText::FromString(Data.SpecialActionText));
+		UpdateSpecialText(Data.SpecialActionText);
 	
 	if (Data.NPCImage)
 	{
@@ -133,9 +159,14 @@ void UCAP_DialogueWidget::UpdateDialogueUI(const FNPCData& Data)
 	{
 		NPC_Image->SetVisibility(ESlateVisibility::Hidden);
 	}
+	if (ActiveCustomWidget)
+	{
+		ActiveCustomWidget->RemoveFromParent();
+		ActiveCustomWidget = nullptr;
+	}
 	
 	NPC_Name->SetText(FText::FromString(Data.NPCName));
-	DialogueText->SetText(FText::FromString(Data.DefaultDialogue));
+	UpdateDialogueText(Data.DefaultDialogue);
 }
 
 void UCAP_DialogueWidget::OnSpecialBtnClicked()
@@ -183,7 +214,7 @@ void UCAP_DialogueWidget::OnSpecialBtnClicked()
 
 void UCAP_DialogueWidget::OnTalkBtnClicked()
 {
-	DialogueText->SetText(FText::FromString(CachedNPCData.SmallTalkText));
+	UpdateDialogueText(CachedNPCData.SmallTalkText);
 }
 
 void UCAP_DialogueWidget::OnQuitBtnClicked()
@@ -237,8 +268,35 @@ void UCAP_DialogueWidget::OpenCustomWidget()
 		
 		if (CustomMenuWidget)
 			CustomMenuWidget->AddChild(ActiveCustomWidget);
+		
+		if (ChangeToCustomView)
+			PlayAnimation(ChangeToCustomView);
 
-		SetupActiveButtons(false,false,true);
+		if (ICAP_MenuInterface* MenuInterface = Cast<ICAP_MenuInterface>(ActiveCustomWidget))
+		{
+			MenuInterface->NativeOpenMenu();
+			MenuInterface->GetOnMenuClosedDelegate().AddUniqueDynamic(this, &UCAP_DialogueWidget::CloseCustomWidget);
+		}
+		if (OnNPCCustomWidgetOpened.IsBound())
+		{
+			OnNPCCustomWidgetOpened.Broadcast(ActiveCustomWidget);
+		}
+	}
+}
+
+void UCAP_DialogueWidget::CloseCustomWidget()
+{
+	bIsCustomWidgetClosing = true;
+	if (ChangeToCustomView)
+		PlayAnimation(ChangeToCustomView, 0.f, 1, EUMGSequencePlayMode::Reverse);
+	else
+	{
+		if (ActiveCustomWidget)
+		{
+			ActiveCustomWidget->RemoveFromParent();
+			ActiveCustomWidget = nullptr;
+		}
+		bIsCustomWidgetClosing = false;
 	}
 }
 
@@ -305,9 +363,9 @@ void UCAP_DialogueWidget::RefreshButtonVisuals()
 
 void UCAP_DialogueWidget::ChangeToConfirmState(const FString& ConfirmText)
 {
-	DialogueText->SetText(FText::FromString(ConfirmText));
+	UpdateDialogueText(ConfirmText);
 
-	SpecialActionText->SetText(FText::FromString(TEXT("수락")));
+	UpdateSpecialText(TEXT("수락"));
 	Quit->SetText(FText::FromString(TEXT("거절")));
 
 	SetupActiveButtons(false,true,true);
@@ -316,7 +374,7 @@ void UCAP_DialogueWidget::ChangeToConfirmState(const FString& ConfirmText)
 void UCAP_DialogueWidget::ChangeToRewardState(const FString& ResultText)
 {
 	SetupActiveButtons(false,false,true);
-	DialogueText->SetText(FText::FromString(ResultText));
+	UpdateDialogueText(ResultText);
 	
 	Quit->SetText(FText::FromString(TEXT("대화종료")));
 }

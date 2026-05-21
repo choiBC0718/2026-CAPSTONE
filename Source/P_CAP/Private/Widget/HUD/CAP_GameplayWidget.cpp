@@ -23,17 +23,16 @@ void UCAP_GameplayWidget::NativeConstruct()
 	Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
 	if (!Player)
 		return;
-	OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
-	if (!OwnerASC)
-		return;
+	
+	if (UAbilitySystemComponent* OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player))
+	{
+		if (HealthBar)
+			HealthBar->SetAndBoundToGameplayAttribute(OwnerASC, UCAP_AttributeSet::GetHealthAttribute(), UCAP_AttributeSet::GetMaxHealthAttribute());
+	}
 	
 	if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
 	{
 		InvComp->OnInventoryFull.AddDynamic(this, &UCAP_GameplayWidget::HandleInventoryFull);
-	}
-	if (HealthBar)
-	{
-		HealthBar->SetAndBoundToGameplayAttribute(OwnerASC, UCAP_AttributeSet::GetHealthAttribute(), UCAP_AttributeSet::GetMaxHealthAttribute());
 	}
 	if (InteractPanelWidget)
 	{
@@ -47,26 +46,12 @@ void UCAP_GameplayWidget::NativeConstruct()
 	{
 		DialogueWidget->SetVisibility(ESlateVisibility::Collapsed);
 		DialogueWidget->OnDialogueFinished.AddDynamic(this, &UCAP_GameplayWidget::HandleDialogueFinished);
+		DialogueWidget->OnNPCCustomWidgetOpened.AddDynamic(this, &UCAP_GameplayWidget::HandleNPCCustomWidgetOpen);
 	}
 	if (BuffListPanel)
 	{
 		BuffListPanel->InitializeWidget(Player);
 	}
-}
-
-// WidgetSwitcher 활성화, UI 오픈 애니메이션 재생
-void UCAP_GameplayWidget::ActivateSwitcher()
-{
-	if (CharacterMenuWidget)
-	{
-		ShowMenu(CharacterMenuWidget);
-	}
-}
-// InventoryTab <-> AttributeTab 
-void UCAP_GameplayWidget::SwitchCharacterMenuTab()
-{
-	if (CharacterMenuWidget)
-		CharacterMenuWidget->SwitchCharacterMenuTab();
 }
 
 void UCAP_GameplayWidget::HandleInventoryFull(class UCAP_ItemInstance* NewItem)
@@ -79,9 +64,26 @@ void UCAP_GameplayWidget::HandleInventoryFull(class UCAP_ItemInstance* NewItem)
 	}
 }
 
+void UCAP_GameplayWidget::HandleDialogueFinished()
+{
+	if (UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent())
+	{
+		if (InteractionComp->GetNearbyInteractable() != nullptr)
+			InteractPanelWidget->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void UCAP_GameplayWidget::HandleNPCCustomWidgetOpen(UUserWidget* TargetWidget)
+{
+	if (TargetWidget)
+	{
+		CurrentActiveMenu = TargetWidget;
+	}
+}
+
 void UCAP_GameplayWidget::UINavigationHandle(FVector2D InputVal)
 {
-	if (CurrentActiveMenu)
+	if (CanProcessUINavigation())
 	{
 		if (ICAP_MenuInterface* Interface = Cast<ICAP_MenuInterface>(CurrentActiveMenu))
 		{
@@ -101,45 +103,24 @@ void UCAP_GameplayWidget::RouteUIConfirmInput(ETriggerEvent TriggerEvent, float 
 	}
 }
 
-void UCAP_GameplayWidget::HandleDialogueFinished()
+bool UCAP_GameplayWidget::CanProcessUINavigation()
 {
-	if (UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent())
+	if (CurrentActiveMenu!=nullptr)
+		return true;
+	return false;
+}
+
+void UCAP_GameplayWidget::ToggleCharacterMenu()
+{
+	if (!MenuSwitcher || !CharacterMenuWidget)
+		return;
+	
+	if (MenuSwitcher->GetVisibility() == ESlateVisibility::Collapsed)
 	{
-		if (InteractionComp->GetNearbyInteractable() != nullptr)
-			InteractPanelWidget->SetVisibility(ESlateVisibility::Visible);
+		ShowMenu(CharacterMenuWidget);
 	}
-}
-
-void UCAP_GameplayWidget::EnterUIMode()
-{
-	if (APlayerController* PC = GetOwningPlayer())
-		PC->SetPause(true);
-}
-
-void UCAP_GameplayWidget::ExitUIMode()
-{
-	if (APlayerController* PC = GetOwningPlayer())
-		PC->SetPause(false);
-}
-
-bool UCAP_GameplayWidget::IsCharacterMenuOpen()
-{
-	return MenuSwitcher && MenuSwitcher->GetVisibility() == ESlateVisibility::Visible && MenuSwitcher->GetActiveWidget() == CharacterMenuWidget;
-}
-
-bool UCAP_GameplayWidget::IsItemSwapMenuOpen()
-{
-	return MenuSwitcher && MenuSwitcher->GetVisibility() == ESlateVisibility::Visible && MenuSwitcher->GetActiveWidget() == ItemSwapWidget;
-}
-
-bool UCAP_GameplayWidget::IsMenuSwitcherVisible()
-{
-	return MenuSwitcher->GetVisibility() == ESlateVisibility::Visible;
-}
-
-bool UCAP_GameplayWidget::IsDialogueWidgetOpen()
-{
-	return DialogueWidget && DialogueWidget->GetVisibility() == ESlateVisibility::Visible;
+	else if (MenuSwitcher->GetVisibility() == ESlateVisibility::Visible && MenuSwitcher->GetActiveWidget() == CharacterMenuWidget)
+		CharacterMenuWidget->SwitchCharacterMenuTab();
 }
 
 void UCAP_GameplayWidget::ShowMenu(UUserWidget* TargetMenuWidget)
@@ -157,14 +138,14 @@ void UCAP_GameplayWidget::ShowMenu(UUserWidget* TargetMenuWidget)
 		Interface->NativeOpenMenu();
 		Interface->GetOnMenuClosedDelegate().AddUniqueDynamic(this, &UCAP_GameplayWidget::OnActiveMenuClosed);
 	}
-	EnterUIMode();
+	SetGamePause(true);
 	
 	InteractPanelWidget->SetVisibility(ESlateVisibility::Collapsed);
 }
 
 void UCAP_GameplayWidget::HideMenu()
 {
-	if (CurrentActiveMenu)
+	if (CurrentActiveMenu && MenuSwitcher && MenuSwitcher->GetVisibility()==ESlateVisibility::Visible)
 	{
 		if (ICAP_MenuInterface* Interface = Cast<ICAP_MenuInterface>(CurrentActiveMenu))
 		{
@@ -183,11 +164,17 @@ void UCAP_GameplayWidget::OnActiveMenuClosed()
 		}
 		MenuSwitcher->SetVisibility(ESlateVisibility::Collapsed);
 		CurrentActiveMenu = nullptr;
-		ExitUIMode();
+		SetGamePause(false);
 	}
 	if (UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent())
 	{
 		if (InteractionComp->GetNearbyInteractable() != nullptr)
 			InteractPanelWidget->SetVisibility(ESlateVisibility::Visible);
 	}
+}
+
+void UCAP_GameplayWidget::SetGamePause(bool Pause)
+{
+	if (APlayerController* PC = GetOwningPlayer())
+		PC->SetPause(Pause);
 }

@@ -14,9 +14,11 @@ struct FStatEnhanceTableRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, Category="Enhance", meta=(Categories="Data.ItemStat"))
 	FGameplayTag StatTag;
-	
+
+	// 강화 이름 (ex. 물리 공격력 강화)
 	UPROPERTY(EditAnywhere, Category="Enhance")
 	FText DisplayName;
+	// 강화 설명 (ex. 물리 공격력을 n만큼 상승시킨다.)
 	UPROPERTY(EditAnywhere, Category="Enhance")
 	FText Description;
 	UPROPERTY(EditAnywhere, Category="Enhance")
@@ -24,8 +26,10 @@ struct FStatEnhanceTableRow : public FTableRowBase
 	
 	UPROPERTY(EditAnywhere, Category="Enhance")
 	int32 MaxLevel = 1;
+	// 레벨 별 강화 비용 증가량
 	UPROPERTY(EditAnywhere, Category="Enhance")
-	TArray<int32> CostPerLevel;
+	int32 CostIncreaseRate =0;
+	// 레벨 별 강화 효과 증가량
 	UPROPERTY(EditAnywhere, Category="Enhance")
-	TArray<int32> ValuePerLevel;
+	int32 ValueIncreaseRate =0;
 };

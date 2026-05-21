@@ -59,29 +59,22 @@ void ACAP_PlayerController::ToggleCharacterMenu()
 {
 	if (GameplayWidget)
 	{
-		// tab 메뉴 열려있지 않으면 열고 게임 일시정지
-		if (!GameplayWidget->IsCharacterMenuOpen())
-		{
-			GameplayWidget->ActivateSwitcher();
-		}
-		// 열려있다면 탭 전환
-		else
-		{
-			GameplayWidget->SwitchCharacterMenuTab();
-		}
+		GameplayWidget->ToggleCharacterMenu();
+
 	}
 }
 
 void ACAP_PlayerController::UINavigationHandle(const FInputActionValue& InputActionValue)
 {
-	FVector2D InputVal = InputActionValue.Get<FVector2D>();
-	if (GameplayWidget->IsMenuSwitcherVisible())
-		GameplayWidget->UINavigationHandle(InputVal);
+	if (GameplayWidget)
+	{
+		GameplayWidget->UINavigationHandle(InputActionValue.Get<FVector2D>());
+	}
 }
 
 void ACAP_PlayerController::UICloseHandle(const FInputActionValue& InputActionValue)
 {
-	if (GameplayWidget->IsMenuSwitcherVisible())
+	if (GameplayWidget)
 	{
 		GameplayWidget->HideMenu();
 	}
@@ -91,6 +84,7 @@ void ACAP_PlayerController::HandleUIConfirmStarted(const FInputActionInstance& I
 {
 	if (GameplayWidget)
 	{
+		//UE_LOG(LogTemp,Warning,TEXT("Started"));
 		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Started, InputInst.GetElapsedTime());
 	}
 }
@@ -99,6 +93,7 @@ void ACAP_PlayerController::HandleUIConfirmOngoing(const FInputActionInstance& I
 {
 	if (GameplayWidget)
 	{
+		//UE_LOG(LogTemp,Warning,TEXT("Ongoing"));
 		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Ongoing, InputInst.GetElapsedTime());
 	}
 }
@@ -107,6 +102,7 @@ void ACAP_PlayerController::HandleUIConfirmTriggered(const FInputActionInstance&
 {
 	if (GameplayWidget)
 	{
+		//UE_LOG(LogTemp,Warning,TEXT("Triggered"));
 		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Triggered, InputInst.GetElapsedTime());
 	}
 }
@@ -115,6 +111,7 @@ void ACAP_PlayerController::HandleUIConfirmCompleted(const FInputActionInstance&
 {
 	if (GameplayWidget)
 	{
+		//UE_LOG(LogTemp,Warning,TEXT("Completed"));
 		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Completed, InputInst.GetElapsedTime());
 	}
 }
@@ -123,6 +120,7 @@ void ACAP_PlayerController::HandleUIConfirmCanceled(const FInputActionInstance& 
 {
 	if (GameplayWidget)
 	{
+		//UE_LOG(LogTemp,Warning,TEXT("Canceled"));
 		GameplayWidget->RouteUIConfirmInput(ETriggerEvent::Canceled, InputInst.GetElapsedTime());
 	}
 }

@@ -4,11 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/TextBlock.h"
 #include "Interactables/NPC/CAP_WorldNPC.h"
 #include "CAP_DialogueWidget.generated.h"
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogueFinished);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNPCCustomWidgetOpened, UUserWidget*, TargetWidget);
 /**
  * 
  */
@@ -26,7 +28,22 @@ public:
 	
 	UPROPERTY()
 	FOnDialogueFinished OnDialogueFinished;
+	UPROPERTY()
+	FOnNPCCustomWidgetOpened OnNPCCustomWidgetOpened;
 
+	class UButton* GetSpecialBtn() const { return SpecialBtn; }
+	class UButton* GetQuitBtn() const { return QuitBtn; }
+	void UpdateDialogueText(const FString& NewText)
+	{
+		if (DialogueText)	DialogueText->SetText(FText::FromString(NewText));
+	}
+	void UpdateSpecialText(const FString& NewText)
+	{
+		if (SpecialActionText)	SpecialActionText->SetText(FText::FromString(NewText));
+	}
+	void SetButtonVisualFocus(class UButton* FocusedBtn);
+	void ClearButtonVisualFocus();
+	
 protected:
 	// 대화 시작 : 대화 애니메이션 + 입력 금지
 	void StartDialogue();
@@ -70,6 +87,8 @@ private:
 	
 	UPROPERTY(meta=(BindWidgetAnim), Transient)
 	class UWidgetAnimation* StartDialogueAnim;
+	UPROPERTY(meta=(BindWidgetAnim), Transient)
+	class UWidgetAnimation* ChangeToCustomView;
 
 	// 특정 위젯 바인딩 X, 빈 상자를 배치함
 	UPROPERTY(meta=(BindWidget))
@@ -79,6 +98,7 @@ private:
 	class UUserWidget* ActiveCustomWidget;
 
 	bool bIsClosing = false;
+	bool bIsCustomWidgetClosing = false;
 	// 현재 포커스 되있는 버튼 인덱스
 	int32 CurrentSelectedIndex = 0;
 
@@ -113,6 +133,8 @@ private:
 	FNPCData CachedNPCData;
 
 	void OpenCustomWidget();
+	UFUNCTION()
+	void CloseCustomWidget();
 	void HandleFirstInteraction(ENPCActionResult Result);
 	void HandleRequireConfirm(ENPCActionResult Result);
 	void HandleFailedInteraction(ENPCActionResult Result);
