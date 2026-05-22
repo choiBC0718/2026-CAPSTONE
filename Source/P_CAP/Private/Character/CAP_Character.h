@@ -40,7 +40,6 @@ private:
 	
 	void DeadTagUpdated(FGameplayTag GameplayTag, int32 NewCount);
 	void MoveSpeedUpdated(const FOnAttributeChangeData& OnAttributeChangeData);
-	void MaxHealthUpdated(const FOnAttributeChangeData& OnAttributeChangeData);
 
 	FTransform MeshRelativeTransform;
 	

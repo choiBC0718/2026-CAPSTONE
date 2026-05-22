@@ -57,7 +57,6 @@ void ACAP_Character::BindGASChangeDelegates()
 		CAPAbilitySystemComponent->RegisterGameplayTagEvent(UCAP_AbilitySystemStatics::GetDeadStateTag()).AddUObject(this, &ACAP_Character::DeadTagUpdated);
 		
 		CAPAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UCAP_AttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ACAP_Character::MoveSpeedUpdated);
-		CAPAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UCAP_AttributeSet::GetMaxHealthAttribute()).AddUObject(this, &ACAP_Character::MaxHealthUpdated);
 	}
 }
 
@@ -76,12 +75,6 @@ void ACAP_Character::DeadTagUpdated(FGameplayTag GameplayTag, int32 NewCount)
 void ACAP_Character::MoveSpeedUpdated(const FOnAttributeChangeData& OnAttributeChangeData)
 {
 	GetCharacterMovement()->MaxWalkSpeed = OnAttributeChangeData.NewValue;
-}
-
-void ACAP_Character::MaxHealthUpdated(const FOnAttributeChangeData& OnAttributeChangeData)
-{
-	if (IsValid(CAPAttributeSet))
-		CAPAttributeSet->RescaleHealth();
 }
 
 void ACAP_Character::StartDeathSequence()

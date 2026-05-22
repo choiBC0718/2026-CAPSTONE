@@ -74,6 +74,9 @@ private:
 	void InitNearbySlot();
 	void SetConfirmMode(bool bIsConfirm);
 	void RefreshButtonVisuals();
+
+	bool TryGetEnhanceData(class UCAP_StatEnhanceSlotWidget* SlotWidget, struct FStatEnhanceTableRow*& OutRowData, class ACAP_PlayerCharacter*& OutPlayer, FName& OutRowName, int32& OutCurrentLevel);
+	FText GetFormattedDescription(const struct FStatEnhanceTableRow* RowData, int32 CurrentLevel);
 	
 	bool bIsConfirmMode = false;
 	int32 CurrentButtonIndex = -1;
@@ -105,6 +108,12 @@ private:
 	// 강화 성공 시 대사
 	UPROPERTY(EditDefaultsOnly, Category="Dialogue", meta=(MultiLine="true"))
 	TArray<FText> SuccessDialoguePool;
+	// 강화 실패 시 대사
+	UPROPERTY(EditDefaultsOnly, Category="Dialogue", meta=(MultiLine="true"))
+	TArray<FText> FailDialoguePool;
+	// 이미 최대일때 대사
+	UPROPERTY(EditDefaultsOnly, Category="Dialogue", meta=(MultiLine="true"))
+	TArray<FText> OnMaxLevelDialoguePool;
 
 	void ApplyRandomDialogue(const TArray<FText>& DialoguePool, int32 Cost = -1);
 };

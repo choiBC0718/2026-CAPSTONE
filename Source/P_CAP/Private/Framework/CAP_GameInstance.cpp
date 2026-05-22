@@ -46,3 +46,19 @@ void UCAP_GameInstance::OnCurrencyChanged(ECurrencyType Type, int32 OldAmount, i
 		SaveGameData();
 	}
 }
+
+TMap<FName, int32> UCAP_GameInstance::GetSavedStatEnhancedLevels() const
+{
+	if (CurrentSaveGame)
+		return CurrentSaveGame->SavedStatEnhanceLevels;
+	return TMap<FName, int32>();
+}
+
+void UCAP_GameInstance::UpdateSavedStatEnhanceLevel(FName RowName, int32 Level)
+{
+	if (CurrentSaveGame)
+	{
+		CurrentSaveGame->SavedStatEnhanceLevels.FindOrAdd(RowName) = Level;
+		SaveGameData();
+	}
+}

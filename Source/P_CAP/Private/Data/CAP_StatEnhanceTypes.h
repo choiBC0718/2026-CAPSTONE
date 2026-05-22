@@ -8,13 +8,27 @@
 #include "CAP_StatEnhanceTypes.generated.h"
 
 USTRUCT(BlueprintType)
-struct FStatEnhanceTableRow : public FTableRowBase
+struct FStatModifierInfo
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, Category="Enhance", meta=(Categories="Data.ItemStat"))
 	FGameplayTag StatTag;
 
+	// 레벨 별 강화 효과 증가량
+	UPROPERTY(EditAnywhere, Category="Enhance")
+	float Value = 0.f;
+	UPROPERTY(EditAnywhere, Category="Enhance")
+	bool bIsFixedValue = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsPercentage = false;
+};
+
+USTRUCT(BlueprintType)
+struct FStatEnhanceTableRow : public FTableRowBase
+{
+	GENERATED_BODY()
+	
 	// 강화 이름 (ex. 물리 공격력 강화)
 	UPROPERTY(EditAnywhere, Category="Enhance")
 	FText DisplayName;
@@ -29,7 +43,7 @@ struct FStatEnhanceTableRow : public FTableRowBase
 	// 레벨 별 강화 비용 증가량
 	UPROPERTY(EditAnywhere, Category="Enhance")
 	int32 CostIncreaseRate =0;
-	// 레벨 별 강화 효과 증가량
+	
 	UPROPERTY(EditAnywhere, Category="Enhance")
-	int32 ValueIncreaseRate =0;
+	TArray<FStatModifierInfo> Modifiers;
 };

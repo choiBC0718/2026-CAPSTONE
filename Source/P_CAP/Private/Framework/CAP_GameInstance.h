@@ -22,10 +22,16 @@ public:
 	void SaveGameData();
 	UFUNCTION()
 	void LoadGameData();
+	
 	UFUNCTION()
 	int32 GetSavedMagicStone() const;
 	UFUNCTION()
 	void OnCurrencyChanged(ECurrencyType Type, int32 OldAmount, int32 NewAmount);
+
+	UFUNCTION()
+	TMap<FName, int32> GetSavedStatEnhancedLevels() const;
+	UFUNCTION()
+	void UpdateSavedStatEnhanceLevel(FName RowName, int32 Level);
 
 private:
 	UPROPERTY()

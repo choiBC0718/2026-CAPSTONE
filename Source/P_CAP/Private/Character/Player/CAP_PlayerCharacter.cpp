@@ -33,6 +33,7 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 	InventoryComponent = CreateDefaultSubobject<UCAP_InventoryComponent>("Inventory Component");
 	CurrencyComponent = CreateDefaultSubobject<UCAP_CurrencyComponent>("Currency Component");
 	InteractionComponent = CreateDefaultSubobject<UCAP_InteractionComponent>("Interaction Component");
+	StatEnhanceComponent = CreateDefaultSubobject<UCAP_StatEnhanceComponent>("Stat Enhance Component");
 	
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
@@ -134,6 +135,11 @@ FString ACAP_PlayerCharacter::GetInteractKeyName() const
 		}
 	}
 	return CurrentKeyName;
+}
+
+void ACAP_PlayerCharacter::AddCurrency(ECurrencyType Type, int32 Amount)
+{
+	CurrencyComponent->AddCurrency(Type,Amount);
 }
 
 FVector ACAP_PlayerCharacter::GetMoveForwardDir()

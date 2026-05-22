@@ -30,17 +30,7 @@ public:
 	FOnDialogueFinished OnDialogueFinished;
 	UPROPERTY()
 	FOnNPCCustomWidgetOpened OnNPCCustomWidgetOpened;
-
-	class UButton* GetSpecialBtn() const { return SpecialBtn; }
-	class UButton* GetQuitBtn() const { return QuitBtn; }
-	void UpdateDialogueText(const FString& NewText)
-	{
-		if (DialogueText)	DialogueText->SetText(FText::FromString(NewText));
-	}
-	void UpdateSpecialText(const FString& NewText)
-	{
-		if (SpecialActionText)	SpecialActionText->SetText(FText::FromString(NewText));
-	}
+	
 	void SetButtonVisualFocus(class UButton* FocusedBtn);
 	void ClearButtonVisualFocus();
 	

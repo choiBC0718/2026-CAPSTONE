@@ -7,16 +7,7 @@
 #include "CAP_SaveGame.generated.h"
 
 
-USTRUCT(BlueprintType)
-struct FPlayerReinforceStats
-{
-	GENERATED_BODY()
 
-	UPROPERTY(VisibleAnywhere)
-	int32 MaxHealthLv=0;
-	UPROPERTY(VisibleAnywhere)
-	int32 AttackLv=0;
-};
 /**
  * 
  */
@@ -32,5 +23,5 @@ public:
 	int32 SavedMagicStone;
 	
 	UPROPERTY(VisibleAnywhere)
-	FPlayerReinforceStats PlayerReinforceStats;
+	TMap<FName, int32> SavedStatEnhanceLevels;
 };

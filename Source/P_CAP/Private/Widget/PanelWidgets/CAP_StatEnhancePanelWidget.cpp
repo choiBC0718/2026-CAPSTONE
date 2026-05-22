@@ -101,12 +101,12 @@ void UCAP_StatEnhancePanelWidget::HandleUIConfirmInput(ETriggerEvent TriggerEven
 		return;
 	
 	if (!bIsConfirmMode)
-	{
+	{	// 컨펌모드가 아닐경우 -> 선택된 슬롯 강화할지 선택하도록 모드 변경
 		if (CurrentSelectedSlot)
 			SetConfirmMode(true);
 	}
 	else
-	{
+	{	// 컨펌모드에서 선택은 버튼 2개 중 하나 (강화/취소)
 		if (CurrentButtonIndex == 0)
 			OnInnerEnhanceClicked();
 		else if (CurrentButtonIndex == 1)
@@ -124,13 +124,16 @@ void UCAP_StatEnhancePanelWidget::HandleSlotFocused(UCAP_StatEnhanceSlotWidget* 
 		CurrentSelectedSlot = FocusedSlot;
 		CurrentSelectedSlot->SetSlotSelected(true);
 	}
-	if (DetailWidget && !FocusedSlot->StatEnhanceDataTableRow.IsNull())
+	if (DetailWidget)
 	{
-		FStatEnhanceTableRow* RowData = FocusedSlot->StatEnhanceDataTableRow.GetRow<FStatEnhanceTableRow>("");
-		if (RowData)
+		FStatEnhanceTableRow* RowData = nullptr;
+		ACAP_PlayerCharacter* Player = nullptr;
+		FName RowName;
+		int32 CurrentLv = 0;
+		if (TryGetEnhanceData(FocusedSlot, RowData, Player, RowName, CurrentLv))
 		{
-			int32 CurrentLv= 0;
-			DetailWidget->UpdateDetailInfo(RowData->DisplayName, RowData->Description, RowData->MaxLevel, CurrentLv);
+			FText FormattedDesc = GetFormattedDescription(RowData, CurrentLv);
+			DetailWidget->UpdateDetailInfo(RowData->DisplayName, FormattedDesc, RowData->MaxLevel, CurrentLv);
 		}
 	}
 }
@@ -138,19 +141,46 @@ void UCAP_StatEnhancePanelWidget::HandleSlotFocused(UCAP_StatEnhanceSlotWidget* 
 void UCAP_StatEnhancePanelWidget::OnInnerEnhanceClicked()
 {
 	if (!bIsConfirmMode)
-	{
 		SetConfirmMode(true);
-	}
 	else
 	{
-		// TODO: 실제 재화 소모 및 스탯 강화 비즈니스 로직 실행
-		SetConfirmMode(false);
-		ApplyRandomDialogue(SuccessDialoguePool);
+		FStatEnhanceTableRow* RowData = nullptr;
+		ACAP_PlayerCharacter* Player = nullptr;
+		FName RowName;
+		int32 CurrentLv = 0;
+		
+		if (TryGetEnhanceData(CurrentSelectedSlot, RowData, Player, RowName, CurrentLv))
+		{	// 최대 레벨까지 찍지 않았으면 강화 진행
+			if (Player->GetStatEnhanceComponent()->UpgradeStatEnhance(RowName, RowData->MaxLevel))
+			{
+				int32 RequiredCost = (CurrentLv + 1) * RowData->CostIncreaseRate;
+				if (UCAP_CurrencyComponent* CurrencyComp = Player->GetCurrencyComponent())
+				{	// 재화 충분한지 확인
+					if (CurrencyComp->ConsumeCurrency(ECurrencyType::MagicStone, RequiredCost))
+					{
+						CurrentSelectedSlot->InitSlot(Player);
+						HandleSlotFocused(CurrentSelectedSlot);
+						SetConfirmMode(false);
+						ApplyRandomDialogue(SuccessDialoguePool);
+					}
+					else
+					{
+						SetConfirmMode(false);
+						ApplyRandomDialogue(FailDialoguePool);
+					}
+				}
+			}
+			else
+			{	// 최대 레벨이 찍힌 상태라면 진행 취소 및 이미 만렙 대사
+				SetConfirmMode(false);
+				ApplyRandomDialogue(OnMaxLevelDialoguePool);
+			}
+		}
 	}
 }
 
 void UCAP_StatEnhancePanelWidget::OnInnerCloseClicked()
-{
+{	// 컨펌모드일때 취소 : 강화 취소 / !컨펌모드일때 : 강화 위젯 제거
 	if (bIsConfirmMode)
 		SetConfirmMode(false);
 	else
@@ -202,8 +232,23 @@ void UCAP_StatEnhancePanelWidget::SetConfirmMode(bool bIsConfirm)
 	{
 		if (InnerCloseText) InnerCloseText->SetText(FText::FromString(TEXT("취소")));
 		CurrentButtonIndex = 0;
-		// 비용 가져오기
-		ApplyRandomDialogue(ConfirmDialoguePool, 150);
+
+		int32 RequiredCost = 0;
+		FStatEnhanceTableRow* RowData = nullptr;
+		ACAP_PlayerCharacter* Player = nullptr;
+		FName RowName;
+		int32 CurrentLv = 0;
+
+		if (TryGetEnhanceData(CurrentSelectedSlot, RowData, Player, RowName, CurrentLv))
+			RequiredCost = (CurrentLv + 1) * RowData->CostIncreaseRate;
+
+		if (CurrentLv >= RowData->MaxLevel)
+		{
+			SetConfirmMode(false);
+			ApplyRandomDialogue(OnMaxLevelDialoguePool);
+			return;
+		}
+		ApplyRandomDialogue(ConfirmDialoguePool, RequiredCost);
 	}
 	else
 	{
@@ -248,6 +293,44 @@ void UCAP_StatEnhancePanelWidget::RefreshButtonVisuals()
 			Texts[i]->SetFont(FontInfo);
 		}
 	}
+}
+
+bool UCAP_StatEnhancePanelWidget::TryGetEnhanceData(class UCAP_StatEnhanceSlotWidget* SlotWidget,
+	struct FStatEnhanceTableRow*& OutRowData, class ACAP_PlayerCharacter*& OutPlayer, FName& OutRowName,
+	int32& OutCurrentLevel)
+{
+	if (!SlotWidget || SlotWidget->StatEnhanceDataTableRow.IsNull())
+		return false;
+	OutPlayer = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
+	if (!OutPlayer || !OutPlayer->GetStatEnhanceComponent())
+		return false;
+	OutRowData = SlotWidget->StatEnhanceDataTableRow.GetRow<FStatEnhanceTableRow>("");
+	if (!OutRowData)
+		return false;
+	
+	OutRowName = SlotWidget->StatEnhanceDataTableRow.RowName;
+	OutCurrentLevel = OutPlayer->GetStatEnhanceComponent()->GetStatEnhanceLevel(OutRowName);
+	return true;
+}
+
+FText UCAP_StatEnhancePanelWidget::GetFormattedDescription(const struct FStatEnhanceTableRow* RowData,int32 CurrentLevel)
+{
+	if (!RowData)
+		return FText::GetEmpty();
+
+	FFormatNamedArguments Args;
+	for (int32 i = 0; i < RowData->Modifiers.Num(); ++i)
+	{
+		const FStatModifierInfo& ModInfo = RowData->Modifiers[i];
+		float CalcVal = CurrentLevel == 0 ? 0.f : ModInfo.bIsFixedValue ? ModInfo.Value : static_cast<float>(CurrentLevel) * ModInfo.Value;
+		
+		if (ModInfo.bIsPercentage)
+			CalcVal *= 100.f;
+
+		FString ArgName = FString::Printf(TEXT("Value%d"), i);
+		Args.Add(ArgName, FMath::RoundToInt(CalcVal));
+	}
+	return FText::Format(RowData->Description, Args);
 }
 
 void UCAP_StatEnhancePanelWidget::ApplyRandomDialogue(const TArray<FText>& DialoguePool, int32 Cost)

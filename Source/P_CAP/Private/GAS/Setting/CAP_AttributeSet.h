@@ -23,10 +23,11 @@ class UCAP_AttributeSet : public UAttributeSet
 	GENERATED_BODY()
 
 public:
+	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PreAttributeBaseChange(const FGameplayAttribute& Attribute, float& NewValue) const override;
 	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
 
-	void RescaleHealth();
+	void AdjustAttributeForMaxChange(FGameplayAttributeData& AffectedAttribute, const FGameplayAttributeData& MaxAttribute, float NewMaxValue, const FGameplayAttribute& AffectedAttributeProperty);
 
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, Health);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxHealth);
@@ -44,10 +45,11 @@ public:
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, WeaponSwapSpeed);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CurrentDodgeCount);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxDodgeCount);
+	
+	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, ReviveHealthRatio);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, ReviveCount);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxReviveCount);
-
-	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CachedHealthPercent);
+	
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, Damage);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, Shield);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, DisassembleBonusMultiplier);
@@ -69,10 +71,11 @@ private:
 	UPROPERTY()	FGameplayAttributeData WeaponSwapSpeed;
 	UPROPERTY()	FGameplayAttributeData CurrentDodgeCount;
 	UPROPERTY()	FGameplayAttributeData MaxDodgeCount;
+	
+	UPROPERTY()	FGameplayAttributeData ReviveHealthRatio;
 	UPROPERTY()	FGameplayAttributeData ReviveCount;
 	UPROPERTY()	FGameplayAttributeData MaxReviveCount;
 	
-	UPROPERTY()	FGameplayAttributeData CachedHealthPercent;
 	UPROPERTY()	FGameplayAttributeData Shield;
 	UPROPERTY()	FGameplayAttributeData Damage;
 	UPROPERTY()	FGameplayAttributeData DisassembleBonusMultiplier;

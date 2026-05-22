@@ -147,8 +147,8 @@ void UCAP_DialogueWidget::UpdateDialogueUI(const FNPCData& Data)
 
 	if (Quit)
 		Quit->SetText(FText::FromString(TEXT("대화종료")));
-	if (bShowSpecial)
-		UpdateSpecialText(Data.SpecialActionText);
+	if (bShowSpecial && SpecialActionText)
+		SpecialActionText->SetText(FText::FromString(Data.SpecialActionText));
 	
 	if (Data.NPCImage)
 	{
@@ -165,8 +165,8 @@ void UCAP_DialogueWidget::UpdateDialogueUI(const FNPCData& Data)
 		ActiveCustomWidget = nullptr;
 	}
 	
-	NPC_Name->SetText(FText::FromString(Data.NPCName));
-	UpdateDialogueText(Data.DefaultDialogue);
+	if (NPC_Name)		NPC_Name->SetText(FText::FromString(Data.NPCName));
+	if (DialogueText)	DialogueText->SetText(FText::FromString(Data.DefaultDialogue));
 }
 
 void UCAP_DialogueWidget::OnSpecialBtnClicked()
@@ -214,7 +214,7 @@ void UCAP_DialogueWidget::OnSpecialBtnClicked()
 
 void UCAP_DialogueWidget::OnTalkBtnClicked()
 {
-	UpdateDialogueText(CachedNPCData.SmallTalkText);
+	if (DialogueText)	DialogueText->SetText(FText::FromString(CachedNPCData.SmallTalkText));
 }
 
 void UCAP_DialogueWidget::OnQuitBtnClicked()
@@ -363,20 +363,18 @@ void UCAP_DialogueWidget::RefreshButtonVisuals()
 
 void UCAP_DialogueWidget::ChangeToConfirmState(const FString& ConfirmText)
 {
-	UpdateDialogueText(ConfirmText);
-
-	UpdateSpecialText(TEXT("수락"));
-	Quit->SetText(FText::FromString(TEXT("거절")));
-
+	if (Quit)				Quit->SetText(FText::FromString(TEXT("거절")));
+	if (DialogueText)		DialogueText->SetText(FText::FromString(ConfirmText));
+	if (SpecialActionText)	SpecialActionText->SetText(FText::FromString(TEXT("수락")));
+	
 	SetupActiveButtons(false,true,true);
 }
 
 void UCAP_DialogueWidget::ChangeToRewardState(const FString& ResultText)
 {
 	SetupActiveButtons(false,false,true);
-	UpdateDialogueText(ResultText);
-	
-	Quit->SetText(FText::FromString(TEXT("대화종료")));
+	if (Quit)			Quit->SetText(FText::FromString(TEXT("대화종료")));
+	if (DialogueText)	DialogueText->SetText(FText::FromString(ResultText));
 }
 
 void UCAP_DialogueWidget::SetupActiveButtons(bool bShowTalk, bool bShowSpecial, bool bShowQuit)
