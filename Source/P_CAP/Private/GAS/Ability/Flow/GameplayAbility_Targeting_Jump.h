@@ -34,6 +34,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category="Targeting")
 	float TickRotToCursorSpeed = 500.f;
+	// 이동에 소요될 시간
+	UPROPERTY(EditDefaultsOnly, Category="Targeting")
+	float MoveDuration = 0.5f;
 	
 	UPROPERTY(EditDefaultsOnly, Category="Targeting")
 	class UAnimMontage* CastMontage;
@@ -47,7 +50,7 @@ protected:
 	
 private:
 	FVector CachedTargetLocation;
-	
+	bool bIsCollisionIgnored = false;
 	UPROPERTY()
 	class UAbilityTask_TickRotToCursor* RotToCursor;
 	UPROPERTY()

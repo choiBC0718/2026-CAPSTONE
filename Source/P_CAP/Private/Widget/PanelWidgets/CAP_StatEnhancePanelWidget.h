@@ -71,7 +71,7 @@ private:
 	UFUNCTION()
 	void OnButtonHovered();
 
-	void InitNearbySlot();
+	void InitNearbySlot(int32 ActiveSlotCount);
 	void SetConfirmMode(bool bIsConfirm);
 	void RefreshButtonVisuals();
 

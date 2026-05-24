@@ -6,10 +6,14 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_WaitTargetData.h"
+#include "Abilities/Tasks/AbilityTask_ApplyRootMotionMoveToForce.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "Components/CapsuleComponent.h"
 #include "GAS/Actors/CAP_TargetActor.h"
 #include "GAS/Actors/CAP_TargetRangeIndicator.h"
 #include "GAS/Tasks/AbilityTask_TickRotToCursor.h"
+#include "Kismet/KismetSystemLibrary.h"
+#include "P_CAP/P_CAP.h"
 
 UGameplayAbility_Targeting_Jump::UGameplayAbility_Targeting_Jump()
 {
@@ -56,6 +60,37 @@ void UGameplayAbility_Targeting_Jump::EndAbility(const FGameplayAbilitySpecHandl
 {
 	if (SpawnedRangeIndicator)
 		SpawnedRangeIndicator->Destroy();
+	if (bIsCollisionIgnored)
+	{
+		if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetAvatarActorFromActorInfo()))
+		{
+			UCapsuleComponent* Capsule = Player->GetCapsuleComponent();
+			FVector EndLoc = Player->GetActorLocation();
+			
+			TArray<AActor*> ActorsToIgnore;
+			ActorsToIgnore.Add(Player);
+			FHitResult HitResult;
+			
+			bool bIsOverlapping = UKismetSystemLibrary::SphereTraceSingle(
+				Player, EndLoc, EndLoc, Capsule->GetScaledCapsuleRadius() + 10.f, 
+				UEngineTypes::ConvertToTraceType(ECC_Hitbox), false, ActorsToIgnore, 
+				EDrawDebugTrace::None, HitResult, true);
+			
+			if (bIsOverlapping)
+			{
+				FVector PushDir = (EndLoc - HitResult.ImpactPoint).GetSafeNormal();
+				if (PushDir.IsNearlyZero())
+					PushDir = -Player->GetActorForwardVector();
+				
+				FVector SnapLocation = EndLoc + (PushDir * (Capsule->GetScaledCapsuleRadius() * 2.0f));
+	
+				Player->SetActorLocation(SnapLocation, false, nullptr, ETeleportType::TeleportPhysics);
+			}
+
+			Capsule->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Block);
+		}
+		bIsCollisionIgnored = false;
+	}
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
@@ -110,6 +145,11 @@ void UGameplayAbility_Targeting_Jump::OnJumpTagReceived(FGameplayEventData Paylo
 		LookRot.Roll = 0.f;
 		Player->SetActorRotation(LookRot);
 
-		Player->SetActorLocation(WarpLocation);
+		Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Ignore);
+		bIsCollisionIgnored = true;
+		
+		UAbilityTask_ApplyRootMotionMoveToForce* MoveTask = UAbilityTask_ApplyRootMotionMoveToForce::ApplyRootMotionMoveToForce(
+			this, NAME_None, WarpLocation, MoveDuration, true, MOVE_Flying, false, nullptr,ERootMotionFinishVelocityMode::SetVelocity,FVector::ZeroVector,0.f);
+		MoveTask->ReadyForActivation();
 	}
 }

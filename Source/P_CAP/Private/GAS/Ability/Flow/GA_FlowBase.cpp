@@ -8,12 +8,15 @@
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Animation/AN_SendRMSEvent.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "Components/CapsuleComponent.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
 #include "GameFramework/RootMotionSource.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
 #include "GAS/Tasks/AbilityTask_RotateToCursor.h"
+#include "Kismet/KismetSystemLibrary.h"
+#include "P_CAP/P_CAP.h"
 
 UGA_FlowBase::UGA_FlowBase()
 {
@@ -81,6 +84,41 @@ void UGA_FlowBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 	WaitAnimSpawnTask->ReadyForActivation();
 }
 
+void UGA_FlowBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	if (bIsCollisionIgnored)
+	{
+		if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetAvatarActorFromActorInfo()))
+		{
+			UCapsuleComponent* Capsule = Player->GetCapsuleComponent();
+			FVector EndLoc = Player->GetActorLocation();
+			
+			TArray<AActor*> ActorsToIgnore;
+			ActorsToIgnore.Add(Player);
+			FHitResult HitResult;
+			
+			bool bIsOverlapping = UKismetSystemLibrary::SphereTraceSingle(
+				Player, EndLoc, EndLoc, Capsule->GetScaledCapsuleRadius() + 10.f, 
+				UEngineTypes::ConvertToTraceType(ECC_Hitbox), false, ActorsToIgnore, 
+				EDrawDebugTrace::None, HitResult, true);
+			
+			if (bIsOverlapping)
+			{
+				FVector PushDir = (EndLoc - HitResult.ImpactPoint).GetSafeNormal();
+				if (PushDir.IsNearlyZero())
+					PushDir = -Player->GetActorForwardVector();
+				
+				FVector SnapLocation = EndLoc + (PushDir * (Capsule->GetScaledCapsuleRadius() * 2.0f));
+				Player->SetActorLocation(SnapLocation, false, nullptr, ETeleportType::TeleportPhysics);
+			}
+			Capsule->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Block);
+		}
+		bIsCollisionIgnored = false;
+	}
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
 void UGA_FlowBase::ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
                                  const FGameplayAbilityActivationInfo ActivationInfo) const
 {
@@ -139,6 +177,11 @@ void UGA_FlowBase::OnRMSTagReceived(FGameplayEventData Payload)
 	
 	if (ACAP_PlayerCharacter* Player = GetPlayerCharacterFromActorInfo())
 	{
+		if (RMSNotify->bIgnoreHitboxCollision)
+		{
+			Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Ignore);
+			bIsCollisionIgnored = true;
+		}
 		FVector ForwardDir = Player->GetActorForwardVector();
 		UAbilityTask_ApplyRootMotionConstantForce* RMTask = UAbilityTask_ApplyRootMotionConstantForce::ApplyRootMotionConstantForce(
 			this, NAME_None,ForwardDir, RMSNotify->RMSStrength, RMSNotify->RMSDuration,false, nullptr,ERootMotionFinishVelocityMode::SetVelocity,

@@ -82,7 +82,6 @@ void UCAP_StatEnhanceComponent::ApplyStatEnhanceGE(FName RowName, int32 Level)
 	if (SpecHandle.IsValid())
 	{
 		
-#define IF_WITH_EDITOR()
 		for (const FGameplayModifierInfo& ModInfo : DefaultGE->Modifiers)
 		{
 			if (ModInfo.ModifierMagnitude.GetMagnitudeCalculationType() == EGameplayEffectMagnitudeCalculation::SetByCaller)
@@ -91,7 +90,6 @@ void UCAP_StatEnhanceComponent::ApplyStatEnhanceGE(FName RowName, int32 Level)
 				SpecHandle.Data->SetSetByCallerMagnitude(CallerTag, 0.f);
 			}
 		}
-#define EndIF_WITH_EDITOR()
 		
 		for (const FStatModifierInfo& ModInfo : RowData->Modifiers)
 		{

@@ -28,6 +28,8 @@ void UCAP_StatEnhancePanelWidget::NativeConstruct()
 	}
 	CurrentButtonIndex = -1;
 	RefreshButtonVisuals();
+	if (SlotWrapBox)
+		SlotWrapBox->ClearChildren();
 }
 
 void UCAP_StatEnhancePanelWidget::NativeOpenMenu()
@@ -37,27 +39,42 @@ void UCAP_StatEnhancePanelWidget::NativeOpenMenu()
 	ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
 	if (!Player) return;
 	
-	SlotWrapBox->ClearChildren();
-	CreatedSlots.Empty();
-
 	TArray<FName> RowNames = EnhanceDataTable->GetRowNames();
-	int32 MaxSlots = FMath::Min(RowNames.Num(), 15);
+	int32 RequiredSlots = FMath::Min(RowNames.Num(), 15);
 
-	for (int32 i = 0; i < MaxSlots; ++i)
+	for (int32 i = 0; i < RequiredSlots; ++i)
 	{
-		UCAP_StatEnhanceSlotWidget* NewSlot = CreateWidget<UCAP_StatEnhanceSlotWidget>(this, SlotWidgetClass);
-		if (!NewSlot) continue;
+		UCAP_StatEnhanceSlotWidget* CurrentSlot = nullptr;
+		if (CreatedSlots.IsValidIndex(i))
+		{	// 이미 생성된 슬롯이라면 가져오기만
+			CurrentSlot = CreatedSlots[i];
+			CurrentSlot->SetVisibility(ESlateVisibility::Visible);
+		}
+		else
+		{	// 없었다면 슬롯 생성
+			CurrentSlot = CreateWidget<UCAP_StatEnhanceSlotWidget>(this, SlotWidgetClass);
+			if (CurrentSlot)
+			{
+				CurrentSlot->OnEnhanceSlotFocused.AddUObject(this, &UCAP_StatEnhancePanelWidget::HandleSlotFocused);
+				SlotWrapBox->AddChild(CurrentSlot);
+				CreatedSlots.Add(CurrentSlot);
+			}
+		}
 
-		NewSlot->StatEnhanceDataTableRow.DataTable = EnhanceDataTable;
-		NewSlot->StatEnhanceDataTableRow.RowName = RowNames[i];
-		NewSlot->InitSlot(Player);
-		NewSlot->OnEnhanceSlotFocused.AddUObject(this, &UCAP_StatEnhancePanelWidget::HandleSlotFocused);
-
-		SlotWrapBox->AddChildToWrapBox(NewSlot);
-		CreatedSlots.Add(NewSlot);
+		if (CurrentSlot)
+		{
+			CurrentSlot->StatEnhanceDataTableRow.DataTable=EnhanceDataTable;
+			CurrentSlot->StatEnhanceDataTableRow.RowName=RowNames[i];
+			CurrentSlot->InitSlot(Player);
+		}
+	}
+	for (int32 i = RequiredSlots; i < CreatedSlots.Num(); ++i)
+	{
+		if (CreatedSlots[i])
+			CreatedSlots[i]->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
-	InitNearbySlot();
+	InitNearbySlot(RequiredSlots);
 	if (OpenAnim) 
 		PlayAnimation(OpenAnim);
 }
@@ -197,15 +214,17 @@ void UCAP_StatEnhancePanelWidget::OnButtonHovered()
 	RefreshButtonVisuals();
 }
 
-void UCAP_StatEnhancePanelWidget::InitNearbySlot()
+void UCAP_StatEnhancePanelWidget::InitNearbySlot(int32 ActiveSlotCount)
 {
-	for (int32 i=0; i < CreatedSlots.Num(); ++i)
+	if (ActiveSlotCount <=0)
+		return;
+	for (int32 i=0; i < ActiveSlotCount; ++i)
 	{
 		int32 Row = i/5;
 		int32 Col = i%5;
 
 		int32 RowStartIdx = Row * 5;
-		int32 RowEndIdx = FMath::Min(RowStartIdx + 4, CreatedSlots.Num() - 1);
+		int32 RowEndIdx = FMath::Min(RowStartIdx + 4, ActiveSlotCount - 1);
 		
 		// 왼쪽 슬롯
 		CreatedSlots[i]->LeftSlot = Col>0 ? CreatedSlots[i - 1] : CreatedSlots[RowEndIdx];
@@ -221,8 +240,7 @@ void UCAP_StatEnhancePanelWidget::InitNearbySlot()
 		// 아래쪽 슬롯
 		CreatedSlots[i]->DownSlot = CreatedSlots.IsValidIndex(i + 5) ? CreatedSlots[i + 5] : CreatedSlots[Col];
 	}
-	if (CreatedSlots.Num() > 0)
-		HandleSlotFocused(CreatedSlots[0]);
+	HandleSlotFocused(CreatedSlots[0]);
 }
 
 void UCAP_StatEnhancePanelWidget::SetConfirmMode(bool bIsConfirm)

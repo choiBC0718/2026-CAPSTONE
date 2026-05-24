@@ -25,8 +25,8 @@ public:
 	FORCEINLINE const UDataTable* GetBaseStatDataTable() const {return BaseStatDataTable;}
 	FORCEINLINE const UDataTable* GetWeaponStatDataTable() const {return WeaponStatDataTable;}
 	
-	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemStatInfiniteEffect() const {return MasterStatInfiniteGE;}
-	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemStatDurationEffect() const {return MasterStatDurationGE;}
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemStatInfiniteEffect() const {return MasterStatInfiniteAddGE;}
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemStatDurationEffect() const {return MasterStatDurationAddGE;}
 
 	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemMarkGE() const {return MasterMarkGE;}
 	FORCEINLINE TSubclassOf<class UGameplayEffect> GetCooldownEffect() const {return MasterCooldownGE;}
@@ -70,12 +70,18 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="Master GE")
 	TSubclassOf<class UGameplayEffect> MasterCooldownGE;
 	
-	// 아이템 착용 시, 아이템 자체의 효과 보너스 스탯을 Infinite로 넣을 마스터 클래스
-	UPROPERTY(EditDefaultsOnly, Category="Master GE|Item Master GE")
-	TSubclassOf<class UGameplayEffect> MasterStatInfiniteGE;
-	// 아이템의 스킬로 일시적 스탯 증가 - Has Duration
-	UPROPERTY(EditDefaultsOnly, Category="Master GE|Item Master GE")
-	TSubclassOf<class UGameplayEffect> MasterStatDurationGE;
+	// 합연산 스탯 증가 - Infinite
+	UPROPERTY(EditDefaultsOnly, Category="Master GE|Stat GE")
+	TSubclassOf<class UGameplayEffect> MasterStatInfiniteAddGE;
+	// 합연산 일시적 스탯 증가 - Has Duration
+	UPROPERTY(EditDefaultsOnly, Category="Master GE|Stat GE")
+	TSubclassOf<class UGameplayEffect> MasterStatDurationAddGE;
+	// 곱연산 스탯 증가 - Infinite
+	UPROPERTY(EditDefaultsOnly, Category="Master GE|Stat GE")
+	TSubclassOf<class UGameplayEffect> MasterStatInfiniteMulGE;
+	// 곱연산 일시적 스탯 증가 - Has Duration
+	UPROPERTY(EditDefaultsOnly, Category="Master GE|Stat GE")
+	TSubclassOf<class UGameplayEffect> MasterStatDurationMulGE;
 	// 아이템 효과를 부여할때 어떤 아이템이 어떤 효과를 일으켰는지 구분하기 위한 GE
 	UPROPERTY(EditDefaultsOnly, Category="Master GE|Item Master GE")
 	TSubclassOf<class UGameplayEffect> MasterMarkGE;
