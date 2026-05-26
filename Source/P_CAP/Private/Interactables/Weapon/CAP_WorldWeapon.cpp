@@ -40,7 +40,7 @@ void ACAP_WorldWeapon::BeginPlay()
 	if (!WeaponInstance && WeaponDA)
 	{
 		WeaponInstance = NewObject<UCAP_WeaponInstance>(this);
-		WeaponInstance->InitializeWeapon(WeaponDA);
+		WeaponInstance->Initialize(WeaponDA);
 		WeaponInstance->LoadWeaponAssets(FStreamableDelegate::CreateLambda([](){}));
 	}
 	

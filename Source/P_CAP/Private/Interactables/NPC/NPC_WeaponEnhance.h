@@ -9,11 +9,12 @@
 UENUM(BlueprintType)
 enum class EWeaponUpgradeResult : uint8
 {
+	Default,
 	Success,
 	InsufficientCurrency,
 	MaxGradeReached,
-	NoWeaponEquipped,
-	Error
+	ConfirmMode,
+	Error,
 };
 
 /**
@@ -30,16 +31,23 @@ public:
 	EWeaponUpgradeResult TryUpgradeWeapon(class ACAP_PlayerCharacter* Player);
 	FText GetDialogueText(EWeaponUpgradeResult Result, int32 Cost = -1) const;
 
-protected:
 	UPROPERTY(EditAnywhere, Category="Enhance|Data")
 	TMap<EItemGrade, int32> UpgradeCostMap;
-	
+protected:
+
+	// 강화 직전 떠드는 대사
+	UPROPERTY(EditDefaultsOnly, Category="Enhance|Dialogue", meta=(MultiLine="true"))
+	TArray<FText> DefaultDialoguePool;
+	// 강화 완료 대사
 	UPROPERTY(EditAnywhere, Category="Enhance|Dialogue", meta=(MultiLine="true"))
 	TArray<FText> SuccessDialoguePool;
+	// 재료 불충분 대사
 	UPROPERTY(EditAnywhere, Category="Enhance|Dialogue", meta=(MultiLine="true"))
-	TArray<FText> FailDialoguePool;
+	TArray<FText> InsufficientDialoguePool;
+	// 이미 최대 강화 대사
 	UPROPERTY(EditAnywhere, Category="Enhance|Dialogue", meta=(MultiLine="true"))
 	TArray<FText> OnMaxLevelDialoguePool;
+	// 강화 진행 선택 시 {Cost} 얼마 든다는 대사
 	UPROPERTY(EditAnywhere, Category="Enhance|Dialogue", meta=(MultiLine="true"))
-	TArray<FText> NoWeaponDialoguePool;
+	TArray<FText> ConfirmDialoguePool;
 };

@@ -18,7 +18,7 @@ class UCAP_WeaponInstance : public UCAP_ItemInstance
 	GENERATED_BODY()
 
 public:
-	void InitializeWeapon(UCAP_WeaponDataAsset* WeaponDA);
+	virtual void Initialize(UCAP_ItemDataBase* WeaponDA) override;
 
 	UPROPERTY()
 	TArray<FGameplayAbilitySpecHandle> GrantedAbilityHandles;
@@ -39,10 +39,10 @@ public:
 	virtual FBuffDisplayData GetBuffDisplayData(const FGameplayTag& EffectTag) const override;
 
 	bool UpgradeWeapon();
-private:
-	UPROPERTY(VisibleAnywhere)
-	int32 UpgradeLevel =0;
 	
+private:
+	static int32 GetSkillCountByGrade(EItemGrade Grade);
+	bool TryAppendRandomNewSkill();
 	// 캐시 데이터
 	FWeaponSkillData BasicAttackData;
 	TArray<FWeaponSkillData> GrantedActiveSkills;

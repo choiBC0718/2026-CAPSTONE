@@ -47,7 +47,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="Data", meta=(Categories="Synergy"))
 	FGameplayTag SynergyTag2;
 
-	// 아이템이 제공하는 보너스 스탯 <Key: 증가시킬 스탯 || Value: 증가값(Add)>
+	// 아이템이 제공하는 보너스 스탯 <Key: 증가시킬 스탯 || Value: 증가값>
 	UPROPERTY(EditDefaultsOnly, Category="Item Effect", meta=(TitleProperty="StatTag"))
 	TArray<FStatModifier> ItemStatModifier;
 	// 아이템 효과

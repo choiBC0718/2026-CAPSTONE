@@ -18,7 +18,7 @@ class UCAP_ItemInstance : public UObject, public ICAP_BuffVisualInterface
 	GENERATED_BODY()
 
 public:
-	void Initialize(UCAP_ItemDataBase* NewItemDA);
+	virtual void Initialize(UCAP_ItemDataBase* NewItemDA);
 
 	UFUNCTION()
 	UCAP_ItemDataBase* GetItemDA() const {return ItemDA;}
@@ -38,7 +38,6 @@ public:
 	virtual FBuffDisplayData GetBuffDisplayData(const FGameplayTag& EffectTag) const override;
 
 	EItemGrade GetCurrentGrade() const {return CurrentGrade;}
-	void SetCurrentGrade(EItemGrade NewGrade) {CurrentGrade = NewGrade;}
 	
 protected:
 	UPROPERTY()

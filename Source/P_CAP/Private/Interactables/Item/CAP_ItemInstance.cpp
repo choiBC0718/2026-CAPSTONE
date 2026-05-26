@@ -6,6 +6,7 @@
 void UCAP_ItemInstance::Initialize(UCAP_ItemDataBase* NewItemDA)
 {
 	ItemDA = NewItemDA;
+	CurrentGrade = ItemDA ? ItemDA->ItemGrade : EItemGrade::Normal;
 }
 
 void UCAP_ItemInstance::SetCachedASC(UCAP_AbilitySystemComponent* ASC)
@@ -21,7 +22,8 @@ UCAP_AbilitySystemComponent* UCAP_ItemInstance::GetCachedASC() const
 FBuffDisplayData UCAP_ItemInstance::GetBuffDisplayData(const FGameplayTag& EffectTag) const
 {
 	FBuffDisplayData BuffData;
-	BuffData.Icon = ItemDA->ItemIcon;
+	if (ItemDA)
+		BuffData.Icon = ItemDA->ItemIcon;
 	
 	return BuffData;
 }

@@ -4,17 +4,13 @@
 #include "Interactables/Weapon/CAP_WeaponInstance.h"
 
 #include "Engine/AssetManager.h"
-#include "GameplayAbilitySpec.h"
-#include "GAS/Ability/Flow/GA_FlowBase.h"
-#include "GAS/Ability/Payload/GA_PayloadBase.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 
-void UCAP_WeaponInstance::InitializeWeapon(UCAP_WeaponDataAsset* InWeaponDA)
+void UCAP_WeaponInstance::Initialize(UCAP_ItemDataBase* InWeaponDA)
 {
 	if (!InWeaponDA)
 		return;
-
-	ItemDA = InWeaponDA;
+	Super::Initialize(InWeaponDA);
 
 	// 기본 공격 데이터 가져오기
 	if (FWeaponSkillData* BasicAttackRow = GetWeaponDA()->BasicAbility.GetRow<FWeaponSkillData>(""))
@@ -22,17 +18,7 @@ void UCAP_WeaponInstance::InitializeWeapon(UCAP_WeaponDataAsset* InWeaponDA)
 		BasicAttackData = *BasicAttackRow;
 	}
 	
-	//등급에 따른 착용 가능한 스킬 수 가져오기
-	int32 SkillsToGrant = 0;
-	switch (GetWeaponDA()->ItemGrade)
-	{
-		case EItemGrade::Normal:		SkillsToGrant = 1;	break;
-		case EItemGrade::Rare:		SkillsToGrant = 1;	break;
-		case EItemGrade::Epic:		SkillsToGrant = 2;	break;
-		case EItemGrade::Legendary:	SkillsToGrant = 2;	break;
-		default:										break;
-	}
-	CurrentGrade = GetWeaponDA()->ItemGrade;
+	const int32 SkillsToGrant = GetSkillCountByGrade(GetCurrentGrade());
 	
 	// DA에 설정한 DT스킬들을 랜덤으로 가져오기
 	TArray<FDataTableRowHandle> AvailableHandles = GetWeaponDA()->ActiveAbilityArray;
@@ -143,52 +129,52 @@ bool UCAP_WeaponInstance::UpgradeWeapon()
 
 	// 레어 -> 에픽 업그레이드 시 스킬 1개 더 받음
 	if (OldGrade == EItemGrade::Rare && CurrentGrade == EItemGrade::Epic)
-	{
-		TArray<FDataTableRowHandle> AvailableHandles = GetWeaponDA()->ActiveAbilityArray;
-		for (int32 i= AvailableHandles.Num()-1; i >= 0; --i)
-		{
-			if (FWeaponSkillData* SkillRow = AvailableHandles[i].GetRow<FWeaponSkillData>(""))
-			{
-				// 이미 가진 스킬은 추가될 스킬에서 제외
-				bool bAlreadyHas = false;
-				for (const FWeaponSkillData& HasSkill : GrantedActiveSkills)
-				{
-					if (HasSkill.SkillName == SkillRow->SkillName)
-					{
-						bAlreadyHas = true;
-						break;
-					}
-				}
-				if (bAlreadyHas)
-					AvailableHandles.RemoveAt(i);
-			}
-		}
-		if (AvailableHandles.Num() > 0)
-		{
-			int32 RandIdx = FMath::RandRange(0, AvailableHandles.Num() - 1);
-			if (FWeaponSkillData* NewSkill = AvailableHandles[RandIdx].GetRow<FWeaponSkillData>(""))
-			{
-				GrantedActiveSkills.Add(*NewSkill);
-				if (UCAP_AbilitySystemComponent* ASC = GetCachedASC())
-				{
-					int32 InputID = static_cast<int32>(EAbilityInputID::Skill1) + GrantedActiveSkills.Num() - 1;
+		TryAppendRandomNewSkill();
+	
+	return true;
+}
 
-					if (NewSkill->InputAbilityClass)
-					{
-						FGameplayAbilitySpec Spec(NewSkill->InputAbilityClass,1,InputID,this);
-						GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
-					}
-					for (TSubclassOf<UGA_PayloadBase> PayloadClass : NewSkill->PayloadAbilityClass)
-					{
-						if (PayloadClass)
-						{
-							FGameplayAbilitySpec Spec(PayloadClass, 1, InputID+100,this);
-							GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
-						}
-					}
-				}
-			}
+int32 UCAP_WeaponInstance::GetSkillCountByGrade(EItemGrade Grade)
+{
+	switch (Grade)
+	{
+	case EItemGrade::Normal:
+	case EItemGrade::Rare:
+		return 1;
+	case EItemGrade::Epic:
+	case EItemGrade::Legendary:
+		return 2;
+	default:
+		return 0;
+	}
+}
+
+bool UCAP_WeaponInstance::TryAppendRandomNewSkill()
+{
+	if (!GetWeaponDA())
+		return false;
+	TArray<FDataTableRowHandle> AvailableHandles = GetWeaponDA()->ActiveAbilityArray;
+	for (int32 i= AvailableHandles.Num()-1; i >= 0; --i)
+	{
+		if (FWeaponSkillData* SkillRow = AvailableHandles[i].GetRow<FWeaponSkillData>(""))
+		{
+			const bool bAlreadyHas = GrantedActiveSkills.ContainsByPredicate([SkillRow](const FWeaponSkillData& HasSkill)
+			{
+				return HasSkill.SkillName == SkillRow->SkillName;
+			});
+
+			if (bAlreadyHas)
+				AvailableHandles.RemoveAt(i);
 		}
 	}
-	return true;
+	if (AvailableHandles.Num() <= 0)
+		return false;
+
+	const int32 RandIdx = FMath::RandRange(0, AvailableHandles.Num() - 1);
+	if (FWeaponSkillData* NewSkill = AvailableHandles[RandIdx].GetRow<FWeaponSkillData>(""))
+	{
+		GrantedActiveSkills.Add(*NewSkill);
+		return true;
+	}
+	return false;
 }

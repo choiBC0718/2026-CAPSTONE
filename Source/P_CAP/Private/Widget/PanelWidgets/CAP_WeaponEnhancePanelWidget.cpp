@@ -7,6 +7,7 @@
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "Interactables/NPC/NPC_WeaponEnhance.h"
+#include "Interactables/Weapon/CAP_WeaponInstance.h"
 
 void UCAP_WeaponEnhancePanelWidget::NativeConstruct()
 {
@@ -25,7 +26,7 @@ void UCAP_WeaponEnhancePanelWidget::NativeConstruct()
 		InnerCloseBtn->OnClicked.AddDynamic(this, &UCAP_WeaponEnhancePanelWidget::OnCloseClicked);
 		InnerCloseBtn->OnHovered.AddDynamic(this, &UCAP_WeaponEnhancePanelWidget::OnBtnHovered);
 	}
-	CurrentButtonIndex = -1;
+	CurrentButtonIndex = 0;
 	RefreshButtonVisuals();
 }
 
@@ -33,6 +34,8 @@ void UCAP_WeaponEnhancePanelWidget::NativeOpenMenu()
 {
 	if (OpenAnim)
 		PlayAnimation(OpenAnim);
+	if (DialogueText && OwnerNPC)
+		DialogueText->SetText(OwnerNPC->GetDialogueText(EWeaponUpgradeResult::Default));
 }
 
 void UCAP_WeaponEnhancePanelWidget::NativeCloseMenu()
@@ -55,26 +58,44 @@ void UCAP_WeaponEnhancePanelWidget::HandleUIConfirmInput(ETriggerEvent TriggerEv
 {
 	if (TriggerEvent != ETriggerEvent::Started)
 		return;
-	
-	if (CurrentButtonIndex == 0)
-		OnEnhanceClicked();
-	else if (CurrentButtonIndex == 1)
+
+	if (CurrentButtonIndex == 1)
+	{
 		OnCloseClicked();
+		return;
+	}
+	
+	if (!bIsConfirmMode)
+		SetConfirmMode(true);
+	else
+		OnEnhanceClicked();
+
 }
 
 void UCAP_WeaponEnhancePanelWidget::OnEnhanceClicked()
 {
 	if (!OwnerNPC || !CachedPlayer) return;
 
-	EWeaponUpgradeResult Result = OwnerNPC->TryUpgradeWeapon(CachedPlayer);
-	FText DialogueToDisplay = OwnerNPC->GetDialogueText(Result);
-	if (DialogueText)
-		DialogueText->SetText(DialogueToDisplay);
+	if (!bIsConfirmMode)
+		SetConfirmMode(true);
+	else
+	{
+		EWeaponUpgradeResult Result = OwnerNPC->TryUpgradeWeapon(CachedPlayer);
+		if (Result == EWeaponUpgradeResult::InsufficientCurrency || Result==EWeaponUpgradeResult::MaxGradeReached)
+			SetConfirmMode(false);
+		
+		FText DialogueToDisplay = OwnerNPC->GetDialogueText(Result);
+		if (DialogueText)
+			DialogueText->SetText(DialogueToDisplay);
+	}
 }
 
 void UCAP_WeaponEnhancePanelWidget::OnCloseClicked()
 {
-	NativeCloseMenu();
+	if (bIsConfirmMode)
+		SetConfirmMode(false);
+	else
+		NativeCloseMenu(); 
 }
 
 void UCAP_WeaponEnhancePanelWidget::OnBtnHovered()
@@ -85,6 +106,38 @@ void UCAP_WeaponEnhancePanelWidget::OnBtnHovered()
 		CurrentButtonIndex = 1;
 	
 	RefreshButtonVisuals();
+}
+
+void UCAP_WeaponEnhancePanelWidget::SetConfirmMode(bool bIsConfirm)
+{
+	bIsConfirmMode = bIsConfirm;
+	if (bIsConfirmMode)
+	{	// 최종 강화 진행 확인
+		if (InnerEnhanceText)
+			InnerEnhanceText->SetText(FText::FromString(TEXT("지불")));
+		if (InnerCloseText)
+			InnerCloseText->SetText(FText::FromString(TEXT("거절")));
+		
+		int32 RequireCost = 0;
+		if (UCAP_WeaponInstance* CurrentWeapon = CachedPlayer->GetWeaponComponent()->GetCurrentWeaponInstance())
+		{
+			EItemGrade CurrentWeaponGrade = CurrentWeapon->GetCurrentGrade();
+			RequireCost = OwnerNPC->UpgradeCostMap[CurrentWeaponGrade];
+		}
+		
+		FText DialogueToDisplay = OwnerNPC->GetDialogueText(EWeaponUpgradeResult::ConfirmMode, RequireCost);
+		if (DialogueText)
+			DialogueText->SetText(DialogueToDisplay);
+	}
+	else
+	{	// 강화 직전에 떠들 때
+		if (InnerEnhanceText)
+			InnerEnhanceText->SetText(FText::FromString(TEXT("각성")));
+		if (InnerCloseText)
+			InnerCloseText->SetText(FText::FromString(TEXT("닫기")));
+		if (DialogueText && OwnerNPC)
+			DialogueText->SetText(OwnerNPC->GetDialogueText(EWeaponUpgradeResult::Default));
+	}
 }
 
 void UCAP_WeaponEnhancePanelWidget::RefreshButtonVisuals()

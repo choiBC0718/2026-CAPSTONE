@@ -52,6 +52,7 @@ private:
 	UPROPERTY(meta = (BindWidgetAnim), Transient)
 	class UWidgetAnimation* OpenAnim;
 
+	bool bIsConfirmMode = false;
 	int32 CurrentButtonIndex = -1;
 	
 	UPROPERTY(EditDefaultsOnly, Category="Visuals")
@@ -72,6 +73,7 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="Visuals")
 	int32 HoverFontSize = 38;
 	
+	void SetConfirmMode(bool bIsConfirm);
 	void RefreshButtonVisuals();
 
 	UPROPERTY()

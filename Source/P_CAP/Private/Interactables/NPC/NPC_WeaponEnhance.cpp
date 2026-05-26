@@ -24,7 +24,7 @@ EWeaponUpgradeResult ANPC_WeaponEnhance::TryUpgradeWeapon(class ACAP_PlayerChara
 
 	UCAP_WeaponInstance* CurrentWeapon = WeaponComp->GetCurrentWeaponInstance();
 	if (!CurrentWeapon)
-		return EWeaponUpgradeResult::NoWeaponEquipped;
+		return EWeaponUpgradeResult::Error;
 
 	EItemGrade CurrentGrade = CurrentWeapon->GetCurrentGrade();
 	if (CurrentGrade>=EItemGrade::Legendary)
@@ -54,11 +54,12 @@ FText ANPC_WeaponEnhance::GetDialogueText(EWeaponUpgradeResult Result, int32 Cos
 	
 	switch (Result)
 	{
+	case EWeaponUpgradeResult::Default: TargetPool = &DefaultDialoguePool; break;
 	case EWeaponUpgradeResult::Success: TargetPool = &SuccessDialoguePool; break;
-	case EWeaponUpgradeResult::InsufficientCurrency: TargetPool = &FailDialoguePool; break;
+	case EWeaponUpgradeResult::InsufficientCurrency: TargetPool = &InsufficientDialoguePool; break;
 	case EWeaponUpgradeResult::MaxGradeReached: TargetPool = &OnMaxLevelDialoguePool; break;
-	case EWeaponUpgradeResult::NoWeaponEquipped: TargetPool = &NoWeaponDialoguePool; break;
-	default: return FText::GetEmpty();
+	case EWeaponUpgradeResult::ConfirmMode: TargetPool = &ConfirmDialoguePool; break;
+	default: return FText::FromString("에러 발생");
 	}
 
 	if (TargetPool && TargetPool->Num() > 0)

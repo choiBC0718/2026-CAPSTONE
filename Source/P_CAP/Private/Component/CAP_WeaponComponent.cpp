@@ -42,7 +42,7 @@ void UCAP_WeaponComponent::BeginPlay()
 	if (DefaultBasicWeapon)
 	{
 		UCAP_WeaponInstance* BasicWeapon = NewObject<UCAP_WeaponInstance>(this);
-		BasicWeapon->InitializeWeapon(DefaultBasicWeapon);
+		BasicWeapon->Initialize(DefaultBasicWeapon);
 		EquippedWeapons[0] = BasicWeapon;
 		
 		BasicWeapon->LoadWeaponAssets(FStreamableDelegate::CreateWeakLambda(this,[this, BasicWeapon]()

@@ -37,8 +37,7 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 	{
 		if (UCAP_WeaponInstance* WeaponInst = Cast<UCAP_WeaponInstance>(ItemData))
 		{
-			if (UCAP_WeaponDataAsset* WeaponDA = WeaponInst->GetWeaponDA())
-				SetupUIContents(WeaponInst);
+			SetupUIContents(WeaponInst);
 			for (const FWeaponSkillData SkillData : WeaponInst->GetGrantedSkills())
 			{
 				AddFeatureIconToBox(SkillData.SkillIcon);
