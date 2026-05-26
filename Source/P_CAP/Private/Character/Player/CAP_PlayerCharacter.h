@@ -13,14 +13,13 @@
 #include "Component/CAP_WeaponComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
-#include "Interface/CAP_TargetUIInterface.h"
 #include "CAP_PlayerCharacter.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class ACAP_PlayerCharacter : public ACAP_Character, public ICAP_TargetUIInterface
+class ACAP_PlayerCharacter : public ACAP_Character
 {
 	GENERATED_BODY()
 
@@ -62,9 +61,6 @@ private:
 	class UCAP_StatEnhanceComponent* StatEnhanceComponent;
 	UPROPERTY(VisibleAnywhere, Category="AI|Tracker")
 	class UPlayerTrackerComponent* PlayerTracker;
-
-	UPROPERTY(VisibleAnywhere, Category="Widget")
-	class UWidgetComponent* TargetEffectWidgetComp;
 	
 	
 	/**		Input			**/

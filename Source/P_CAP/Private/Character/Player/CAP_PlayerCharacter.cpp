@@ -36,9 +36,6 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 	CurrencyComponent = CreateDefaultSubobject<UCAP_CurrencyComponent>("Currency Component");
 	InteractionComponent = CreateDefaultSubobject<UCAP_InteractionComponent>("Interaction Component");
 	StatEnhanceComponent = CreateDefaultSubobject<UCAP_StatEnhanceComponent>("Stat Enhance Component");
-
-	TargetEffectWidgetComp=CreateDefaultSubobject<UWidgetComponent>("StackEffectWidget");
-	TargetEffectWidgetComp->SetupAttachment(GetRootComponent());
 	
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;

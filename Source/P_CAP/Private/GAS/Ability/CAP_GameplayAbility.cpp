@@ -8,7 +8,6 @@
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Component/CAP_WeaponComponent.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
-#include "GAS/Ability/Payload/GA_PayloadBase.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "Interactables/Weapon/CAP_WeaponInstance.h"

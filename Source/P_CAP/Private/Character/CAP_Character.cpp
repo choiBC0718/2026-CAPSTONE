@@ -4,6 +4,7 @@
 #include "Character/CAP_Character.h"
 
 #include "Components/CapsuleComponent.h"
+#include "Components/WidgetComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
@@ -20,8 +21,13 @@ ACAP_Character::ACAP_Character()
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetMesh()->SetReceivesDecals(false);
 
-	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Target, ECR_Ignore);
-	GetCapsuleComponent()->SetCollisionObjectType(ECC_Hitbox);
+	TargetEffectWidgetComp=CreateDefaultSubobject<UWidgetComponent>("StackEffectWidget");
+	TargetEffectWidgetComp->SetupAttachment(GetRootComponent());
+	TargetEffectWidgetComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	TargetEffectWidgetComp->SetRelativeLocation(FVector(0.f, 0.f, -60.f));
+	TargetEffectWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);
+
+	GetCapsuleComponent()->SetCollisionProfileName(FName("Character"));
 
 	CAPAbilitySystemComponent = CreateDefaultSubobject<UCAP_AbilitySystemComponent>("Ability System Component");
 	CAPAttributeSet = CreateDefaultSubobject<UCAP_AttributeSet>("Attribute Set");
