@@ -10,17 +10,21 @@
 #include "Engine/Engine.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
+#include "Map/RoomTypes.h"
+#include "Stage/StageExitActor.h"
+#include "Stage/StageDataAsset.h"
 
 AMapManager::AMapManager()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	StageExitActorClass = AStageExitActor::StaticClass();
 }
 
 void AMapManager::BeginPlay()
 {
 	Super::BeginPlay();
 
-	MapGenerator = NewObject<UMapGenerator>(this);
+	EnsureMapGenerator();
 
 	if (bUseRandomSeedOnBeginPlay)
 	{
@@ -28,7 +32,10 @@ void AMapManager::BeginPlay()
 	}
 
 	BindInput();
-	GenerateMapAndSpawnRooms();
+	if (bGenerateMapOnBeginPlay)
+	{
+		GenerateMapAndSpawnRooms();
+	}
 }
 
 void AMapManager::BindInput()
@@ -59,8 +66,33 @@ void AMapManager::RegenerateWithCurrentSeed()
 	GenerateMapAndSpawnRooms();
 }
 
+void AMapManager::GenerateStage(const FStageConfig& StageConfig)
+{
+	CurrentRoomCount = StageConfig.RoomCount;
+	CurrentSeed = StageConfig.bUseRandomSeed ? FMath::Rand() : StageConfig.FixedSeed;
+	CurrentMonsterSpawnDataAsset = StageConfig.MonsterSpawnDataAsset;
+
+	GenerateMapAndSpawnRooms();
+	MovePlayerToStartRoom();
+}
+
+void AMapManager::ClearCurrentStage()
+{
+	ClearSpawnedRooms();
+}
+
+void AMapManager::EnsureMapGenerator()
+{
+	if (!MapGenerator)
+	{
+		MapGenerator = NewObject<UMapGenerator>(this);
+	}
+}
+
 void AMapManager::GenerateMapAndSpawnRooms()
 {
+	EnsureMapGenerator();
+
 	if (!MapGenerator)
 	{
 		return;
@@ -139,14 +171,87 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 			continue;
 		}
 
-		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed);
+		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed, CurrentMonsterSpawnDataAsset);
 		SpawnedRooms.Add(SpawnedRoom);
 		SpawnedRoomMap.Add(RoomData.GridPos, SpawnedRoom);
+
+		if (RoomData.RoomType == ERoomType::Boss)
+		{
+			SpawnStageExitInRoom(SpawnedRoom, RoomData);
+		}
 	}
+}
+
+void AMapManager::SpawnStageExitInRoom(ARoomActor* RoomActor, const FRoomData& RoomData)
+{
+	if (!RoomActor || !StageExitActorClass)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const FVector SpawnLocation = RoomActor->GetActorTransform().TransformPosition(StageExitLocalOffset);
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = RoomActor;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	AStageExitActor* SpawnedStageExit = World->SpawnActor<AStageExitActor>(
+		StageExitActorClass,
+		SpawnLocation,
+		RoomActor->GetActorRotation(),
+		SpawnParams
+	);
+
+	if (!SpawnedStageExit)
+	{
+		return;
+	}
+
+	SpawnedStageExit->AttachToActor(RoomActor, FAttachmentTransformRules::KeepWorldTransform);
+	SpawnedStageExits.Add(SpawnedStageExit);
+}
+
+void AMapManager::MovePlayerToStartRoom()
+{
+	ARoomActor* StartRoom = FindSpawnedRoomByGridPos(CurrentLayout.StartRoomPos);
+	if (!StartRoom)
+	{
+		return;
+	}
+
+	ACharacter* PlayerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+
+	const FVector StartLocation = StartRoom->GetActorLocation() + FVector(0.f, 0.f, 100.f);
+	PlayerCharacter->SetActorLocation(StartLocation);
+}
+
+void AMapManager::ClearSpawnedStageExits()
+{
+	for (AStageExitActor* StageExit : SpawnedStageExits)
+	{
+		if (IsValid(StageExit))
+		{
+			StageExit->Destroy();
+		}
+	}
+
+	SpawnedStageExits.Empty();
 }
 
 void AMapManager::ClearSpawnedRooms()
 {
+	ClearSpawnedStageExits();
+
 	for (ARoomActor* Room : SpawnedRooms)
 	{
 		if (IsValid(Room))

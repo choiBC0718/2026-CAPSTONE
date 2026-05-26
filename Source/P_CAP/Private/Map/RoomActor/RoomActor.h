@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Map/RoomActor/Interior/RoomInteriorGenerator.h"
@@ -16,6 +17,8 @@
 #include "Map/RoomActor/DoorActor.h"
 #include "RoomActor.generated.h"
 
+class URoomMonsterSpawnDataAsset;
+
 UCLASS()
 class ARoomActor : public AActor
 {
@@ -24,16 +27,34 @@ class ARoomActor : public AActor
 public:
 	ARoomActor();
 
-	void InitializeRoom(const FRoomData& InRoomData, int32 InMapSeed);
+	void InitializeRoom(
+		const FRoomData& InRoomData,
+		int32 InMapSeed,
+		URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset = nullptr);
 	FVector GetEntrancePoint(EDoorDirection Direction) const;
 	virtual void Destroyed() override;
+
+	UFUNCTION(BlueprintCallable, Category="Room")
+	void ActivateRoom(AActor* TargetActor);
+
+	UFUNCTION(BlueprintCallable, Category="Room")
+	void DeactivateRoom();
+
+	UFUNCTION(BlueprintPure, Category="Room")
+	bool IsRoomActivated() const { return bRoomActivated; }
 	
 protected:
+	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Room")
 	USceneComponent* Root;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Room")
 	UStaticMeshComponent* FloorMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Room|Trigger")
+	TObjectPtr<UBoxComponent> RoomEnterTrigger;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Room|Monster")
 	TObjectPtr<URoomMonsterSpawnerComponent> MonsterSpawnerComponent;
@@ -69,6 +90,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
 	bool bDrawInteriorCellDebug = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Trigger", meta=(ClampMin="0.0"))
+	float RoomEnterTriggerHeight = 300.f;
+
 	/* 큰 구조물 메쉬 후보를 담는 데이터 에셋 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
 	TObjectPtr<URoomInteriorPropSet> LargeStructurePropSet;
@@ -101,6 +125,26 @@ protected:
 	TObjectPtr<URoomInteriorGenerator> InteriorGenerator;
 
 private:
+	UPROPERTY()
+	bool bRoomActivated = false;
+	UPROPERTY()
+	bool bRoomCleared = false;
+
+	UFUNCTION()
+	void OnRoomEnterTriggerBeginOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComponent,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult);
+
+	void UpdateRoomEnterTriggerExtent();
+	void CheckPlayerInsideRoom();
+	void CheckRoomClear();
+	bool ShouldLockPortalsForCombat() const;
+	void SetSpawnedDoorsPortalEnabled(bool bEnabled);
+
 	void ClearSpawnedDoors();
 	/* 이 방이 소유하는 경로 액터들을 정리 */
 	void ClearSpawnedPathActors();

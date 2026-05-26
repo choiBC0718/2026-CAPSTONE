@@ -19,19 +19,32 @@ public:
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void BeginPlay() override;
 
+	UFUNCTION(BlueprintCallable, Category="AI Behavior")
+	void SetAIEnabled(bool bEnabled);
+
+	UFUNCTION(BlueprintCallable, Category="AI Behavior")
+	void SetTargetActor(AActor* TargetActor);
+
+	UFUNCTION(BlueprintPure, Category="AI Behavior")
+	bool IsAIEnabled() const { return bAIEnabled; }
+
 private:
 	UPROPERTY(EditDefaultsOnly, Category="AI Behavior")
 	FName TargetBlackboardKeyName = "Target";
+
+	UPROPERTY(EditDefaultsOnly, Category="AI Behavior")
+	FName AIEnabledBlackboardKeyName = "bAIEnabled";
+
 	UPROPERTY(EditDefaultsOnly, Category="AI Behavior")
 	class UBehaviorTree* BehaviorTree;
-	
-	UPROPERTY(EditDefaultsOnly, Category="Perception")
-	class UAIPerceptionComponent* AIPerceptionComp;
-	
-	UPROPERTY(EditDefaultsOnly, Category="Perception")
-	class UAISense_Sight* SightConfig;
 
+	UPROPERTY(VisibleInstanceOnly, Category="AI Behavior")
+	bool bAIEnabled = false;
 
-	void ClearAndDisableAllSenses();
-	void EnableAllSenses();
+	UPROPERTY()
+	TObjectPtr<AActor> CachedTargetActor;
+
+	void SetCurrentTarget(AActor* NewTarget);
+
+	void ApplyBlackboardValues();
 };

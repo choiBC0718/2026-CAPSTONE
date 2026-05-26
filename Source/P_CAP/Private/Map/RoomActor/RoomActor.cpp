@@ -8,10 +8,14 @@
 #include "Map/RoomActor/Interior/PCG/RoomPathActor.h"
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
+#include "GameFramework/Pawn.h"
+#include "Kismet/GameplayStatics.h"
+#include "TimerManager.h"
 
 ARoomActor::ARoomActor()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	SetActorTickEnabled(false);
 
 	/* 방의 기준이 되는 루트 */
 	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
@@ -21,15 +25,59 @@ ARoomActor::ARoomActor()
 	FloorMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FloorMesh"));
 	FloorMesh->SetupAttachment(Root);
 
+	RoomEnterTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("RoomEnterTrigger"));
+	RoomEnterTrigger->SetupAttachment(Root);
+	RoomEnterTrigger->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	RoomEnterTrigger->SetCollisionObjectType(ECC_WorldDynamic);
+	RoomEnterTrigger->SetCollisionResponseToAllChannels(ECR_Ignore);
+	RoomEnterTrigger->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	RoomEnterTrigger->SetGenerateOverlapEvents(true);
+
 	/* 몬스터 스폰 전용 컴포넌트 */
 	MonsterSpawnerComponent = CreateDefaultSubobject<URoomMonsterSpawnerComponent>(TEXT("MonsterSpawnerComponent"));
 }
 
-void ARoomActor::InitializeRoom(const FRoomData& InRoomData, int32 InMapSeed)
+void ARoomActor::BeginPlay()
+{
+	Super::BeginPlay();
+
+	UpdateRoomEnterTriggerExtent();
+	if (RoomEnterTrigger)
+	{
+		RoomEnterTrigger->OnComponentBeginOverlap.AddDynamic(this, &ARoomActor::OnRoomEnterTriggerBeginOverlap);
+	}
+
+	CheckPlayerInsideRoom();
+	SetActorTickEnabled(true);
+}
+
+void ARoomActor::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	CheckPlayerInsideRoom();
+	if (bRoomActivated)
+	{
+		CheckRoomClear();
+	}
+}
+
+void ARoomActor::InitializeRoom(
+	const FRoomData& InRoomData,
+	int32 InMapSeed,
+	URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset)
 {
 	/* 현재 방 정보와 맵 시드를 캐싱 */
 	CachedRoomData = InRoomData;
 	CachedMapSeed = InMapSeed;
+	bRoomActivated = false;
+	bRoomCleared = false;
+	UpdateRoomEnterTriggerExtent();
+
+	if (MonsterSpawnerComponent)
+	{
+		MonsterSpawnerComponent->SetSpawnDataAsset(InMonsterSpawnDataAsset);
+	}
 
 	/* 재초기화 상황을 대비해 기존 문/경로 액터를 정리 */
 	ClearSpawnedDoors();
@@ -43,6 +91,157 @@ void ARoomActor::InitializeRoom(const FRoomData& InRoomData, int32 InMapSeed)
 	/* 방 정보 기준으로 문과 경로를 다시 생성 */
 	SpawnConnectedDoors();
 	GenerateAndSpawnInterior();
+	SetSpawnedDoorsPortalEnabled(true);
+
+	if (UWorld* World = GetWorld())
+	{
+		FTimerHandle CheckPlayerInsideTimerHandle;
+		World->GetTimerManager().SetTimer(
+			CheckPlayerInsideTimerHandle,
+			this,
+			&ARoomActor::CheckPlayerInsideRoom,
+			0.1f,
+			false);
+	}
+}
+
+void ARoomActor::ActivateRoom(AActor* TargetActor)
+{
+	if (bRoomActivated)
+	{
+		return;
+	}
+
+	bRoomActivated = true;
+	if (MonsterSpawnerComponent)
+	{
+		MonsterSpawnerComponent->ActivateSpawnedMonsters(TargetActor);
+	}
+
+	if (ShouldLockPortalsForCombat())
+	{
+		SetSpawnedDoorsPortalEnabled(false);
+		SetActorTickEnabled(true);
+	}
+	else
+	{
+		bRoomCleared = true;
+		SetSpawnedDoorsPortalEnabled(true);
+	}
+}
+
+void ARoomActor::DeactivateRoom()
+{
+	if (!bRoomActivated)
+	{
+		return;
+	}
+
+	bRoomActivated = false;
+	if (MonsterSpawnerComponent)
+	{
+		MonsterSpawnerComponent->DeactivateSpawnedMonsters();
+	}
+
+	SetSpawnedDoorsPortalEnabled(true);
+}
+
+void ARoomActor::OnRoomEnterTriggerBeginOverlap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComponent,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+	if (!OtherActor || bRoomActivated)
+	{
+		return;
+	}
+
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (OtherActor == PlayerPawn)
+	{
+		ActivateRoom(OtherActor);
+	}
+}
+
+void ARoomActor::UpdateRoomEnterTriggerExtent()
+{
+	if (!RoomEnterTrigger)
+	{
+		return;
+	}
+
+	const float TriggerHalfExtent = FMath::Max(100.f, RoomHalfExtent - 50.f);
+	RoomEnterTrigger->SetBoxExtent(FVector(TriggerHalfExtent, TriggerHalfExtent, RoomEnterTriggerHeight));
+	RoomEnterTrigger->SetRelativeLocation(FVector(0.f, 0.f, RoomEnterTriggerHeight));
+}
+
+void ARoomActor::CheckPlayerInsideRoom()
+{
+	if (bRoomActivated)
+	{
+		return;
+	}
+
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (!PlayerPawn)
+	{
+		return;
+	}
+
+	if (RoomEnterTrigger)
+	{
+		RoomEnterTrigger->UpdateOverlaps();
+		if (RoomEnterTrigger->IsOverlappingActor(PlayerPawn))
+		{
+			ActivateRoom(PlayerPawn);
+			return;
+		}
+	}
+
+	const FVector LocalPlayerLocation = GetActorTransform().InverseTransformPosition(PlayerPawn->GetActorLocation());
+	const float TriggerHalfExtent = FMath::Max(100.f, RoomHalfExtent - 50.f);
+	if (FMath::Abs(LocalPlayerLocation.X) <= TriggerHalfExtent &&
+		FMath::Abs(LocalPlayerLocation.Y) <= TriggerHalfExtent)
+	{
+		ActivateRoom(PlayerPawn);
+	}
+}
+
+void ARoomActor::CheckRoomClear()
+{
+	if (bRoomCleared || !ShouldLockPortalsForCombat())
+	{
+		SetActorTickEnabled(false);
+		return;
+	}
+
+	if (MonsterSpawnerComponent && MonsterSpawnerComponent->AreAllSpawnedMonstersDefeated())
+	{
+		bRoomCleared = true;
+		SetSpawnedDoorsPortalEnabled(true);
+		SetActorTickEnabled(false);
+	}
+}
+
+bool ARoomActor::ShouldLockPortalsForCombat() const
+{
+	return CachedRoomData.RoomType == ERoomType::Normal &&
+		MonsterSpawnerComponent &&
+		MonsterSpawnerComponent->HasSpawnedMonsters();
+}
+
+void ARoomActor::SetSpawnedDoorsPortalEnabled(bool bEnabled)
+{
+	for (ADoorActor* Door : SpawnedDoors)
+	{
+		if (IsValid(Door))
+		{
+			Door->SetPortalEnabled(bEnabled);
+		}
+	}
 }
 
 FVector ARoomActor::GetEntrancePoint(EDoorDirection Direction) const

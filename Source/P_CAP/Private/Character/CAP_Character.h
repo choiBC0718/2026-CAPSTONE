@@ -31,9 +31,12 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category="Stat")
 	FName CharacterStatRowName = "Player";
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Death")
+	bool bCanRespawn = true;
 
 public:
 	bool IsDead() const;
+	bool IsAlive() const;
 	
 private:
 	void BindGASChangeDelegates();

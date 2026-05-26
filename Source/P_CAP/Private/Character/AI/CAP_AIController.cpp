@@ -4,49 +4,62 @@
 #include "Character/AI/CAP_AIController.h"
 
 #include "BehaviorTree/BlackboardComponent.h"
-#include "Perception/AIPerceptionComponent.h"
-#include "Perception/AISenseConfig.h"
-#include "Perception/AISense_Sight.h"
 
 ACAP_AIController::ACAP_AIController()
 {
-	AIPerceptionComp = CreateDefaultSubobject<UAIPerceptionComponent>("AI Perception Component");
-	SightConfig = CreateDefaultSubobject<UAISense_Sight>("Sight Config");
 }
 
 void ACAP_AIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 
-	ClearAndDisableAllSenses();
-	EnableAllSenses();
+	SetAIEnabled(false);
 }
 
 void ACAP_AIController::BeginPlay()
 {
 	Super::BeginPlay();
 	RunBehaviorTree(BehaviorTree);
+	ApplyBlackboardValues();
 }
 
-void ACAP_AIController::ClearAndDisableAllSenses()
+void ACAP_AIController::SetAIEnabled(bool bEnabled)
 {
-	AIPerceptionComp->AgeStimuli(TNumericLimits<float>::Max());
-	for (auto SenseConfigIt = AIPerceptionComp->GetSensesConfigIterator() ; SenseConfigIt ; ++SenseConfigIt)
+	bAIEnabled = bEnabled;
+
+	if (!bEnabled)
 	{
-		AIPerceptionComp->SetSenseEnabled((*SenseConfigIt)->GetSenseImplementation(), false);
+		StopMovement();
+		CachedTargetActor = nullptr;
 	}
 
-	if (GetBlackboardComponent())
+	ApplyBlackboardValues();
+}
+
+void ACAP_AIController::SetTargetActor(AActor* TargetActor)
+{
+	SetCurrentTarget(TargetActor);
+}
+
+void ACAP_AIController::ApplyBlackboardValues()
+{
+	if (UBlackboardComponent* BlackboardComponent = GetBlackboardComponent())
 	{
-		GetBlackboardComponent()->ClearValue(TargetBlackboardKeyName);
+		BlackboardComponent->SetValueAsBool(AIEnabledBlackboardKeyName, bAIEnabled);
+
+		if (CachedTargetActor)
+		{
+			BlackboardComponent->SetValueAsObject(TargetBlackboardKeyName, CachedTargetActor);
+		}
+		else
+		{
+			BlackboardComponent->ClearValue(TargetBlackboardKeyName);
+		}
 	}
 }
 
-void ACAP_AIController::EnableAllSenses()
+void ACAP_AIController::SetCurrentTarget(AActor* NewTarget)
 {
-	AIPerceptionComp->AgeStimuli(TNumericLimits<float>::Max());
-	for (auto SenseConfigIt = AIPerceptionComp->GetSensesConfigIterator() ; SenseConfigIt ; ++SenseConfigIt)
-	{
-		AIPerceptionComp->SetSenseEnabled((*SenseConfigIt)->GetSenseImplementation(), true);
-	}
+	CachedTargetActor = NewTarget;
+	ApplyBlackboardValues();
 }
