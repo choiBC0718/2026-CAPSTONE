@@ -6,12 +6,11 @@
 #include "Engine/AssetManager.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 
-void UCAP_WeaponInstance::InitializeWeapon(UCAP_WeaponDataAsset* InWeaponDA)
+void UCAP_WeaponInstance::Initialize(UCAP_ItemDataBase* InWeaponDA)
 {
 	if (!InWeaponDA)
 		return;
-
-	ItemDA = InWeaponDA;
+	Super::Initialize(InWeaponDA);
 
 	// 기본 공격 데이터 가져오기
 	if (FWeaponSkillData* BasicAttackRow = GetWeaponDA()->BasicAbility.GetRow<FWeaponSkillData>(""))
@@ -19,16 +18,7 @@ void UCAP_WeaponInstance::InitializeWeapon(UCAP_WeaponDataAsset* InWeaponDA)
 		BasicAttackData = *BasicAttackRow;
 	}
 	
-	//등급에 따른 착용 가능한 스킬 수 가져오기
-	int32 SkillsToGrant = 0;
-	switch (GetWeaponDA()->ItemGrade)
-	{
-		case EItemGrade::Normal:		SkillsToGrant = 1;	break;
-		case EItemGrade::Rare:		SkillsToGrant = 1;	break;
-		case EItemGrade::Epic:		SkillsToGrant = 2;	break;
-		case EItemGrade::Legendary:	SkillsToGrant = 2;	break;
-	}
-	CurrentGrade = GetWeaponDA()->ItemGrade;
+	const int32 SkillsToGrant = GetSkillCountByGrade(GetCurrentGrade());
 	
 	// DA에 설정한 DT스킬들을 랜덤으로 가져오기
 	TArray<FDataTableRowHandle> AvailableHandles = GetWeaponDA()->ActiveAbilityArray;
@@ -67,26 +57,11 @@ void UCAP_WeaponInstance::LoadWeaponAssets(FStreamableDelegate OnLoaded)
 
 	auto ExtractAssetsFromSkill = [&](const FWeaponSkillData& SkillData)
 	{
-		if (!SkillData.AbilityClass.IsNull())
-			AssetsToLoad.AddUnique(SkillData.AbilityClass.ToSoftObjectPath());
 		if (!SkillData.AbilityMontage.IsNull())
 			AssetsToLoad.AddUnique(SkillData.AbilityMontage.ToSoftObjectPath());
-
-		if (const FTargetingLogicData* TargetingData = SkillData.LogicData.GetPtr<FTargetingLogicData>())
+		if (!SkillData.SkillIcon.IsNull())
 		{
-			if (!TargetingData->CastMontage.IsNull())
-				AssetsToLoad.AddUnique(TargetingData->CastMontage.ToSoftObjectPath());
-			if (!TargetingData->TargetActorClass.IsNull())
-				AssetsToLoad.AddUnique(TargetingData->TargetActorClass.ToSoftObjectPath());
-			if (!TargetingData->RangeIndicatorClass.IsNull())
-				AssetsToLoad.AddUnique(TargetingData->RangeIndicatorClass.ToSoftObjectPath());
-			if (!TargetingData->ProjectileClass.IsNull())
-				AssetsToLoad.AddUnique(TargetingData->ProjectileClass.ToSoftObjectPath());
-		}
-		else if (const FProjectileLogicData* ProjData = SkillData.LogicData.GetPtr<FProjectileLogicData>())
-		{
-			if (!ProjData->ProjectileClass.IsNull())
-				AssetsToLoad.AddUnique(ProjData->ProjectileClass.ToSoftObjectPath());
+			AssetsToLoad.AddUnique(SkillData.SkillIcon.ToSoftObjectPath());
 		}
 	};
 	
@@ -121,4 +96,85 @@ void UCAP_WeaponInstance::SwapSkillOrder()
 {
 	if (GrantedActiveSkills.Num() >= 2)
 		GrantedActiveSkills.Swap(0,1);
+}
+
+FBuffDisplayData UCAP_WeaponInstance::GetBuffDisplayData(const FGameplayTag& EffectTag) const
+{
+	FBuffDisplayData BuffData;
+	if (GetWeaponDA())
+	{
+		BuffData.Icon = GetWeaponDA()->ItemIcon;
+	}
+	if (EffectTag.IsValid())
+	{
+		for (const FWeaponSkillData& Skill : GetGrantedSkills())
+		{
+			if (Skill.CooldownTag == EffectTag)
+			{
+				BuffData.Icon = Skill.SkillIcon;
+				break;
+			}
+		}
+	}
+	return BuffData;
+}
+
+bool UCAP_WeaponInstance::UpgradeWeapon()
+{
+	if (CurrentGrade>=EItemGrade::Legendary || !GetWeaponDA())
+		return false;
+
+	EItemGrade OldGrade = CurrentGrade;
+	CurrentGrade = static_cast<EItemGrade>(static_cast<uint8>(CurrentGrade)+1);
+
+	// 레어 -> 에픽 업그레이드 시 스킬 1개 더 받음
+	if (OldGrade == EItemGrade::Rare && CurrentGrade == EItemGrade::Epic)
+		TryAppendRandomNewSkill();
+	
+	return true;
+}
+
+int32 UCAP_WeaponInstance::GetSkillCountByGrade(EItemGrade Grade)
+{
+	switch (Grade)
+	{
+	case EItemGrade::Normal:
+	case EItemGrade::Rare:
+		return 1;
+	case EItemGrade::Epic:
+	case EItemGrade::Legendary:
+		return 2;
+	default:
+		return 0;
+	}
+}
+
+bool UCAP_WeaponInstance::TryAppendRandomNewSkill()
+{
+	if (!GetWeaponDA())
+		return false;
+	TArray<FDataTableRowHandle> AvailableHandles = GetWeaponDA()->ActiveAbilityArray;
+	for (int32 i= AvailableHandles.Num()-1; i >= 0; --i)
+	{
+		if (FWeaponSkillData* SkillRow = AvailableHandles[i].GetRow<FWeaponSkillData>(""))
+		{
+			const bool bAlreadyHas = GrantedActiveSkills.ContainsByPredicate([SkillRow](const FWeaponSkillData& HasSkill)
+			{
+				return HasSkill.SkillName == SkillRow->SkillName;
+			});
+
+			if (bAlreadyHas)
+				AvailableHandles.RemoveAt(i);
+		}
+	}
+	if (AvailableHandles.Num() <= 0)
+		return false;
+
+	const int32 RandIdx = FMath::RandRange(0, AvailableHandles.Num() - 1);
+	if (FWeaponSkillData* NewSkill = AvailableHandles[RandIdx].GetRow<FWeaponSkillData>(""))
+	{
+		GrantedActiveSkills.Add(*NewSkill);
+		return true;
+	}
+	return false;
 }

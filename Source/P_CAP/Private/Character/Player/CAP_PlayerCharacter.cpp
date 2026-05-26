@@ -16,10 +16,9 @@
 #include "Component/CAP_InventoryComponent.h"
 #include "Component/CAP_WeaponComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "GAS/Ability/CAP_GameplayAbility.h"
-#include "Interface/CAP_InteractInterface.h"
 #include "AI/BaseMonster.h"         // 몬스터 타격 판별을 위해 추가
-#include "Interactables/Weapon/CAP_WorldWeapon.h"
+#include "Components/WidgetComponent.h"
+#include "Widget/Common/CAP_TargetEffectWidget.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 {
@@ -36,6 +35,7 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 	InventoryComponent = CreateDefaultSubobject<UCAP_InventoryComponent>("Inventory Component");
 	CurrencyComponent = CreateDefaultSubobject<UCAP_CurrencyComponent>("Currency Component");
 	InteractionComponent = CreateDefaultSubobject<UCAP_InteractionComponent>("Interaction Component");
+	StatEnhanceComponent = CreateDefaultSubobject<UCAP_StatEnhanceComponent>("Stat Enhance Component");
 	
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
@@ -53,11 +53,12 @@ void ACAP_PlayerCharacter::PawnClientRestart()
 	if (PlayerController)
 	{
 		PlayerController->bShowMouseCursor = true;
-		PlayerController->bEnableClickEvents = false;
-		PlayerController->bEnableMouseOverEvents = false;
+		PlayerController->bEnableClickEvents = true;
+		PlayerController->bEnableMouseOverEvents = true;
 
-		FInputModeGameOnly InputMode;
-		InputMode.SetConsumeCaptureMouseDown(false);
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetHideCursorDuringCapture(false);
 		PlayerController->SetInputMode(InputMode);
 		
 		UEnhancedInputLocalPlayerSubsystem* InputSubsystem = PlayerController->GetLocalPlayer()->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
@@ -136,6 +137,20 @@ FString ACAP_PlayerCharacter::GetInteractKeyName() const
 		}
 	}
 	return CurrentKeyName;
+}
+
+void ACAP_PlayerCharacter::AddCurrency(ECurrencyType Type, int32 Amount)
+{
+	CurrencyComponent->AddCurrency(Type,Amount);
+}
+
+void ACAP_PlayerCharacter::UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack)
+{
+	if (TargetEffectWidgetComp)
+	{
+		if (UCAP_TargetEffectWidget* EffectWidget = Cast<UCAP_TargetEffectWidget>(TargetEffectWidgetComp->GetUserWidgetObject()))
+			EffectWidget->UpdateEffectUI(BehaviorTag, CurrentStack,MaxStack);
+	}
 }
 
 FVector ACAP_PlayerCharacter::GetMoveForwardDir()

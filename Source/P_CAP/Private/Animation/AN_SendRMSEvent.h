@@ -26,4 +26,6 @@ public:
 	float RMSStrength = 100.f;
 	UPROPERTY(EditAnywhere, Category="Value")
 	float RMSDuration = 0.1f;
+	UPROPERTY(EditAnywhere, Category="Value")
+	bool bIgnoreHitboxCollision = false;
 };

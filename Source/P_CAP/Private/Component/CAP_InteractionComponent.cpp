@@ -4,12 +4,26 @@
 #include "Component/CAP_InteractionComponent.h"
 
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "GAS/CAP_AbilitySystemComponent.h"
 #include "Interface/CAP_InteractInterface.h"
 
 UCAP_InteractionComponent::UCAP_InteractionComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bStartWithTickEnabled = false;
 	NearbyInteractable = nullptr;
+	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner()))
+	{
+		if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
+			InvComp->OnInventoryFull.AddDynamic(this, &UCAP_InteractionComponent::HandleInventoryFull);
+	}
+}
+
+void UCAP_InteractionComponent::TickComponent(float DeltaTime, enum ELevelTick TickType,
+	FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	UpdateNearbyInteractable();
 }
 
 void UCAP_InteractionComponent::SetNearbyInteractable(AActor* NewActor)
@@ -59,3 +73,140 @@ void UCAP_InteractionComponent::ProcessInteractInput(ETriggerEvent TriggerEvent,
 	}
 }
 
+// 상호작용 인터페이스 메소드의 Interact, CAP_WorldNPC가 override하여 호출되는 부분
+void UCAP_InteractionComponent::BeginDialogue(const struct FNPCData& InNPCData)
+{
+	if (NearbyInteractable)
+	{
+		if (UCAP_DialogueComponent* DialogueComp = NearbyInteractable->FindComponentByClass<UCAP_DialogueComponent>())
+		{
+			bIsInDialogue = true;
+			// NPC의 Dialogue Component를 통해 카메라 시점 전환
+			DialogueComp->BeginDialogue(Cast<ACAP_PlayerCharacter>(GetOwner()));
+			// 대화 시작 방송 -> Dialogue Widget이 구독하여 대화 시작 이벤트 준비
+			OnDialogueTriggered.Broadcast(InNPCData);
+		}
+	}
+}
+
+ENPCActionResult UCAP_InteractionComponent::ExecuteNPCSpecialAction()
+{
+	if (NearbyInteractable)
+	{
+		if (UCAP_DialogueComponent* DialogueComp = NearbyInteractable->FindComponentByClass<UCAP_DialogueComponent>())
+		{
+			return DialogueComp->ExecuteSpecialAction(GetOwner());
+		}
+	}
+	return ENPCActionResult::Failed;
+}
+
+bool UCAP_InteractionComponent::GetNPCSpecialActionCost(int32& OutCost)
+{
+	if (NearbyInteractable)
+	{
+		if (UCAP_DialogueComponent* DialogueComp = NearbyInteractable->FindComponentByClass<UCAP_DialogueComponent>())
+			return DialogueComp->GetSpecialActionCost(OutCost);
+	}
+	return false;
+}
+
+void UCAP_InteractionComponent::EndDialogueCamera()
+{	
+	if (NearbyInteractable)
+		{
+			if (UCAP_DialogueComponent* DialogueComp = NearbyInteractable->FindComponentByClass<UCAP_DialogueComponent>())
+			{
+				DialogueComp->EndDialogue();
+			}
+		}
+		
+		bIsInDialogue = false;
+		SetNearbyInteractable(nullptr);
+		UpdateNearbyInteractable();
+}
+
+void UCAP_InteractionComponent::HandleInventoryFull(class UCAP_ItemInstance* OverflowItem)
+{
+	LastInventoryFullActor = NearbyInteractable;
+	SetNearbyInteractable(nullptr);
+	SetComponentTickEnabled(false);
+}
+
+void UCAP_InteractionComponent::AddInteractable(AActor* NewActor)
+{
+	if (NewActor && !OverlappedInteractable.Contains(NewActor))
+	{
+		OverlappedInteractable.Add(NewActor);
+		
+		if (OverlappedInteractable.Num() > 0 && !IsComponentTickEnabled())
+		{
+			SetComponentTickEnabled(true);
+		}
+		UpdateNearbyInteractable();
+	}
+}
+
+void UCAP_InteractionComponent::RemoveInteractable(AActor* TargetActor)
+{
+	if (TargetActor && OverlappedInteractable.Contains(TargetActor))
+	{
+		OverlappedInteractable.Remove(TargetActor);
+
+		if (OverlappedInteractable.IsEmpty())
+		{
+			SetComponentTickEnabled(false);
+			SetNearbyInteractable(nullptr);
+		}
+	}
+}
+
+void UCAP_InteractionComponent::UpdateNearbyInteractable()
+{
+	if (bIsInDialogue)
+		return;
+	if (!CanInteract() || OverlappedInteractable.IsEmpty())
+	{
+		SetNearbyInteractable(nullptr);
+		return;
+	}
+
+	AActor* ClosestActor = nullptr;
+	float MinDist = TNumericLimits<float>::Max();
+	FVector PlayerLoc = GetOwner()->GetActorLocation();
+
+	for (AActor* Actor : OverlappedInteractable)
+	{
+		if (Actor)
+		{
+			float Dist = FVector::DistSquared(PlayerLoc, Actor->GetActorLocation());
+			if (Dist<MinDist)
+			{
+				MinDist = Dist;
+				ClosestActor = Actor;
+			}
+		}
+	}
+	SetNearbyInteractable(ClosestActor);
+}
+
+bool UCAP_InteractionComponent::CanInteract() const
+{
+	if (bIsInDialogue)
+		return false;
+/*
+	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner());
+	if (Player)
+	{
+		UCAP_AbilitySystemComponent* ASC = Player->GetComponentByClass<UCAP_AbilitySystemComponent>();
+		if (ASC)
+		{
+			if (ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag("")))
+				return false;
+
+				특정 태그 있는 상황에서 상호작용 불가능하도록 설정
+		}
+	}
+	*/
+	return true;
+}

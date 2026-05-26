@@ -5,6 +5,7 @@
 
 #include "Abilities/GameplayAbility.h"
 #include "Components/DecalComponent.h"
+#include "P_CAP/P_CAP.h"
 
 ACAP_TargetActor::ACAP_TargetActor()
 {
@@ -73,7 +74,7 @@ void ACAP_TargetActor::Initialize(float NewMaxRange, float NewMaxRadius)
 FVector ACAP_TargetActor::GetTargetPoint() const
 {
 	FHitResult HitResult;
-	if (PrimaryPC->GetHitResultUnderCursor(ECC_Visibility, true, HitResult))
+	if (PrimaryPC->GetHitResultUnderCursor(ECC_TargetGround, true, HitResult))
 	{
 		return HitResult.ImpactPoint;
 	}

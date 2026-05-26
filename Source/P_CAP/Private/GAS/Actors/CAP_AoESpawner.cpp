@@ -41,104 +41,124 @@ void ACAP_AoESpawner::OnDelayFinished()
 		Destroy();
 		return;
 	}
-	switch (SetupData.SpawnMethod)
+	switch (SetupData.ProjectileType)
 	{
-		case EAoESpawnMethod::RandomFalling:
-			SpawnRandomFalling();
+		case EProjectileType::Straight:
+			SpawnStraight();
 			break;
-		case EAoESpawnMethod::TargetedFalling:
-			SpawnTargetedFalling();
+		case EProjectileType::Falling:
+			if (SetupData.bRandomLocationInArea)
+				SpawnRandomly();
+			else
+				SpawnOnEnemies();
 			break;
-		case EAoESpawnMethod::Homing:
-			SpawnHoming();
+		case EProjectileType::Homing:
+			SpawnOnEnemies();
+			break;
+		default:
 			break;
 	}
 	Destroy();
 }
 
-void ACAP_AoESpawner::SpawnRandomFalling()
-{
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Instigator = GetInstigator();
-	SpawnParams.Owner = GetOwner();
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	for (int32 i=0 ; i<SetupData.NumProjectiles ; i++)
-	{
-		FVector2D RandPoint = FMath::RandPointInCircle(SetupData.SpawnAreaRadius);
-		FVector SpawnLoc = GetActorLocation() + FVector(RandPoint.X, RandPoint.Y, SetupData.FallingHeight);
-
-		FVector FallDir = FVector(FMath::RandRange(-0.3f,0.3f), FMath::RandRange(-0.3f,0.3f), -1.f).GetSafeNormal();
-
-		ACAP_ProjectileBase* Projectile = GetWorld()->SpawnActor<ACAP_ProjectileBase>(SetupData.ProjectileClass, SpawnLoc, FallDir.Rotation(), SpawnParams);
-		if (Projectile)
-		{
-			Projectile->ProjectileType = EProjectileType::Falling;
-			Projectile->InitProjectile(FallDir, SetupData.ExplosionRadius,0.f, SetupData.DamageSpecHandle, SetupData.CueTag, SetupData.TriggerItemProjHitTag, nullptr);
-		}
-	}
-}
-
-void ACAP_AoESpawner::SpawnTargetedFalling()
+void ACAP_AoESpawner::SpawnOnEnemies()
 {
 	TArray<USceneComponent*> EnemyRoots = FindEnemyRootComponent();
 	if (EnemyRoots.Num() == 0)
-		return;
-
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Instigator = GetInstigator();
-	SpawnParams.Owner = GetOwner();
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	int32 SpawnCount = FMath::Min(SetupData.NumProjectiles, EnemyRoots.Num());
-
-	for (int32 i=0 ; i<SpawnCount ; i++)
 	{
-		if (!EnemyRoots[i])
-			continue;
-		FVector SpawnLoc = EnemyRoots[i]->GetComponentLocation() + FVector(0.f,0.f,SetupData.FallingHeight);
-		FVector FallDir = FVector(0.f,0.f,-1.f);
-
-		ACAP_ProjectileBase* Projectile = GetWorld()->SpawnActor<ACAP_ProjectileBase>(SetupData.ProjectileClass,SpawnLoc,FRotator::ZeroRotator,SpawnParams);
-		if (Projectile)
-		{
-			Projectile->ProjectileType = EProjectileType::Falling;
-			Projectile->InitProjectile(FallDir, SetupData.ExplosionRadius, 0.f, SetupData.DamageSpecHandle, SetupData.CueTag, SetupData.TriggerItemProjHitTag, nullptr);
-		}
-	}
-}
-
-void ACAP_AoESpawner::SpawnHoming()
-{
-	TArray<USceneComponent*> EnemyRoots = FindEnemyRootComponent();
-	
-	if (EnemyRoots.Num() == 0)
-	{
+		SpawnRandomly();
 		return;
 	}
 
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Instigator = GetInstigator();
-	SpawnParams.Owner = GetOwner();
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
 	int32 SpawnCount = FMath::Min(SetupData.NumProjectiles, EnemyRoots.Num());
+	FVector ForwardDir = GetInstigator() ? GetInstigator()->GetActorForwardVector() : GetActorForwardVector();
 
-	FVector SpawnLoc = GetActorLocation();
-	FVector ForwardDir = GetInstigator()->GetActorForwardVector();
-	ForwardDir.Z = 0.f; // 수평 유지를 위해 Z축 제거
-	ForwardDir.Normalize();
-	
 	for (int32 i = 0; i < SpawnCount; i++)
 	{
 		if (!EnemyRoots[i]) continue;
-		
-		
-		ACAP_ProjectileBase* Projectile = GetWorld()->SpawnActor<ACAP_ProjectileBase>(SetupData.ProjectileClass, SpawnLoc, ForwardDir.Rotation(), SpawnParams);
-		if (Projectile)
+
+		FVector SpawnLoc;
+		FVector LaunchDir;
+		USceneComponent* HomingTarget = nullptr;
+
+		if (SetupData.ProjectileType == EProjectileType::Homing)
 		{
-			Projectile->ProjectileType = EProjectileType::Homing;
-			Projectile->InitProjectile(ForwardDir, SetupData.ExplosionRadius, 0.f, SetupData.DamageSpecHandle, SetupData.CueTag, SetupData.TriggerItemProjHitTag, EnemyRoots[i]);
+			SpawnLoc = GetActorLocation();
+			LaunchDir = ForwardDir;
+			HomingTarget = EnemyRoots[i];
 		}
+		else // Falling (Targeted)
+		{
+			SpawnLoc = EnemyRoots[i]->GetComponentLocation() + FVector(0.f, 0.f, SetupData.FallingHeight);
+			LaunchDir = FVector(0.f, 0.f, -1.f);
+		}
+
+		SpawnProjectileDeferred(SpawnLoc, LaunchDir, HomingTarget);
+	}
+}
+
+void ACAP_AoESpawner::SpawnRandomly()
+{
+for (int32 i = 0; i < SetupData.NumProjectiles; i++)
+	{
+		FVector2D RandPoint = FMath::RandPointInCircle(SetupData.SpawnAreaRadius);
+		FVector SpawnLoc = GetActorLocation() + FVector(RandPoint.X, RandPoint.Y, SetupData.FallingHeight);
+		FVector FallDir = FVector(FMath::RandRange(-0.1f, 0.1f), FMath::RandRange(-0.1f, 0.1f), -1.f).GetSafeNormal();
+
+		SpawnProjectileDeferred(SpawnLoc, FallDir);
+	}
+}
+
+void ACAP_AoESpawner::SpawnStraight()
+{
+	FVector SpawnLoc = GetActorLocation();
+
+	FVector BaseDir = GetInstigator() ? GetInstigator()->GetActorForwardVector() : GetActorForwardVector();
+	BaseDir.Z = 0.f;
+	BaseDir.Normalize();
+
+	int32 ProjNums = FMath::Max(1, SetupData.NumProjectiles);
+	for (int32 i = 0; i < ProjNums; i++)
+	{
+		FVector LaunchDir = BaseDir;
+		if (ProjNums > 1 && SetupData.SpreadAngle > 0.f)
+		{
+			float HalfAngle = SetupData.SpreadAngle / 2.f;
+			float Step = SetupData.SpreadAngle / (ProjNums - 1);
+			float CurrentAngle = -HalfAngle + (i * Step);
+			LaunchDir = BaseDir.RotateAngleAxis(CurrentAngle, FVector::UpVector);
+		}
+		SpawnProjectileDeferred(SpawnLoc, LaunchDir);
+	}
+}
+
+void ACAP_AoESpawner::SpawnProjectileDeferred(const FVector& SpawnLoc, const FVector& LaunchDir, USceneComponent* HomingTarget)
+{
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Instigator = GetInstigator();
+	SpawnParams.Owner = GetOwner();
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	FTransform SpawnTransform(LaunchDir.Rotation(), SpawnLoc);
+
+	ACAP_ProjectileBase* Projectile = GetWorld()->SpawnActorDeferred<ACAP_ProjectileBase>(
+		SetupData.ProjectileClass, SpawnTransform, GetOwner(), GetInstigator(), ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (Projectile)
+	{
+		FProjectileInitData InitData;
+		InitData.ProjectileType		= SetupData.ProjectileType;
+		InitData.ProjectileSpeed	= SetupData.ProjectileSpeed;
+		InitData.MaxDistance		= SetupData.MaxDistance;
+		InitData.ExplosionRadius	= SetupData.ExplosionRadius;
+		InitData.MaxHitCount		= SetupData.MaxHitCount;
+		InitData.LaunchDir			= LaunchDir;
+		InitData.DamageSpecHandle	= SetupData.DamageSpecHandle;
+		InitData.CueTag				= SetupData.CueTag;
+		InitData.HitTriggerTag		= SetupData.TriggerItemProjHitTag;
+		InitData.HomingTarget		= HomingTarget;
+
+		Projectile->InitProjectile(InitData);
+		Projectile->FinishSpawning(SpawnTransform);
 	}
 }
 

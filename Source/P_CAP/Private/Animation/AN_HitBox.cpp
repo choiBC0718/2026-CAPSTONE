@@ -4,9 +4,15 @@
 #include "Animation/AN_HitBox.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
+#include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "P_CAP/P_CAP.h"
 
+
+UAN_HitBox::UAN_HitBox()
+{
+	EventTag = UCAP_AbilitySystemStatics::GetAnimHitTag();
+}
 
 void UAN_HitBox::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
                         const FAnimNotifyEventReference& EventReference)
@@ -80,12 +86,13 @@ void UAN_HitBox::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Ani
 					// 1. 무기의 현재 뼈(소켓) 위치를 가져옵니다.
 					FVector ExactWeaponLoc = MeshComp->GetSocketLocation(SocketName);
 					
-					// 2. 무기에서 적을 향하는 방향 (피가 튀거나 스파크가 튈 방향)
-					FVector DirToTarget = (HitActor->GetActorLocation() - ExactWeaponLoc).GetSafeNormal();
+					FVector EnemyLoc = HitActor->GetActorLocation();
+					FVector DirToTarget = (EnemyLoc - ExactWeaponLoc).GetSafeNormal();
 
 					FHitResult DummyHit(HitActor, nullptr, ExactWeaponLoc, DirToTarget);
-					DummyHit.ImpactPoint = ExactWeaponLoc;
+					DummyHit.ImpactPoint = EnemyLoc;
 					DummyHit.ImpactNormal = DirToTarget * -1.f;
+					DummyHit.bBlockingHit = true;
 
 					FGameplayAbilityTargetData_SingleTargetHit* TargetData = new FGameplayAbilityTargetData_SingleTargetHit(DummyHit);
 					Payload.TargetData.Add(TargetData);

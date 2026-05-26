@@ -19,16 +19,15 @@ public:
 	virtual void NativeConstruct() override;
 	virtual void OnAnimationFinished_Implementation(const UWidgetAnimation* Animation) override;
 	
-	void InitSwapUI(class ACAP_PlayerCharacter* Player, class UCAP_ItemInstance* NewItemInst);
-	void MoveSelection(FVector2D InputVal);
-	
-	void ConfirmSwap();
+	void InitSwapUI(class ACAP_PlayerCharacter* Player, class AActor* InInteractActor, class UCAP_ItemInstance* NewItemInst);
 
 	virtual void NativeOpenMenu() override;
 	virtual void NativeCloseMenu() override;
-	virtual FOnMenuClosedSignature& GetOnMenuClosedDelegate() override;
+	virtual FOnMenuClosedSignature& GetOnMenuClosedDelegate() override {return OnMenuClosed;}
+	virtual void HandleUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime = 0) override;
+	virtual void HandleChangeSelectedSlot(FVector2D InputVal) override;
 
-	UPROPERTY(BlueprintAssignable)
+	UPROPERTY()
 	FOnMenuClosedSignature OnMenuClosed;
 
 private:
@@ -60,6 +59,8 @@ private:
 	class UCAP_ItemSlotWidget* CurrentSelectedSlot;
 	UPROPERTY()
 	class UCAP_ItemInstance* NewItemToSwap;
+	UPROPERTY()
+	AActor* TargetInteractActor = nullptr;
 
 	void HandleSlotLeftClicked(class UCAP_ItemSlotWidget* ClickedSlot);
 	void InitNearbySlot();

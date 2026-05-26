@@ -48,17 +48,27 @@ bool UCAP_InventoryComponent::AddItem(class UCAP_ItemInstance* NewItem)
 {
 	if (!NewItem)
 		return false;
-
-	if (InventoryItems.Num() >= Capacity)
+	
+	int32 TargetIndex = INDEX_NONE;
+	for (int32 i = 0; i < InventoryItems.Num(); ++i)
 	{
-		if (OnInventoryFull.IsBound())
-			OnInventoryFull.Broadcast(NewItem);
+		if (InventoryItems[i]==nullptr)
+		{
+			TargetIndex = i;
+			break;
+		}
+	}
+	if (TargetIndex == INDEX_NONE && InventoryItems.Num() >= Capacity)
+	{
+		OnInventoryFull.Broadcast(NewItem);
 		return false;
 	}
-
-	UE_LOG(LogTemp, Warning, TEXT("새로운 아이템 착용"));
-	// 아이템 추가 후 새로고침
-	InventoryItems.Add(NewItem);
+	
+	if (TargetIndex != INDEX_NONE)
+		InventoryItems[TargetIndex] = NewItem;
+	else
+		InventoryItems.Add(NewItem);
+	
 	ApplyItemStatEffects(NewItem);
 	RefreshSynergies();
 	GiveItemAbility(NewItem);
@@ -77,11 +87,12 @@ bool UCAP_InventoryComponent::SwapItem(class UCAP_ItemInstance* OldItem, class U
 	int32 Index = InventoryItems.Find(OldItem);
 	if (Index != INDEX_NONE)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("아이템 스왑 로직 - 적용되어 있던 아이템 제거(효과 제거)"));
+		//UE_LOG(LogTemp, Warning, TEXT("아이템 스왑 로직 - 적용되어 있던 아이템 제거(효과 제거)"));
 		RemoveItemEffect(OldItem);
 		
-		UE_LOG(LogTemp, Warning, TEXT("새로운 아이템 효과 적용"));
+		//UE_LOG(LogTemp, Warning, TEXT("새로운 아이템 효과 적용"));
 		InventoryItems[Index] = NewItem;
+		ApplyItemStatEffects(NewItem);
 		RefreshSynergies();
 		GiveItemAbility(NewItem);
 		
@@ -94,7 +105,7 @@ bool UCAP_InventoryComponent::SwapItem(class UCAP_ItemInstance* OldItem, class U
 
 void UCAP_InventoryComponent::RemoveItemEffect(UCAP_ItemInstance* ItemInst)
 {
-	UE_LOG(LogTemp,Warning, TEXT("인벤토리에서 아이템 제거"));
+	//UE_LOG(LogTemp,Warning, TEXT("인벤토리에서 아이템 제거"));
 	RemoveItemStatEffects(ItemInst);
 	RemoveItemAbility(ItemInst);
 }
@@ -214,29 +225,61 @@ void UCAP_InventoryComponent::ApplyItemStatEffects(UCAP_ItemInstance* ItemInst)
 	if (!ItemInst || !OwnerASC)
 		return;
 	UCAP_AbilitySystemComponent* CAP_ASC = Cast<UCAP_AbilitySystemComponent>(OwnerASC);
-	if (!CAP_ASC || !CAP_ASC->GetGenerics() || !CAP_ASC->GetGenerics()->GetItemStatInfiniteEffect())
+	if (!CAP_ASC || !CAP_ASC->GetGenerics())
 		return;
 
 	UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA();
 	if (!ItemDA || ItemDA->GetStatModifiers().IsEmpty())
 		return;
 
-	UE_LOG(LogTemp, Warning, TEXT("아이템 보너스 스탯 적용"));
+	//UE_LOG(LogTemp, Warning, TEXT("아이템 보너스 스탯 적용"));
 	FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
-	FGameplayEffectSpecHandle SpecHandle = OwnerASC->MakeOutgoingSpec(CAP_ASC->GetGenerics()->GetItemStatInfiniteEffect(), 1.f, Context);
-	if (SpecHandle.IsValid())
+	Context.AddSourceObject(ItemInst);
+
+	// 곱연산, 합연산 따로 적용시킬 배열
+	TMap<FGameplayTag, float> AddModifiers;
+	TMap<FGameplayTag, float> MulModifiers;
+
+	for (const FStatModifier& Mod : ItemDA->GetStatModifiers())
 	{
-		for (const FGameplayTag& Tag : CachedItemDataTags)
-		{
-			SpecHandle.Data->SetSetByCallerMagnitude(Tag, 0.f);
-		}
+		if (Mod.IsMultiplier)	// 구조체의 IsMultiplier 변수에 따라 배열에 추가
+			MulModifiers.Add(Mod.StatTag, Mod.Value);
+		else
+			AddModifiers.Add(Mod.StatTag, Mod.Value);
+	}
+	// 최종 적용된 버프를 저장할 배열
+	TArray<FActiveGameplayEffectHandle> AppliedHandles;
+	
+	auto ApplyModifiers = [&](const TMap<FGameplayTag, float>& Modifiers, bool bIsMul)
+	{
+		if (Modifiers.IsEmpty())	return;
 		
-		for (const TPair<FGameplayTag, float>& StatModifier : ItemDA->GetStatModifiers())
+		TSubclassOf<UGameplayEffect> TargetGE = CAP_ASC->GetGenerics()->GetStatGE(true,bIsMul);
+		if (!TargetGE)	return;
+
+		FGameplayEffectSpecHandle SpecHandle = OwnerASC->MakeOutgoingSpec(TargetGE, 1.f, Context);
+		if (SpecHandle.IsValid())
 		{
-			SpecHandle.Data->SetSetByCallerMagnitude(StatModifier.Key, StatModifier.Value);
+			// 에디터 에러 로그 방지용 모든 태그에 대해 0으로 초기화
+			for (const FGameplayTag& Tag : CachedItemDataTags)
+				SpecHandle.Data->SetSetByCallerMagnitude(Tag, 0.f);
+			// 실제 설정한 값에는 정상적인 값 전달
+			for (const TPair<FGameplayTag, float>& StatMod : Modifiers)
+				SpecHandle.Data->SetSetByCallerMagnitude(StatMod.Key, StatMod.Value);
+			// 자신에게 Spec 적용 후, 적용된 버프 배열에 추가
+			FActiveGameplayEffectHandle ActiveHandle = OwnerASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+			AppliedHandles.Add(ActiveHandle);
 		}
-		FActiveGameplayEffectHandle ActiveGEHandle = OwnerASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-		ItemStatHandleMap.Add(ItemInst, ActiveGEHandle);
+	};
+	// 곱연산, 합연산에 따라 다르게 람다 함수 적용
+	ApplyModifiers(AddModifiers, false);
+	ApplyModifiers(MulModifiers, true);
+
+	if (AppliedHandles.Num() > 0)
+	{	// 구조체로 감싼 후 Map에 저장
+		FActiveGEHandleArray HandleWrapper;
+		HandleWrapper.Handles = AppliedHandles;
+		ItemStatHandleMap.Add(ItemInst, HandleWrapper);
 	}
 }
 
@@ -245,12 +288,13 @@ void UCAP_InventoryComponent::RemoveItemStatEffects(UCAP_ItemInstance* ItemInst)
 	if (!ItemInst || !OwnerASC)
 		return;
 	
-	UE_LOG(LogTemp, Warning, TEXT("아이템 보너스 스탯 적용된 것 삭제"));
-	if (FActiveGameplayEffectHandle* HandlePtr = ItemStatHandleMap.Find(ItemInst))
+	//UE_LOG(LogTemp, Warning, TEXT("아이템 보너스 스탯 적용된 것 삭제"));
+	if (FActiveGEHandleArray* HandlesWrapper = ItemStatHandleMap.Find(ItemInst))
 	{
-		OwnerASC->RemoveActiveGameplayEffect(*HandlePtr);
-		ItemStatHandleMap.Remove(ItemInst);
+		for (const FActiveGameplayEffectHandle& Handle : HandlesWrapper->Handles)
+			OwnerASC->RemoveActiveGameplayEffect(Handle);
 	}
+	ItemStatHandleMap.Remove(ItemInst);
 }
 
 void UCAP_InventoryComponent::GiveItemAbility(class UCAP_ItemInstance* ItemInst)
@@ -261,7 +305,7 @@ void UCAP_InventoryComponent::GiveItemAbility(class UCAP_ItemInstance* ItemInst)
 	if (!ItemDA)
 		return;
 
-	UE_LOG(LogTemp, Warning, TEXT("아이템 스킬 활성화"));
+	//UE_LOG(LogTemp, Warning, TEXT("아이템 스킬 활성화"));
 	if (UCAP_ItemDataAsset* PassiveItemDA = Cast<UCAP_ItemDataAsset>(ItemDA))
 	{
 		if (PassiveItemDA->ItemBehaviors.Num() > 0)
@@ -281,7 +325,7 @@ void UCAP_InventoryComponent::RemoveItemAbility(class UCAP_ItemInstance* ItemIns
 	if (!ItemInst || !OwnerASC)
 		return;
 	
-	UE_LOG(LogTemp, Warning, TEXT("아이템 스킬 제거"));
+	//UE_LOG(LogTemp, Warning, TEXT("아이템 스킬 제거"));
 	if (FGameplayAbilitySpecHandle* HandlePtr = GrantedItemAbilityMap.Find(ItemInst))
 	{
 		OwnerASC->ClearAbility(*HandlePtr);

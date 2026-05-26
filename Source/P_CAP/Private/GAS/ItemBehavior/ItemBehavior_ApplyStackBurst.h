@@ -26,10 +26,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, meta=(ClampMin="1"), Category="Trigger")
 	int32 BurstStackCount=1;
 	
-	// 스택 부여한 클래스 구별하기 위한 태그
-	UPROPERTY(EditDefaultsOnly, meta=(Categories="State.Debuff"), Category="Effect")
-	FGameplayTag DynamicTag;
-	
 	UPROPERTY(EditDefaultsOnly, Category="Value")
 	ESkillDamageType DamageType = ESkillDamageType::Physical;
 	// 최종 버프 계산 값 = BaseValue + (ScaleAttribute의 수치 * Magnitude)
@@ -50,4 +46,6 @@ private:
 	void ApplyBurstLogicToSingleTarget(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC) const;
 	
 	int32 GetExistingMarkStackCount(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> MarkGE, FActiveGameplayEffectHandle& OutHandle) const;
+
+	mutable TMap<TWeakObjectPtr<AActor>, float> TargetCooldownMap;
 };

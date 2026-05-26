@@ -5,8 +5,6 @@
 
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
-#include "Data/CAP_ItemDataAsset.h"
-#include "Interactables/Item/CAP_ItemInstance.h"
 
 void UCAP_ItemEffectSlot::NativeConstruct()
 {
@@ -14,41 +12,35 @@ void UCAP_ItemEffectSlot::NativeConstruct()
 	StackText->SetVisibility(ESlateVisibility::Hidden);
 }
 
-void UCAP_ItemEffectSlot::InitSlot(class UCAP_ItemInstance* InItemInst, FGameplayTag InDynamicTag, float InCooldown,
-	float InDuration, int32 InStacks)
+void UCAP_ItemEffectSlot::InitSlot(const FBuffSlotID& InSlotID, const FBuffUIData& InUIData)
 {
-	ItemInst = InItemInst;
-	DynamicTag = InDynamicTag;
-	MaxCooldown = InCooldown;
-	MaxDuration = InDuration;
-	RemainingCooldown = InCooldown;
-	RemainingDuration = InDuration;
-	CurrentStack = InStacks;
+	SlotID = InSlotID;
 
-	if (!ItemInst || !Icon)
-		return;
+	CurrentStack = InUIData.Stacks;
+	MaxCooldown = InUIData.MaxCooldown;
+	RemainingCooldown = InUIData.RemainingCooldown;
+	MaxDuration = InUIData.MaxDuration;
+	RemainingDuration = InUIData.RemainingDuration;
 
-	if (UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA())
+	if (!InUIData.Icon.IsNull())
 	{
-		if (UTexture2D* LoadedIcon = ItemDA->ItemIcon.LoadSynchronous())
-		{
+		if (UTexture2D* LoadedIcon = InUIData.Icon.LoadSynchronous())
 			if (UMaterialInstanceDynamic* MID = Icon->GetDynamicMaterial())
 				MID->SetTextureParameterValue(IconMaterialParamName, LoadedIcon);
-		}
 	}
+	
 	if (CurrentStack > 0)
 	{
 		StackText->SetText(FText::Format(FText::FromString("x{0}"), CurrentStack));
 		StackText->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	}
 	else
-	{
 		StackText->SetVisibility(ESlateVisibility::Hidden);
-	}
-	if (MaxDuration <0.f)
-	{
+	
+	if (MaxDuration <= 0.f && MaxCooldown <= 0.f)
+	{	// 타이머 자체를 안켜도 되는 상황
 		if (UMaterialInstanceDynamic* MID = Icon->GetDynamicMaterial())
-		{
+		{	// 쿨다운:1, Duration:0 이어야 보이지 않음
 			MID->SetScalarParameterValue(CooldownPercentParamName, 1.f);
 			MID->SetScalarParameterValue(DurationPercentParamName, 0.f); 
 		}

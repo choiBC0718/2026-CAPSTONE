@@ -31,7 +31,7 @@ public:
 	UFUNCTION()
 	bool ConsumeCurrency(ECurrencyType Type, int32 Amount);
 	UFUNCTION()
-	int32 GetCurreny(ECurrencyType Type);
+	int32 GetCurreny(ECurrencyType Type) const;
 
 	// 마석 (저장되는 재화)에 대해 강제 로딩
 	void SetCurrencyOverride(ECurrencyType Type, int32 Amount);
@@ -42,4 +42,9 @@ public:
 private:
 	UPROPERTY(VisibleAnywhere)
 	TMap<ECurrencyType, int32> CurrencyMap;
+
+	UPROPERTY()
+	const UDataTable* LoadedRewardDisassembleDT;
+
+	static FName GetRowNameFromGrade(EItemGrade Grade);
 };

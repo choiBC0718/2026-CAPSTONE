@@ -6,10 +6,11 @@
 #include "AbilitySystemInterface.h"
 #include "GameplayEffectTypes.h"
 #include "GameFramework/Character.h"
+#include "Interface/CAP_TargetUIInterface.h"
 #include "CAP_Character.generated.h"
 
 UCLASS()
-class ACAP_Character : public ACharacter, public IAbilitySystemInterface
+class ACAP_Character : public ACharacter, public IAbilitySystemInterface, public ICAP_TargetUIInterface
 {
 	GENERATED_BODY()
 
@@ -25,8 +26,12 @@ private:
 	class UCAP_AttributeSet* CAPAttributeSet;
 	UPROPERTY()
 	class UAIPerceptionStimuliSourceComponent* PerceptionStimuliSourceComponent;
+	
+	virtual void UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack) override {}
 
 protected:
+	UPROPERTY(VisibleAnywhere, Category="Widget")
+	class UWidgetComponent* TargetEffectWidgetComp;
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 	UPROPERTY(EditDefaultsOnly, Category="Stat")
@@ -43,7 +48,6 @@ private:
 	
 	void DeadTagUpdated(FGameplayTag GameplayTag, int32 NewCount);
 	void MoveSpeedUpdated(const FOnAttributeChangeData& OnAttributeChangeData);
-	void MaxHealthUpdated(const FOnAttributeChangeData& OnAttributeChangeData);
 
 	FTransform MeshRelativeTransform;
 	

@@ -33,6 +33,12 @@ public:
 	const TArray<class UCAP_WeaponInstance*>& GetEquippedWeapons() const {return EquippedWeapons;}
 	class USkeletalMeshComponent* GetWeaponMesh(EEquipHand Hand) const;
 
+	// 특정 무기를 가지고 있는지 확인
+	bool HasWeapon(class UCAP_WeaponDataAsset* WeaponDA) const;
+	// 무기 획득시 능력을 GiveAbility
+	void GrantAbilities(class UCAP_WeaponInstance* WeaponInst);
+	// 무기 드랍 시에 ClearAbility
+	void ClearAbilities(class UCAP_WeaponInstance* WeaponInst);
 private:
 	UPROPERTY()
 	class USkeletalMeshComponent* WeaponMesh_L;
@@ -47,20 +53,11 @@ private:
 	class UCAP_WeaponDataAsset* DefaultBasicWeapon;
 	
 	void ApplyWeaponData(class UCAP_WeaponInstance* WeaponInstance);
-	void ClearCurrentWeaponVisuals();
+	void AttachWeaponMesh(class UCAP_WeaponDataAsset* WeaponDA);
 	
 	UPROPERTY(EditDefaultsOnly, Category="Weapon")
 	int MaxWeaponCount = 2;
 
 	UPROPERTY()
 	class UCAP_AbilitySystemComponent* ASC;
-
-	// 무기 획득시 능력을 비활성화로 쥐여줌 (EAbilityInputID = INDEX_NONE)
-	void GrantWeaponAbilities(class UCAP_WeaponInstance* WeaponInst);
-	// 무기 장착 시 키 연결 (EAbilityInputID)
-	void MapWeaponAbilities(class UCAP_WeaponInstance* WeaponInst);
-	// 무기 교체 시 사용 안하는 능력 InputID 비활성화
-	void UnmapWeaponAbilities(class UCAP_WeaponInstance* WeaponInst);
-	// 무기 드랍 시에 ClearAbility
-	void RemoveWeaponAbilities(class UCAP_WeaponInstance* WeaponInst);
 };

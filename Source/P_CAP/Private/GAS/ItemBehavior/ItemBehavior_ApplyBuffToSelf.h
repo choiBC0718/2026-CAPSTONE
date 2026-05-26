@@ -34,12 +34,20 @@ public:
 	FGameplayTag TargetStatTag;
 	UPROPERTY(EditDefaultsOnly, Category="Value")
 	FGameplayAttribute ScaleAttribute;
-	// 스탯의 비례 계수 (10% = 0.1)
+
+	/* 1. 단순 증가 (ScaleAttribute : None / 합연산 / Magnitude : 더할 값)
+	 * 2. n% 증폭 (ScaleAttribute : None / 곱연산 / Magnitude : %)
+	 * 3. 스탯 비례 단순 증가 (ScaleAttribute : 설정 / 합연산 / Magnitude : %)
+	 * 4. 스탯 비례 곱 증폭 (ScaleAttribute : 설정 / 곱연산 / Magnitude : %)
+	 */
 	UPROPERTY(EditDefaultsOnly, Category="Value")
 	float Magnitude=0.f;
 	// 버프 유지 시간
 	UPROPERTY(EditDefaultsOnly, Category="Value")
 	float Duration = 0.f;
+	// 곱연산 버프일지 선택 (1+ Magnitude*스탯값)
+	UPROPERTY(EditDefaultsOnly, Category="Value")
+	bool bIsMultiplier = false;
 
 	virtual void OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const override;
 	virtual void OnUnequipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const override;

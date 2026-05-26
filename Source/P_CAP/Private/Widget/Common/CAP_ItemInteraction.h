@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
+#include "Interface/CAP_InteractInterface.h"
 #include "CAP_ItemInteraction.generated.h"
 
 USTRUCT(BlueprintType)
@@ -17,7 +17,7 @@ public:
 };
 
 /**
- * 아이템과 상호작용 가능할 때 나타날 위젯
+ * 상호작용 대상과 오버랩 시 나타날 텍스트 + 상호작용 키 이미지 위젯
  */
 UCLASS()
 class UCAP_ItemInteraction : public UUserWidget
@@ -27,16 +27,19 @@ class UCAP_ItemInteraction : public UUserWidget
 public:
 	virtual void NativeConstruct() override;
 	void SetInteractionUIVisibility(bool bVisible);
-	void UpdateInteractProgress(float Progress);
 	void SetInteractKeyText(const FString& KeyName);
 
-	void UpdateActionTexts(const FInteractionPayload& Payload, int32 FinalCurrencyAmount);
+	void UpdateActionTexts(const FInteractionPayload& Payload);
 private:
+	UPROPERTY(meta = (BindWidget))
+	class UBorder* TapInteractBorder;
 	UPROPERTY(meta = (BindWidget))
 	class UImage* EquipIconImg;
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* EquipText;
 	
+	UPROPERTY(meta = (BindWidget))
+	class UBorder* HoldInteractBorder;
 	UPROPERTY(meta = (BindWidget))
 	class UImage* DisassembleIconImg;
 	UPROPERTY(meta = (BindWidget))
@@ -51,4 +54,7 @@ private:
 	
 	UPROPERTY(EditDefaultsOnly, Category="Data")
 	class UDataTable* KeyIconDataTable;
+
+	UFUNCTION()
+	void UpdateInteractProgress(float Progress);
 };

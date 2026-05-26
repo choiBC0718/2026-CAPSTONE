@@ -4,6 +4,7 @@
 #include "Character/CAP_Character.h"
 
 #include "Components/CapsuleComponent.h"
+#include "Components/WidgetComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
@@ -18,9 +19,15 @@ ACAP_Character::ACAP_Character()
 
 	GetMesh()->SetupAttachment(GetRootComponent());
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetMesh()->SetReceivesDecals(false);
 
-	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Target, ECR_Ignore);
-	GetCapsuleComponent()->SetCollisionObjectType(ECC_Hitbox);
+	TargetEffectWidgetComp=CreateDefaultSubobject<UWidgetComponent>("StackEffectWidget");
+	TargetEffectWidgetComp->SetupAttachment(GetRootComponent());
+	TargetEffectWidgetComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	TargetEffectWidgetComp->SetRelativeLocation(FVector(0.f, 0.f, -60.f));
+	TargetEffectWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);
+
+	GetCapsuleComponent()->SetCollisionProfileName(FName("Character"));
 
 	CAPAbilitySystemComponent = CreateDefaultSubobject<UCAP_AbilitySystemComponent>("Ability System Component");
 	CAPAttributeSet = CreateDefaultSubobject<UCAP_AttributeSet>("Attribute Set");
@@ -61,7 +68,6 @@ void ACAP_Character::BindGASChangeDelegates()
 		CAPAbilitySystemComponent->RegisterGameplayTagEvent(UCAP_AbilitySystemStatics::GetDeadStateTag()).AddUObject(this, &ACAP_Character::DeadTagUpdated);
 		
 		CAPAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UCAP_AttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ACAP_Character::MoveSpeedUpdated);
-		CAPAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UCAP_AttributeSet::GetMaxHealthAttribute()).AddUObject(this, &ACAP_Character::MaxHealthUpdated);
 	}
 }
 
@@ -83,12 +89,6 @@ void ACAP_Character::DeadTagUpdated(FGameplayTag GameplayTag, int32 NewCount)
 void ACAP_Character::MoveSpeedUpdated(const FOnAttributeChangeData& OnAttributeChangeData)
 {
 	GetCharacterMovement()->MaxWalkSpeed = OnAttributeChangeData.NewValue;
-}
-
-void ACAP_Character::MaxHealthUpdated(const FOnAttributeChangeData& OnAttributeChangeData)
-{
-	if (IsValid(CAPAttributeSet))
-		CAPAttributeSet->RescaleHealth();
 }
 
 void ACAP_Character::StartDeathSequence()

@@ -24,12 +24,12 @@ public:
 	virtual void DropItem() {}
 	
 protected:
-	UPROPERTY(VisibleAnywhere, Category="Interaction")
-	class USceneComponent* RootScene;
 	// 플레이어 오버랩 상호작용 컴포넌트
 	UPROPERTY(VisibleAnywhere, Category="Interaction")
 	class USphereComponent* InteractionSphere;
 	
+	UFUNCTION()
+	void OnGroundHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 	UFUNCTION()
 	void OnInteractSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 	UFUNCTION()

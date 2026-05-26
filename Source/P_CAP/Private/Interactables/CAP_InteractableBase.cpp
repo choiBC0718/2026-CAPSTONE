@@ -6,67 +6,58 @@
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Component/CAP_InteractionComponent.h"
 #include "Components/SphereComponent.h"
-#include "P_CAP/P_CAP.h"
 
 ACAP_InteractableBase::ACAP_InteractableBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
-
-	RootScene = CreateDefaultSubobject<USceneComponent>("RootScene");
-	SetRootComponent(RootScene);
 	
 	InteractionSphere = CreateDefaultSubobject<USphereComponent>("InteractionSphere");
-	InteractionSphere->SetupAttachment(GetRootComponent());
-	InteractionSphere->SetSphereRadius(100.f);
-	InteractionSphere->SetRelativeLocation(FVector(0.f, 0.f, 120.f));
-	InteractionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	InteractionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
-	InteractionSphere->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Overlap);
+	SetRootComponent(InteractionSphere);
+	
+	InteractionSphere->SetSphereRadius(130.f);
+	InteractionSphere->SetCollisionProfileName(FName("Interactable"));
+	InteractionSphere->SetSimulatePhysics(true);
+	
+	InteractionSphere->BodyInstance.bLockXRotation = true;
+	InteractionSphere->BodyInstance.bLockYRotation = true;
+	InteractionSphere->BodyInstance.bLockXTranslation = true;
+	InteractionSphere->BodyInstance.bLockYTranslation = true;
+	InteractionSphere->SetNotifyRigidBodyCollision(true);
 }
 
 
 void ACAP_InteractableBase::BeginPlay()
 {
 	Super::BeginPlay();
-
+	InteractionSphere->SetSimulatePhysics(true);
+	InteractionSphere->OnComponentHit.AddDynamic(this, &ACAP_InteractableBase::OnGroundHit);
 	InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &ACAP_InteractableBase::OnInteractSphereBeginOverlap);
 	InteractionSphere->OnComponentEndOverlap.AddDynamic(this, &ACAP_InteractableBase::OnInteractSphereEndOverlap);
 }
 
 
-void ACAP_InteractableBase::OnInteractSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-                                                     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void ACAP_InteractableBase::OnGroundHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	/*
-	ACAP_PlayerCharacter* PlayerCharacter = Cast<ACAP_PlayerCharacter>(OtherActor);
-	if (PlayerCharacter)
-	{
-		PlayerCharacter->GetInventoryComponent()->SetNearbyInteractable(this);
-		PlayerCharacter->UpdateInteractUI(true);
-	}
-	*/
+	InteractionSphere->SetSimulatePhysics(false);
+}
+
+void ACAP_InteractableBase::OnInteractSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+                                                         UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
 	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(OtherActor))
 	{
 		if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
-			InteractComp->SetNearbyInteractable(this);
+			InteractComp->AddInteractable(this);
 	}
 }
 
 void ACAP_InteractableBase::OnInteractSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	/*
-	ACAP_PlayerCharacter* PlayerCharacter = Cast<ACAP_PlayerCharacter>(OtherActor);
-	if (PlayerCharacter)
-	{
-		PlayerCharacter->GetInventoryComponent()->SetNearbyInteractable(nullptr);
-		PlayerCharacter->UpdateInteractUI(false);
-	}
-	*/
 	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(OtherActor))
 	{
 		if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
-			if (InteractComp->GetNearbyInteractable() == this)
-				InteractComp->SetNearbyInteractable(nullptr);
+			InteractComp->RemoveInteractable(this);
 	}
 }

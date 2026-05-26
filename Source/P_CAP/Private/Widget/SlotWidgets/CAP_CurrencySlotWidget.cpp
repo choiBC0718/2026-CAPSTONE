@@ -17,6 +17,12 @@ void UCAP_CurrencySlotWidget::NativeConstruct()
 		if (UCAP_CurrencyComponent* CurrencyComp = Player->GetCurrencyComponent())
 		{
 			CurrencyComp->OnCurrencyChanged.AddDynamic(this, &UCAP_CurrencySlotWidget::OnCurrencyChanged);
+
+			if (CurrencyText)
+			{
+				int32 CurrentCurrency = CurrencyComp->GetCurreny(Currency);
+				SetCurrencyText(CurrentCurrency);
+			}
 		}
 	}
 	if (CurrencyIcon && CurrencyIconTexture)
@@ -27,6 +33,15 @@ void UCAP_CurrencySlotWidget::OnCurrencyChanged(ECurrencyType CurrencyType, int3
 {
 	if (CurrencyType == Currency)
 	{
-		CurrencyText->SetText(FText::AsNumber(NewAmount));
+		SetCurrencyText(NewAmount);
 	}
+}
+
+void UCAP_CurrencySlotWidget::SetCurrencyText(int32 Amount)
+{
+	FNumberFormattingOptions Opts;
+	Opts.UseGrouping = true;
+	FText FormatText = FText::AsNumber(Amount, &Opts);
+		
+	CurrencyText->SetText(FormatText);
 }

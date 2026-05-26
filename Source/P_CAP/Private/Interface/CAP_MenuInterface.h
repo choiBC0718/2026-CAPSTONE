@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "EnhancedInputComponent.h"
 #include "UObject/Interface.h"
 #include "CAP_MenuInterface.generated.h"
 
@@ -26,4 +27,6 @@ public:
 	virtual void NativeOpenMenu() =0;
 	virtual void NativeCloseMenu() =0;
 	virtual FOnMenuClosedSignature& GetOnMenuClosedDelegate()=0;
+	virtual void HandleUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime=0) =0;
+	virtual void HandleChangeSelectedSlot(FVector2D InputVal) =0;
 };
