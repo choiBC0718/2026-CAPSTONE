@@ -39,6 +39,8 @@ public:
 	EItemGrade GetCurrentGrade() const {return CurrentGrade;}
 	void SetCurrentGrade(EItemGrade NewGrade) {CurrentGrade = NewGrade;}
 
+	virtual FBuffDisplayData GetBuffDisplayData(const FGameplayTag& EffectTag) const override;
+
 private:
 	UPROPERTY(VisibleAnywhere)
 	int32 UpgradeLevel =0;

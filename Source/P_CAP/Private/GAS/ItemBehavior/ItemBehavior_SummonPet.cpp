@@ -44,7 +44,7 @@ void UItemBehavior_SummonPet::OnEquipped(class UCAP_ItemInstance* ItemInst, clas
 	{
 		if (UCAP_InventoryComponent* InvComp = PlayerChar->GetInventoryComponent())
 		{
-			InvComp->OnItemEffectTriggered.Broadcast(ItemInst, FGameplayTag::EmptyTag, 0.f, -1.f, 0);
+			InvComp->OnItemEffectTriggered.Broadcast(ItemInst,BehaviorTag, 0.f, -1.f, 0);
 		}
 	}
 }

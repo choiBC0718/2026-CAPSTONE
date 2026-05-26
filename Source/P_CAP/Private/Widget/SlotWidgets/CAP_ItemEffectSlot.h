@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
 #include "Blueprint/UserWidget.h"
+#include "Data/CAP_UIBuffListTypes.h"
 #include "CAP_ItemEffectSlot.generated.h"
 
 /**
@@ -18,10 +18,10 @@ class UCAP_ItemEffectSlot : public UUserWidget
 public:
 	virtual void NativeConstruct() override;
 
-	void InitSlot(class UCAP_ItemInstance* InItemInst, FGameplayTag InDynamicTag, float InCooldown, float InDuration, int32 InStacks);
-
-	class UCAP_ItemInstance* GetItemInstance() const {return ItemInst;}
-	FGameplayTag GetDynamicTag() const {return DynamicTag;}
+	void InitSlot(const FBuffSlotID& InSlotID, const FBuffUIData& InUIData);
+	FBuffSlotID GetSlotID() const { return SlotID; }
+	
+	
 private:
 	UPROPERTY(EditDefaultsOnly, Category="UI")
 	float UpdateInterval = 0.05f;
@@ -36,11 +36,10 @@ private:
 	class UImage* Icon;
 	UPROPERTY(meta=(BindWidget))
 	class UTextBlock* StackText;
-
+	
 	UPROPERTY()
-	class UCAP_ItemInstance* ItemInst;
-
-	FGameplayTag DynamicTag;
+	FBuffSlotID SlotID;
+	
 	float MaxCooldown;
 	float MaxDuration;
 	float RemainingCooldown;

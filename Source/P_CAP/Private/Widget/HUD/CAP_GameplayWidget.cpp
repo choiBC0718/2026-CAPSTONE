@@ -13,7 +13,6 @@
 #include "Interface/CAP_MenuInterface.h"
 #include "Widget/Common/CAP_ValueGauge.h"
 #include "Widget/Common/CAP_WeaponSkillBox.h"
-#include "Widget/PanelWidgets/CAP_BuffListPanelWidget.h"
 #include "Widget/PanelWidgets/CAP_ItemSwapWidget.h"
 
 void UCAP_GameplayWidget::NativeConstruct()
@@ -47,10 +46,6 @@ void UCAP_GameplayWidget::NativeConstruct()
 		DialogueWidget->SetVisibility(ESlateVisibility::Collapsed);
 		DialogueWidget->OnDialogueFinished.AddDynamic(this, &UCAP_GameplayWidget::HandleDialogueFinished);
 		DialogueWidget->OnNPCCustomWidgetOpened.AddDynamic(this, &UCAP_GameplayWidget::HandleNPCCustomWidgetOpen);
-	}
-	if (BuffListPanel)
-	{
-		BuffListPanel->InitializeWidget(Player);
 	}
 }
 

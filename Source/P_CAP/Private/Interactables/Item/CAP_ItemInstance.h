@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Data/CAP_ItemDataAsset.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
+#include "Interface/CAP_BuffVisualInterface.h"
 #include "CAP_ItemInstance.generated.h"
 
 class UCAP_AbilitySystemComponent;
@@ -12,7 +13,7 @@ class UCAP_AbilitySystemComponent;
  * 아이템 1개 자체에 대한 인스턴스
  */
 UCLASS()
-class UCAP_ItemInstance : public UObject
+class UCAP_ItemInstance : public UObject, public ICAP_BuffVisualInterface
 {
 	GENERATED_BODY()
 
@@ -33,6 +34,8 @@ public:
 
 	void SetCachedASC(UCAP_AbilitySystemComponent* ASC);
 	UCAP_AbilitySystemComponent* GetCachedASC() const;
+
+	virtual FBuffDisplayData GetBuffDisplayData(const FGameplayTag& EffectTag) const override;
 
 protected:
 	UPROPERTY()

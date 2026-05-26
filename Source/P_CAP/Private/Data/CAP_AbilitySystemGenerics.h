@@ -24,15 +24,13 @@ public:
 
 	FORCEINLINE const UDataTable* GetBaseStatDataTable() const {return BaseStatDataTable;}
 	FORCEINLINE const UDataTable* GetWeaponStatDataTable() const {return WeaponStatDataTable;}
-	
-	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemStatInfiniteEffect() const {return MasterStatInfiniteAddGE;}
-	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemStatDurationEffect() const {return MasterStatDurationAddGE;}
 
 	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemMarkGE() const {return MasterMarkGE;}
 	FORCEINLINE TSubclassOf<class UGameplayEffect> GetCooldownEffect() const {return MasterCooldownGE;}
 
 	TSubclassOf<UGameplayEffect> GetInstantDamageGE(ESkillDamageType Type) const;
 	TSubclassOf<UGameplayEffect> GetDurationDamageGE(ESkillDamageType Type) const;
+	TSubclassOf<UGameplayEffect> GetStatGE(bool bIsInfinite, bool bIsMultiplier) const;
 
 	static FName GetRowNameFromGrade(EItemGrade Grade);
 private:

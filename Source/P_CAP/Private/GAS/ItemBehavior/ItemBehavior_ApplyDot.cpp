@@ -89,10 +89,10 @@ void UItemBehavior_ApplyDot::ApplyDoTToSingleTarget(UCAP_ItemInstance* ItemInst,
 	if (!SpecHandle.IsValid())
 		return;
 
-	if (DynamicTag.IsValid())
+	if (BehaviorTag.IsValid())
 	{
 		// 같은 GE를 사용하는 Dot 효과에서 구별할 태그
-		SpecHandle.Data->DynamicGrantedTags.AddTag(DynamicTag);
+		SpecHandle.Data->DynamicGrantedTags.AddTag(BehaviorTag);
 	}
 	
 	SpecHandle.Data->SetSetByCallerMagnitude(StackTag, TargetStackCount);
@@ -119,7 +119,7 @@ int32 UItemBehavior_ApplyDot::GetExistingDoTStackCount(UCAP_ItemInstance* ItemIn
 		if (ActiveGE && ActiveGE->Spec.GetEffectContext().GetSourceObject() == ItemInst)
 		{
 			// 태그가 다르면 건너 뛰어
-			if (DynamicTag.IsValid() && !ActiveGE->Spec.DynamicGrantedTags.HasTagExact(DynamicTag))
+			if (BehaviorTag.IsValid() && !ActiveGE->Spec.DynamicGrantedTags.HasTagExact(BehaviorTag))
 				continue;
 			
 			OutHandle = Handle;

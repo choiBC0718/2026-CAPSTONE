@@ -29,7 +29,7 @@ public:
 	EItemGrade ItemGrade = EItemGrade::Normal;
 
 	virtual TArray<FGameplayTag> GetSynergyTags() const { return TArray<FGameplayTag>(); }
-	virtual const TMap<FGameplayTag, float>& GetStatModifiers() const {static TMap<FGameplayTag, float> EmptyMap; return EmptyMap; }
+	virtual const TArray<FStatModifier>& GetStatModifiers() const {static TArray<FStatModifier> EmptyMap; return EmptyMap; }
 };
 
 /**
@@ -48,8 +48,8 @@ public:
 	FGameplayTag SynergyTag2;
 
 	// 아이템이 제공하는 보너스 스탯 <Key: 증가시킬 스탯 || Value: 증가값(Add)>
-	UPROPERTY(EditDefaultsOnly, Category="Item Effect", meta=(ForceInlineRow, Categories="Data.ItemStat"))
-	TMap<FGameplayTag, float> ItemStatModifiers;
+	UPROPERTY(EditDefaultsOnly, Category="Item Effect", meta=(TitleProperty="StatTag"))
+	TArray<FStatModifier> ItemStatModifier;
 	// 아이템 효과
 	UPROPERTY(EditDefaultsOnly, Category="Item Effect")
 	TArray<UCAP_ItemBehaviorBase*> ItemBehaviors;
@@ -69,11 +69,11 @@ public:
 		if (SynergyTag2.IsValid())	Tags.Add(SynergyTag2);
 		return Tags;
 	}
-	virtual const TMap<FGameplayTag, float>& GetStatModifiers() const override
+	virtual const TArray<FStatModifier>& GetStatModifiers() const override
 	{
-		return ItemStatModifiers;
+		return ItemStatModifier;
 	}
-
+	
 	// 소환수 클래스 캐싱 배열
 	UPROPERTY()
 	TArray<TSubclassOf<class AActor>> CachedSummonClasses;

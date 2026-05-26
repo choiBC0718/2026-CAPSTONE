@@ -17,3 +17,11 @@ UCAP_AbilitySystemComponent* UCAP_ItemInstance::GetCachedASC() const
 {
 	return CachedOwnerASC.IsValid() ? CachedOwnerASC.Get() : nullptr;
 }
+
+FBuffDisplayData UCAP_ItemInstance::GetBuffDisplayData(const FGameplayTag& EffectTag) const
+{
+	FBuffDisplayData BuffData;
+	BuffData.Icon = ItemDA->ItemIcon;
+	
+	return BuffData;
+}

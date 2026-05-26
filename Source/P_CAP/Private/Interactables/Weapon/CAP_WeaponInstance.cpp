@@ -107,3 +107,24 @@ void UCAP_WeaponInstance::SwapSkillOrder()
 	if (GrantedActiveSkills.Num() >= 2)
 		GrantedActiveSkills.Swap(0,1);
 }
+
+FBuffDisplayData UCAP_WeaponInstance::GetBuffDisplayData(const FGameplayTag& EffectTag) const
+{
+	FBuffDisplayData BuffData;
+	if (GetWeaponDA())
+	{
+		BuffData.Icon = GetWeaponDA()->ItemIcon;
+	}
+	if (EffectTag.IsValid())
+	{
+		for (const FWeaponSkillData& Skill : GetGrantedSkills())
+		{
+			if (Skill.CooldownTag == EffectTag)
+			{
+				BuffData.Icon = Skill.SkillIcon;
+				break;
+			}
+		}
+	}
+	return BuffData;
+}

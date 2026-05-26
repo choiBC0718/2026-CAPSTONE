@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "CAP_GameplayAbilityTypes.generated.h"
 
 UENUM(BlueprintType)
@@ -25,7 +26,8 @@ enum class EItemGrade : uint8
 	Normal			UMETA(DisplayName = "일반"),
 	Rare			UMETA(DisplayName = "레어"),
 	Epic			UMETA(DisplayName = "에픽"),
-	Legendary		UMETA(DisplayName = "레전더리")
+	Legendary		UMETA(DisplayName = "레전더리"),
+	Max				UMETA(Hidden)
 };
 
 
@@ -35,6 +37,20 @@ enum class ECurrencyType : uint8
 	Gold			UMETA(DisplayName = "Gold (골드)"),
 	WeaponMaterial	UMETA(DisplayName = "WeaponMaterial (무기 강화재료)"),
 	MagicStone		UMETA(DisplayName = "MagicStone (마석)"),
+};
+
+USTRUCT(BlueprintType)
+struct FStatModifier
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, meta=(Categories="Data.ItemStat"))
+	FGameplayTag StatTag;
+	UPROPERTY(EditAnywhere)
+	float Value = 0.f;
+	// false = ADD(합연산) / true = Mul(곱연산)
+	UPROPERTY(EditAnywhere)
+	bool IsMultiplier=false;
 };
 
 USTRUCT(BlueprintType)

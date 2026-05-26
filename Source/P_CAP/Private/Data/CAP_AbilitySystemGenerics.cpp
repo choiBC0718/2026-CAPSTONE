@@ -29,6 +29,14 @@ TSubclassOf<UGameplayEffect> UCAP_AbilitySystemGenerics::GetDurationDamageGE(ESk
 	}
 }
 
+TSubclassOf<UGameplayEffect> UCAP_AbilitySystemGenerics::GetStatGE(bool bIsInfinite, bool bIsMultiplier) const
+{
+	if (bIsInfinite)
+		return bIsMultiplier ? MasterStatInfiniteMulGE : MasterStatInfiniteAddGE;
+	else
+		return bIsMultiplier ? MasterStatDurationMulGE : MasterStatDurationAddGE;
+}
+
 FName UCAP_AbilitySystemGenerics::GetRowNameFromGrade(EItemGrade Grade)
 {
 	switch (Grade)

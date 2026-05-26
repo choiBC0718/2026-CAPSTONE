@@ -44,7 +44,7 @@ void UItemBehavior_ApplyDebuffToTarget::OnEventReceived(UCAP_ItemInstance* ItemI
 	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(ASC->GetAvatarActor()))
 	{
 		if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
-			InvComp->OnItemEffectTriggered.Broadcast(ItemInst,TriggerEventTag,Cooldown,0.f,0);
+			InvComp->OnItemEffectTriggered.Broadcast(ItemInst,BehaviorTag,Cooldown,0.f,0);
 	}
 }
 
@@ -71,7 +71,7 @@ void UItemBehavior_ApplyDebuffToTarget::ApplyDebuffToSingleTarget(UCAP_ItemInsta
 	if (!CAP_ASC || !CAP_ASC->GetGenerics())
 		return;
 	
-	TSubclassOf<UGameplayEffect> DurationDebuffGE = CAP_ASC->GetGenerics()->GetItemStatDurationEffect();
+	TSubclassOf<UGameplayEffect> DurationDebuffGE = CAP_ASC->GetGenerics()->GetStatGE(false,false);
 	if (!DurationDebuffGE)
 		return;
 	if (!ScaleAttribute.IsValid())
@@ -93,7 +93,7 @@ void UItemBehavior_ApplyDebuffToTarget::ApplyDebuffToSingleTarget(UCAP_ItemInsta
 	if (!SpecHandle.IsValid())
 		return;
 	
-	InitGameplayEffectToZero(SpecHandle, DurationDebuffGE);
+	InitGameplayEffectToDefault(SpecHandle, DurationDebuffGE);
 	
 	float CleanStatValue = TargetASC->GetNumericAttribute(ScaleAttribute);
 	float FinalMagnitude = Magnitude * CleanStatValue;

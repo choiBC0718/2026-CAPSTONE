@@ -70,7 +70,7 @@ void UCAP_StatEnhanceComponent::ApplyStatEnhanceGE(FName RowName, int32 Level)
 	UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player));
 	if (!ASC || !ASC->GetGenerics())		return;
 	
-	TSubclassOf<UGameplayEffect> StatEnhanceGE = ASC->GetGenerics()->GetItemStatInfiniteEffect();
+	TSubclassOf<UGameplayEffect> StatEnhanceGE = ASC->GetGenerics()->GetStatGE(true,false);
 	if (!StatEnhanceGE)	return;
 	const UGameplayEffect* DefaultGE = StatEnhanceGE->GetDefaultObject<UGameplayEffect>();
 

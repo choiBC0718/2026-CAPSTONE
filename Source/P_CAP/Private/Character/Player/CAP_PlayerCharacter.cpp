@@ -17,6 +17,8 @@
 #include "Component/CAP_WeaponComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "AI/BaseMonster.h"         // 몬스터 타격 판별을 위해 추가
+#include "Components/WidgetComponent.h"
+#include "Widget/Common/CAP_TargetEffectWidget.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 {
@@ -34,6 +36,9 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 	CurrencyComponent = CreateDefaultSubobject<UCAP_CurrencyComponent>("Currency Component");
 	InteractionComponent = CreateDefaultSubobject<UCAP_InteractionComponent>("Interaction Component");
 	StatEnhanceComponent = CreateDefaultSubobject<UCAP_StatEnhanceComponent>("Stat Enhance Component");
+
+	TargetEffectWidgetComp=CreateDefaultSubobject<UWidgetComponent>("StackEffectWidget");
+	TargetEffectWidgetComp->SetupAttachment(GetRootComponent());
 	
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
@@ -140,6 +145,15 @@ FString ACAP_PlayerCharacter::GetInteractKeyName() const
 void ACAP_PlayerCharacter::AddCurrency(ECurrencyType Type, int32 Amount)
 {
 	CurrencyComponent->AddCurrency(Type,Amount);
+}
+
+void ACAP_PlayerCharacter::UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack)
+{
+	if (TargetEffectWidgetComp)
+	{
+		if (UCAP_TargetEffectWidget* EffectWidget = Cast<UCAP_TargetEffectWidget>(TargetEffectWidgetComp->GetUserWidgetObject()))
+			EffectWidget->UpdateEffectUI(BehaviorTag, CurrentStack,MaxStack);
+	}
 }
 
 FVector ACAP_PlayerCharacter::GetMoveForwardDir()
