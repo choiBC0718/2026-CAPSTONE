@@ -35,7 +35,10 @@ public:
 
 	// 특정 무기를 가지고 있는지 확인
 	bool HasWeapon(class UCAP_WeaponDataAsset* WeaponDA) const;
-	
+	// 무기 획득시 능력을 GiveAbility
+	void GrantAbilities(class UCAP_WeaponInstance* WeaponInst);
+	// 무기 드랍 시에 ClearAbility
+	void ClearAbilities(class UCAP_WeaponInstance* WeaponInst);
 private:
 	UPROPERTY()
 	class USkeletalMeshComponent* WeaponMesh_L;
@@ -57,9 +60,4 @@ private:
 
 	UPROPERTY()
 	class UCAP_AbilitySystemComponent* ASC;
-
-	// 무기 획득시 능력을 GiveAbility
-	void GrantAbilities(class UCAP_WeaponInstance* WeaponInst);
-	// 무기 드랍 시에 ClearAbility
-	void ClearAbilities(class UCAP_WeaponInstance* WeaponInst);
 };

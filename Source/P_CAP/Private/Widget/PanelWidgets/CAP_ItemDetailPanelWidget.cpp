@@ -37,13 +37,11 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 	{
 		if (UCAP_WeaponInstance* WeaponInst = Cast<UCAP_WeaponInstance>(ItemData))
 		{
-			if (UCAP_ItemDataBase* WeaponDA = WeaponInst->GetWeaponDA())
+			if (UCAP_WeaponDataAsset* WeaponDA = WeaponInst->GetWeaponDA())
+				SetupUIContents(WeaponInst);
+			for (const FWeaponSkillData SkillData : WeaponInst->GetGrantedSkills())
 			{
-				SetupUIContents(WeaponDA);
-				for (const FWeaponSkillData SkillData : WeaponInst->GetGrantedSkills())
-				{
-					AddFeatureIconToBox(SkillData.SkillIcon);
-				}
+				AddFeatureIconToBox(SkillData.SkillIcon);
 			}
 		}
 	}
@@ -53,7 +51,7 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 		{
 			if (UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA())
 			{
-				SetupUIContents(ItemDA);
+				SetupUIContents(ItemInst);
 
 				ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn());
 				if (!Player || !Player->GetInventoryComponent())
@@ -107,16 +105,16 @@ void UCAP_ItemDetailPanelWidget::AddFeatureIconToBox(TSoftObjectPtr<class UTextu
 	}
 }
 
-void UCAP_ItemDetailPanelWidget::SetupUIContents(class UCAP_ItemDataBase* ItemDA)
+void UCAP_ItemDetailPanelWidget::SetupUIContents(class UCAP_ItemInstance* ItemInst)
 {
-	if (!ItemDA)
+	if (!ItemInst || !ItemInst->GetItemDA())
 		return;
 
-	NameText->SetText(ItemDA->ItemName);
-	GradeText->SetText(GetGradeText(ItemDA->ItemGrade));
-	DescriptionText->SetText(ItemDA->ItemDescription);
+	NameText->SetText(ItemInst->GetItemDA()->ItemName);
+	GradeText->SetText(GetGradeText(ItemInst->GetCurrentGrade()));
+	DescriptionText->SetText(ItemInst->GetItemDA()->ItemDescription);
 
-	if (UTexture2D* LoadedIcon = ItemDA->ItemIcon.LoadSynchronous())
+	if (UTexture2D* LoadedIcon = ItemInst->GetItemDA()->ItemIcon.LoadSynchronous())
 	{
 		Icon->SetBrushFromTexture(LoadedIcon);
 	}

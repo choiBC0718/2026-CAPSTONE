@@ -4,6 +4,9 @@
 #include "Interactables/Weapon/CAP_WeaponInstance.h"
 
 #include "Engine/AssetManager.h"
+#include "GameplayAbilitySpec.h"
+#include "GAS/Ability/Flow/GA_FlowBase.h"
+#include "GAS/Ability/Payload/GA_PayloadBase.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 
 void UCAP_WeaponInstance::InitializeWeapon(UCAP_WeaponDataAsset* InWeaponDA)
@@ -27,6 +30,7 @@ void UCAP_WeaponInstance::InitializeWeapon(UCAP_WeaponDataAsset* InWeaponDA)
 		case EItemGrade::Rare:		SkillsToGrant = 1;	break;
 		case EItemGrade::Epic:		SkillsToGrant = 2;	break;
 		case EItemGrade::Legendary:	SkillsToGrant = 2;	break;
+		default:										break;
 	}
 	CurrentGrade = GetWeaponDA()->ItemGrade;
 	
@@ -127,4 +131,64 @@ FBuffDisplayData UCAP_WeaponInstance::GetBuffDisplayData(const FGameplayTag& Eff
 		}
 	}
 	return BuffData;
+}
+
+bool UCAP_WeaponInstance::UpgradeWeapon()
+{
+	if (CurrentGrade>=EItemGrade::Legendary || !GetWeaponDA())
+		return false;
+
+	EItemGrade OldGrade = CurrentGrade;
+	CurrentGrade = static_cast<EItemGrade>(static_cast<uint8>(CurrentGrade)+1);
+
+	// 레어 -> 에픽 업그레이드 시 스킬 1개 더 받음
+	if (OldGrade == EItemGrade::Rare && CurrentGrade == EItemGrade::Epic)
+	{
+		TArray<FDataTableRowHandle> AvailableHandles = GetWeaponDA()->ActiveAbilityArray;
+		for (int32 i= AvailableHandles.Num()-1; i >= 0; --i)
+		{
+			if (FWeaponSkillData* SkillRow = AvailableHandles[i].GetRow<FWeaponSkillData>(""))
+			{
+				// 이미 가진 스킬은 추가될 스킬에서 제외
+				bool bAlreadyHas = false;
+				for (const FWeaponSkillData& HasSkill : GrantedActiveSkills)
+				{
+					if (HasSkill.SkillName == SkillRow->SkillName)
+					{
+						bAlreadyHas = true;
+						break;
+					}
+				}
+				if (bAlreadyHas)
+					AvailableHandles.RemoveAt(i);
+			}
+		}
+		if (AvailableHandles.Num() > 0)
+		{
+			int32 RandIdx = FMath::RandRange(0, AvailableHandles.Num() - 1);
+			if (FWeaponSkillData* NewSkill = AvailableHandles[RandIdx].GetRow<FWeaponSkillData>(""))
+			{
+				GrantedActiveSkills.Add(*NewSkill);
+				if (UCAP_AbilitySystemComponent* ASC = GetCachedASC())
+				{
+					int32 InputID = static_cast<int32>(EAbilityInputID::Skill1) + GrantedActiveSkills.Num() - 1;
+
+					if (NewSkill->InputAbilityClass)
+					{
+						FGameplayAbilitySpec Spec(NewSkill->InputAbilityClass,1,InputID,this);
+						GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
+					}
+					for (TSubclassOf<UGA_PayloadBase> PayloadClass : NewSkill->PayloadAbilityClass)
+					{
+						if (PayloadClass)
+						{
+							FGameplayAbilitySpec Spec(PayloadClass, 1, InputID+100,this);
+							GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
+						}
+					}
+				}
+			}
+		}
+	}
+	return true;
 }

@@ -37,9 +37,14 @@ public:
 
 	virtual FBuffDisplayData GetBuffDisplayData(const FGameplayTag& EffectTag) const override;
 
+	EItemGrade GetCurrentGrade() const {return CurrentGrade;}
+	void SetCurrentGrade(EItemGrade NewGrade) {CurrentGrade = NewGrade;}
+	
 protected:
 	UPROPERTY()
 	UCAP_ItemDataBase* ItemDA;
+
+	EItemGrade CurrentGrade;
 
 private:
 	TWeakObjectPtr<UCAP_AbilitySystemComponent> CachedOwnerASC;
