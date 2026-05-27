@@ -4,16 +4,19 @@
 
 #include "Engine/Engine.h"
 #include "Components/InputComponent.h"
+#include "Engine/DataTable.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
 #include "Map/RoomActor/RoomActor.h"
 #include "Kismet/GameplayStatics.h"
 #include "Map/Debug/MapManager.h"
 #include "Map/RoomData.h"
+#include "Map/Widget/CombatRewardChoiceWidget.h"
 
 ANextRoomChoiceManager::ANextRoomChoiceManager()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	DefaultChoiceRowNames = { TEXT("Gold"), TEXT("Item") };
 }
 
 void ANextRoomChoiceManager::BeginPlay()
@@ -57,12 +60,17 @@ void ANextRoomChoiceManager::RequestEnterRoom(
 
 void ANextRoomChoiceManager::SelectGoldReward()
 {
-	ApplyCombatRewardChoice(ECombatRoomRewardType::Gold);
+	SelectReward(ECombatRoomRewardType::Gold);
 }
 
 void ANextRoomChoiceManager::SelectItemReward()
 {
-	ApplyCombatRewardChoice(ECombatRoomRewardType::Item);
+	SelectReward(ECombatRoomRewardType::Item);
+}
+
+void ANextRoomChoiceManager::SelectReward(ECombatRoomRewardType RewardType)
+{
+	ApplyCombatRewardChoice(RewardType);
 }
 
 AMapManager* ANextRoomChoiceManager::ResolveMapManager()
@@ -99,6 +107,128 @@ bool ANextRoomChoiceManager::DoesRoomNeedCombatRewardChoice(const FRoomData& Roo
 		RoomData.CombatRewardType == ECombatRoomRewardType::None;
 }
 
+TArray<FCombatRewardChoiceOption> ANextRoomChoiceManager::BuildCombatRewardChoiceOptions() const
+{
+	TArray<FCombatRewardChoiceOption> Options;
+	TArray<FName> RowNames = DefaultChoiceRowNames;
+
+	if (RowNames.IsEmpty())
+	{
+		RowNames = { TEXT("Gold"), TEXT("Item") };
+	}
+
+	auto MakeFallbackOption = [](ECombatRoomRewardType RewardType) -> FCombatRewardChoiceOption
+	{
+		FCombatRewardChoiceOption Option;
+		Option.RewardType = RewardType;
+		Option.BadgeText = FText::FromString(TEXT("Reward"));
+
+		switch (RewardType)
+		{
+		case ECombatRoomRewardType::Gold:
+			Option.Title = FText::FromString(TEXT("Gold"));
+			Option.Description = FText::FromString(TEXT("전투 클리어 시 골드를 획득합니다."));
+			Option.SortOrder = 0;
+			break;
+
+		case ECombatRoomRewardType::Item:
+			Option.Title = FText::FromString(TEXT("Item"));
+			Option.Description = FText::FromString(TEXT("전투 클리어 시 아이템을 획득합니다."));
+			Option.SortOrder = 1;
+			break;
+
+		default:
+			Option.Title = FText::FromString(TEXT("Unknown"));
+			Option.Description = FText::FromString(TEXT("Unknown reward."));
+			Option.SortOrder = 999;
+			break;
+		}
+
+		return Option;
+	};
+
+	for (const FName& RowName : RowNames)
+	{
+		if (RowName.IsNone())
+		{
+			continue;
+		}
+
+		if (CombatRewardChoiceTable)
+		{
+			if (const FCombatRewardChoiceOption* Row = CombatRewardChoiceTable->FindRow<FCombatRewardChoiceOption>(
+				RowName,
+				TEXT("BuildCombatRewardChoiceOptions")))
+			{
+				Options.Add(*Row);
+				continue;
+			}
+		}
+
+		if (RowName == TEXT("Gold"))
+		{
+			Options.Add(MakeFallbackOption(ECombatRoomRewardType::Gold));
+		}
+		else if (RowName == TEXT("Item"))
+		{
+			Options.Add(MakeFallbackOption(ECombatRoomRewardType::Item));
+		}
+	}
+
+	Options.Sort([](const FCombatRewardChoiceOption& Left, const FCombatRewardChoiceOption& Right)
+	{
+		return Left.SortOrder < Right.SortOrder;
+	});
+
+	return Options;
+}
+
+void ANextRoomChoiceManager::ShowChoiceWidget()
+{
+	if (ActiveChoiceWidget || !ChoiceWidgetClass)
+	{
+		return;
+	}
+
+	APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	if (!PC)
+	{
+		return;
+	}
+
+	ActiveChoiceWidget = CreateWidget<UCombatRewardChoiceWidget>(PC, ChoiceWidgetClass);
+	if (!ActiveChoiceWidget)
+	{
+		return;
+	}
+
+	ActiveChoiceWidget->InitializeChoiceWidget(this, CurrentChoiceOptions);
+	ActiveChoiceWidget->AddToViewport();
+
+	PC->bShowMouseCursor = true;
+	FInputModeGameAndUI InputMode;
+	InputMode.SetWidgetToFocus(ActiveChoiceWidget->TakeWidget());
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	PC->SetInputMode(InputMode);
+}
+
+void ANextRoomChoiceManager::HideChoiceWidget()
+{
+	if (!ActiveChoiceWidget)
+	{
+		return;
+	}
+
+	ActiveChoiceWidget->CloseChoiceWidget();
+	ActiveChoiceWidget = nullptr;
+
+	if (APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr)
+	{
+		PC->bShowMouseCursor = false;
+		PC->SetInputMode(FInputModeGameOnly());
+	}
+}
+
 void ANextRoomChoiceManager::BeginCombatRewardChoice(
 	ACharacter* PlayerCharacter,
 	const FIntPoint& TargetRoomPos,
@@ -112,7 +242,9 @@ void ANextRoomChoiceManager::BeginCombatRewardChoice(
 	PendingPlayerCharacter = PlayerCharacter;
 	PendingTargetRoomPos = TargetRoomPos;
 	PendingExitDirection = ExitDirection;
+	CurrentChoiceOptions = BuildCombatRewardChoiceOptions();
 	bWaitingForCombatRewardChoice = true;
+	ShowChoiceWidget();
 	OnCombatRewardChoiceRequested.Broadcast(TargetRoomPos);
 
 	UE_LOG(
@@ -154,6 +286,7 @@ void ANextRoomChoiceManager::ApplyCombatRewardChoice(ECombatRoomRewardType Selec
 	}
 
 	TargetRoomData->CombatRewardType = SelectedRewardType;
+	HideChoiceWidget();
 	OnCombatRewardChoiceCompleted.Broadcast(PendingTargetRoomPos, SelectedRewardType);
 
 	if (ARoomActor* TargetRoomActor = ResolvedMapManager->FindSpawnedRoomByGridPos(PendingTargetRoomPos))
@@ -172,8 +305,10 @@ void ANextRoomChoiceManager::ApplyCombatRewardChoice(ECombatRoomRewardType Selec
 
 void ANextRoomChoiceManager::ClearPendingChoice()
 {
+	HideChoiceWidget();
 	PendingPlayerCharacter = nullptr;
 	PendingTargetRoomPos = FIntPoint::ZeroValue;
 	PendingExitDirection = EDoorDirection::Up;
+	CurrentChoiceOptions.Empty();
 	bWaitingForCombatRewardChoice = false;
 }
