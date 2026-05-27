@@ -36,7 +36,8 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 	const FRoomData& RoomData,
 	const FRoomInteriorLayout& InteriorLayout,
 	int32 MapSeed,
-	const FTransform& RoomTransform)
+	const FTransform& RoomTransform,
+	const FPlayerTendencyModifier& Tendency)
 {
 	ClearSpawnedMonsters();
 
@@ -57,8 +58,15 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 		return;
 	}
 
+	// CombatAggression에 따라 ScoreRange 스케일 (0.5x ~ 1.5x)
+	// 공격적 플레이어 → 몬스터 더 많이, 회피형 → 적게
+	const float AggressionScale = FMath::Lerp(0.5f, 1.5f, Tendency.CombatAggression);
+	FRoomMonsterSpawnRule AdjustedRule = *SpawnRule;
+	AdjustedRule.ScoreRange.X = FMath::Max(1, FMath::RoundToInt(SpawnRule->ScoreRange.X * AggressionScale));
+	AdjustedRule.ScoreRange.Y = FMath::Max(1, FMath::RoundToInt(SpawnRule->ScoreRange.Y * AggressionScale));
+
 	FRandomStream RandomStream = MakeRoomRandomStream(RoomData, MapSeed);
-	TArray<FRoomMonsterSpawnPick> MonsterSpawnList = BuildMonsterSpawnList(*SpawnRule, RandomStream);
+	TArray<FRoomMonsterSpawnPick> MonsterSpawnList = BuildMonsterSpawnList(AdjustedRule, RandomStream);
 	if (MonsterSpawnList.IsEmpty())
 	{
 		return;
@@ -70,7 +78,13 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 		return;
 	}
 
+	// ExplorationRate에 따라 배치 편향 조정
+	// 탐험형(1.0) → 방 외곽 분산 (편향 약하게)
+	// 직진형(0.0) → 문/통로 쪽 중앙 집중 (편향 강하게)
+	const float SavedBias = CenterSpawnBias;
+	CenterSpawnBias = CenterSpawnBias * FMath::Lerp(1.0f, 0.2f, Tendency.ExplorationRate);
 	SortCellsByCenterBias(SpawnableCells, InteriorLayout, RandomStream);
+	CenterSpawnBias = SavedBias;
 
 	TArray<TMap<TSubclassOf<ACharacter>, int32>> CellMonsterCounts;
 	CellMonsterCounts.SetNum(SpawnableCells.Num());

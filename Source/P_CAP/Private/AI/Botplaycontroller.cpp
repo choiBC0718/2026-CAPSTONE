@@ -2,12 +2,70 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/Character.h"
 #include "StageGoalTrigger.h"
 #include "QuadtreeManager.h"
-#include "BaseMonster.h"
 #include "AnalysisObstacle.h"
-#include "Components/SphereComponent.h"
+#include "AI/PlayerTrackerComponent.h"
 #include "Components/BoxComponent.h"
+#include "EngineUtils.h"
+#include "GameFramework/DamageType.h"
+
+// 600u 이내에서 가장 가까운 몬스터 탐색 (TActorIterator 거리 기반)
+static ACharacter* FindNearestMonster(APawn* MyPawn, float Radius = 600.f)
+{
+	ACharacter* Nearest = nullptr;
+	float MinDist = Radius;
+	for (TActorIterator<ACharacter> It(MyPawn->GetWorld()); It; ++It)
+	{
+		ACharacter* C = *It;
+		if (C == MyPawn) continue;
+		if (C->FindComponentByClass<UPlayerTrackerComponent>()) continue;
+		float Dist = FVector::Dist(MyPawn->GetActorLocation(), C->GetActorLocation());
+		if (Dist < MinDist) { MinDist = Dist; Nearest = C; }
+	}
+	return Nearest;
+}
+
+// 600u 이내에서 가장 가까운 장애물 탐색
+static AAnalysisObstacle* FindNearestObstacle(APawn* MyPawn, float Radius = 600.f)
+{
+	AAnalysisObstacle* Nearest = nullptr;
+	float MinDist = Radius;
+	for (TActorIterator<AAnalysisObstacle> It(MyPawn->GetWorld()); It; ++It)
+	{
+		AAnalysisObstacle* Obs = *It;
+		float Dist = FVector::Dist(MyPawn->GetActorLocation(), Obs->GetActorLocation());
+		if (Dist < MinDist) { MinDist = Dist; Nearest = Obs; }
+	}
+	return Nearest;
+}
+
+static void KillMonster(APawn* MyPawn, ACharacter* Monster, bool bMelee)
+{
+	if (!IsValid(Monster)) return;
+
+	UPlayerTrackerComponent* Tracker = MyPawn->FindComponentByClass<UPlayerTrackerComponent>();
+	if (Tracker)
+	{
+		if (bMelee) Tracker->MeleeKillCount++;
+		else        Tracker->RangedKillCount++;
+		Tracker->AddMonsterKill();
+	}
+
+	// GAS 사망 플로우(OnDead, 사망 애니메이션 등)가 타도록 ApplyDamage 먼저 시도
+	UGameplayStatics::ApplyDamage(Monster, 99999.f, nullptr, MyPawn, UDamageType::StaticClass());
+
+	// GAS가 없거나 즉사 처리가 안 됐을 경우 폴백
+	if (IsValid(Monster))
+		Monster->Destroy();
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 2.f, bMelee ? FColor::Orange : FColor::Cyan,
+			FString::Printf(TEXT("봇: %s 처치!"), bMelee ? TEXT("근접") : TEXT("원거리")));
+	}
+}
 
 ABotPlayController::ABotPlayController()
 {
@@ -16,12 +74,18 @@ ABotPlayController::ABotPlayController()
 	CombatWeight = 0.5f;
 	MeleePreference = 0.5f;
 	ObstaclePassPreference = 0.5f;
+	ExplorationPreference = 0.5f;
 	WaypointsVisited = 0;
 	MaxWaypointsBeforeGoal = 5;
 	bGoalIsNextTarget = false;
 	IdleTimer = 0.f;
 	MonsterCheckTimer = 0.f;
 	ObstacleCheckTimer = 0.f;
+	LastHandledMonster = nullptr;
+	bIsRangedAttack = false;
+	RunTimer = 0.f;
+	MaxRunTime = 90.f;
+	bReloadScheduled = false;
 }
 
 void ABotPlayController::OnPossess(APawn* InPawn)
@@ -57,13 +121,17 @@ void ABotPlayController::OnPossess(APawn* InPawn)
 
 void ABotPlayController::RandomizeParameters()
 {
-	CombatWeight = FMath::FRandRange(0.0f, 1.0f);
-	MeleePreference = FMath::FRandRange(0.0f, 1.0f);
+	CombatWeight           = FMath::FRandRange(0.0f, 1.0f);
+	MeleePreference        = FMath::FRandRange(0.0f, 1.0f);
 	ObstaclePassPreference = FMath::FRandRange(0.0f, 1.0f);
-	MaxWaypointsBeforeGoal = FMath::RandRange(0, 15);
+	ExplorationPreference  = FMath::FRandRange(0.0f, 1.0f);
 
-	UE_LOG(LogTemp, Warning, TEXT("봇 파라미터: 전투:%.2f / 근접:%.2f / 돌파:%.2f / 웨이포인트:%d→골"),
-		   CombatWeight, MeleePreference, ObstaclePassPreference, MaxWaypointsBeforeGoal);
+	// ExplorationPreference: 0=스피드런(웨이포인트 0개) / 1=탐험(웨이포인트 15개)
+	MaxWaypointsBeforeGoal = FMath::RoundToInt(FMath::Lerp(0.f, 15.f, ExplorationPreference));
+
+	UE_LOG(LogTemp, Warning,
+		TEXT("봇 파라미터: 전투:%.2f / 근접:%.2f / 돌파:%.2f / 탐험:%.2f / 웨이포인트:%d→골"),
+		CombatWeight, MeleePreference, ObstaclePassPreference, ExplorationPreference, MaxWaypointsBeforeGoal);
 }
 
 // =============================================
@@ -77,6 +145,36 @@ void ABotPlayController::Tick(float DeltaTime)
 		return;
 
 	if (!GetPawn()) return;
+
+	// 실제 시간 기준 런 타임 체크 (배속 영향 없음)
+	float RealDelta = DeltaTime / FMath::Max(GetWorld()->GetWorldSettings()->TimeDilation, 0.01f);
+	RunTimer += RealDelta;
+	if (RunTimer >= MaxRunTime && !bGoalIsNextTarget)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("봇: 시간 초과(%.0fs) → 강제 골 이동"), MaxRunTime);
+		CurrentState = EBotState::Roaming;
+		PickGoalAsTarget();
+		return;
+	}
+
+	// 골로 이동 중일 때 거리 직접 체크 (NavMesh/PathFollowing 우회)
+	if (bGoalIsNextTarget && !bReloadScheduled && GoalActor && GetPawn())
+	{
+		float DistToGoal = FVector::Dist(GetPawn()->GetActorLocation(), GoalActor->GetActorLocation());
+		if (DistToGoal < 300.f)
+		{
+			bReloadScheduled = true;
+			CurrentState = EBotState::Finished;
+			UE_LOG(LogTemp, Warning, TEXT("봇: 골 근접(%.0fu) → 데이터 정산 후 리로드"), DistToGoal);
+			GoalActor->ProcessGoalForActor(GetPawn());
+			FString LevelName = GetWorld()->GetName();
+			GetWorldTimerManager().SetTimer(ReloadTimerHandle, [this, LevelName]()
+			{
+				UGameplayStatics::OpenLevel(this, FName(*LevelName));
+			}, 1.5f, false);
+			return;
+		}
+	}
 
 	// Roaming 중일 때만 몬스터/장애물 체크
 	if (CurrentState == EBotState::Roaming)
@@ -105,7 +203,8 @@ void ABotPlayController::Tick(float DeltaTime)
 		{
 			IdleTimer = 0.f;
 			if (CurrentState == EBotState::ApproachingMonster ||
-				CurrentState == EBotState::AvoidingObstacle ||
+				CurrentState == EBotState::AvoidingMonster   ||
+				CurrentState == EBotState::AvoidingObstacle  ||
 				CurrentState == EBotState::PassingObstacle)
 			{
 				CurrentState = EBotState::Roaming;
@@ -133,32 +232,40 @@ void ABotPlayController::OnMoveCompleted(FAIRequestID RequestID, const FPathFoll
 	if (!Result.IsSuccess())
 		return;
 
-	// 몬스터 접근 완료 → 공격 → 복귀
+	// 몬스터 접근(or 원거리 대기) 완료 → 처치 → 복귀
 	if (CurrentState == EBotState::ApproachingMonster)
 	{
 		APawn* MyPawn = GetPawn();
 		if (MyPawn)
 		{
-			TArray<AActor*> Overlapping;
-			MyPawn->GetOverlappingActors(Overlapping, ABaseMonster::StaticClass());
-			if (Overlapping.Num() > 0)
+			ACharacter* Monster = FindNearestMonster(MyPawn, 800.f);
+			if (Monster)
 			{
-				ABaseMonster* Monster = Cast<ABaseMonster>(Overlapping[0]);
-				if (Monster)
-				{
-					Monster->ReceiveAttack(MyPawn);
-					UE_LOG(LogTemp, Warning, TEXT("봇: 접근 후 근접 처치!"));
-				}
+				bool bMelee = !bIsRangedAttack;
+				KillMonster(MyPawn, Monster, bMelee);
+				LastHandledMonster = nullptr;
+				UE_LOG(LogTemp, Warning, TEXT("봇: %s 처치!"), bMelee ? TEXT("근접") : TEXT("원거리"));
 			}
 		}
+		bIsRangedAttack = false;
 		CurrentState = EBotState::Roaming;
 		DecideNextAction();
 		return;
 	}
 
-	// 장애물 처리 완료 → 복귀
+	// 몬스터 회피 완료 → 복귀
+	if (CurrentState == EBotState::AvoidingMonster)
+	{
+		LastHandledMonster = nullptr;
+		CurrentState = EBotState::Roaming;
+		DecideNextAction();
+		return;
+	}
+
+	// 장애물 회피 완료 → 웨이포인트 증가 후 복귀
 	if (CurrentState == EBotState::PassingObstacle || CurrentState == EBotState::AvoidingObstacle)
 	{
+		WaypointsVisited++;
 		CurrentState = EBotState::Roaming;
 		DecideNextAction();
 		return;
@@ -169,10 +276,17 @@ void ABotPlayController::OnMoveCompleted(FAIRequestID RequestID, const FPathFoll
 	{
 		if (bGoalIsNextTarget)
 		{
-			// 마지막 웨이포인트(골)에 도착
-			// → StageGoalTrigger 오버랩이 자연스럽게 발동됨
 			CurrentState = EBotState::Finished;
-			UE_LOG(LogTemp, Warning, TEXT("봇: 골(마지막 웨이포인트) 도달!"));
+			UE_LOG(LogTemp, Warning, TEXT("봇: 골 도달 → 데이터 정산 후 레벨 리로드"));
+			if (GoalActor)
+				GoalActor->ProcessGoalForActor(GetPawn());
+			// 데이터 저장 완료 후 레벨 리로드 (AutoPlayManager.CheckRunCompletion 우회)
+			FTimerHandle ReloadTimer;
+			GetWorldTimerManager().SetTimer(ReloadTimer, [this]()
+			{
+				FString LevelName = GetWorld()->GetName();
+				UGameplayStatics::OpenLevel(this, FName(*LevelName));
+			}, 1.5f, false);
 			return;
 		}
 
@@ -193,96 +307,149 @@ void ABotPlayController::DecideNextAction()
 }
 
 // =============================================
-// 몬스터 전투
+// 몬스터 전투 (근접 or 원거리)
 // =============================================
 void ABotPlayController::CheckAndEngageMonsters()
 {
 	if (CurrentState != EBotState::Roaming) return;
-	if (bGoalIsNextTarget) return; // 골로 향하는 중에는 전투 무시
+	if (bGoalIsNextTarget) return;
 
 	APawn* MyPawn = GetPawn();
 	if (!MyPawn) return;
 
-	TArray<AActor*> OverlappingMonsters;
-	MyPawn->GetOverlappingActors(OverlappingMonsters, ABaseMonster::StaticClass());
-	if (OverlappingMonsters.Num() == 0) return;
+	// 600u 이내 거리 기반 탐색 (overlap 아님)
+	ACharacter* Monster = FindNearestMonster(MyPawn, 600.f);
+	if (!Monster || Monster == LastHandledMonster) return;
 
-	if (FMath::FRand() > CombatWeight) return;
+	LastHandledMonster = Monster;
+	float Dist = FVector::Dist(MyPawn->GetActorLocation(), Monster->GetActorLocation());
 
-	ABaseMonster* Monster = Cast<ABaseMonster>(OverlappingMonsters[0]);
-	if (!Monster) return;
-
-	bool bInInnerZone = Monster->InnerAttackZone->IsOverlappingActor(MyPawn);
-
-	if (bInInnerZone)
+	// CombatWeight 낮으면 도주
+	if (FMath::FRand() > CombatWeight)
 	{
-		Monster->ReceiveAttack(MyPawn);
-		UE_LOG(LogTemp, Warning, TEXT("봇: 근접 처치!"));
-	}
-	else if (FMath::FRand() < MeleePreference)
-	{
-		CurrentState = EBotState::ApproachingMonster;
-		MoveToActor(Monster, 10.f);
-	}
-	else
-	{
-		Monster->ReceiveAttack(MyPawn);
-		UE_LOG(LogTemp, Warning, TEXT("봇: 원거리 처치!"));
-	}
-}
-
-// =============================================
-// 장애물 판단
-// =============================================
-void ABotPlayController::CheckAndHandleObstacles()
-{
-	if (CurrentState != EBotState::Roaming) return;
-	if (bGoalIsNextTarget) return; // 골로 향하는 중에는 장애물 무시
-
-	APawn* MyPawn = GetPawn();
-	if (!MyPawn) return;
-
-	TArray<AActor*> OverlappingObstacles;
-	MyPawn->GetOverlappingActors(OverlappingObstacles, AAnalysisObstacle::StaticClass());
-
-	if (OverlappingObstacles.Num() == 0)
-	{
-		LastHandledObstacle = nullptr;
-		return;
-	}
-
-	AAnalysisObstacle* Obstacle = Cast<AAnalysisObstacle>(OverlappingObstacles[0]);
-	if (!Obstacle) return;
-
-	if (Obstacle == LastHandledObstacle) return;
-
-	LastHandledObstacle = Obstacle;
-
-	if (FMath::FRand() < ObstaclePassPreference)
-	{
-		CurrentState = EBotState::PassingObstacle;
-		MoveToLocation(Obstacle->GetActorLocation(), 10.f);
-		UE_LOG(LogTemp, Log, TEXT("봇: 장애물 돌파 시도"));
-	}
-	else
-	{
-		CurrentState = EBotState::AvoidingObstacle;
-		FVector MyLoc = MyPawn->GetActorLocation();
-		FVector AwayDir = (MyLoc - Obstacle->GetActorLocation()).GetSafeNormal();
-		FVector AvoidTarget = MyLoc + AwayDir * 500.f;
+		FVector FleeDir = (MyPawn->GetActorLocation() - Monster->GetActorLocation()).GetSafeNormal();
+		FVector FleeTarget = MyPawn->GetActorLocation() + FleeDir * 1000.f;
 
 		UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
 		if (NavSys)
 		{
 			FNavLocation NavLoc;
-			if (NavSys->ProjectPointToNavigation(AvoidTarget, NavLoc, FVector(500.f, 500.f, 200.f)))
+			if (NavSys->ProjectPointToNavigation(FleeTarget, NavLoc, FVector(500.f, 500.f, 200.f)))
+				FleeTarget = NavLoc.Location;
+		}
+		CurrentState = EBotState::AvoidingMonster;
+		MoveToLocation(FleeTarget, 100.f);
+		UE_LOG(LogTemp, Warning, TEXT("봇: 몬스터 회피 (거리 %.0fu)"), Dist);
+		return;
+	}
+
+	// MeleePreference → 근접 or 원거리 결정
+	if (FMath::FRand() < MeleePreference)
+	{
+		// 근접 공격
+		bIsRangedAttack = false;
+		if (Dist <= 200.f)
+		{
+			KillMonster(MyPawn, Monster, true);
+			LastHandledMonster = nullptr;
+			UE_LOG(LogTemp, Warning, TEXT("봇: 즉시 근접 처치!"));
+		}
+		else
+		{
+			CurrentState = EBotState::ApproachingMonster;
+			MoveToActor(Monster, 10.f);
+			UE_LOG(LogTemp, Warning, TEXT("봇: 근접 접근 중 (%.0fu)"), Dist);
+		}
+	}
+	else
+	{
+		// 원거리 공격 — 400u 이상이면 현 위치에서, 그 이하이면 뒤로 물러난 후 처치
+		bIsRangedAttack = true;
+		if (Dist >= 400.f)
+		{
+			// 충분히 멀면 즉시 원거리 처치
+			KillMonster(MyPawn, Monster, false);
+			LastHandledMonster = nullptr;
+			UE_LOG(LogTemp, Warning, TEXT("봇: 원거리 즉시 처치! (%.0fu)"), Dist);
+		}
+		else
+		{
+			// 가까우면 뒤로 물러난 후 OnMoveCompleted에서 처치
+			FVector BackDir = (MyPawn->GetActorLocation() - Monster->GetActorLocation()).GetSafeNormal();
+			FVector BackTarget = MyPawn->GetActorLocation() + BackDir * (500.f - Dist);
+
+			UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
+			if (NavSys)
 			{
-				AvoidTarget = NavLoc.Location;
+				FNavLocation NavLoc;
+				if (NavSys->ProjectPointToNavigation(BackTarget, NavLoc, FVector(500.f, 500.f, 200.f)))
+					BackTarget = NavLoc.Location;
 			}
+			CurrentState = EBotState::ApproachingMonster;
+			MoveToLocation(BackTarget, 50.f);
+			UE_LOG(LogTemp, Warning, TEXT("봇: 원거리용 후퇴 중 (%.0fu→500u)"), Dist);
+		}
+	}
+}
+
+// =============================================
+// 장애물 판단 (거리 기반 선제 감지)
+// =============================================
+void ABotPlayController::CheckAndHandleObstacles()
+{
+	if (CurrentState != EBotState::Roaming) return;
+	if (bGoalIsNextTarget) return;
+
+	APawn* MyPawn = GetPawn();
+	if (!MyPawn) return;
+
+	// 600u 이내 가장 가까운 장애물 탐색 (overlap 아님 → 벽에 박히기 전에 감지)
+	AAnalysisObstacle* Obstacle = FindNearestObstacle(MyPawn, 600.f);
+
+	if (!Obstacle)
+	{
+		LastHandledObstacle = nullptr;
+		return;
+	}
+
+	if (Obstacle == LastHandledObstacle) return;
+
+	LastHandledObstacle = Obstacle;
+
+	FVector MyLoc = MyPawn->GetActorLocation();
+	FVector ObstacleLoc = Obstacle->GetActorLocation();
+	FVector ToObstacle = (ObstacleLoc - MyLoc).GetSafeNormal();
+
+	UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
+
+	UPlayerTrackerComponent* Tracker = MyPawn->FindComponentByClass<UPlayerTrackerComponent>();
+
+	if (FMath::FRand() < ObstaclePassPreference)
+	{
+		// 돌파 결정: 즉시 카운트, 웨이포인트 1 증가, 현재 경로 유지
+		if (Tracker) Tracker->PassedObstacleCount++;
+		WaypointsVisited++;
+		UE_LOG(LogTemp, Log, TEXT("봇: 장애물 돌파 결정 (웨이포인트 %d/%d)"), WaypointsVisited, MaxWaypointsBeforeGoal);
+	}
+	else
+	{
+		// 회피 결정: 즉시 카운트 후 측면으로 이동
+		if (Tracker) Tracker->AvoidedObstacleCount++;
+
+		FVector SideDir = FVector(-ToObstacle.Y, ToObstacle.X, 0.f);
+		if (FMath::RandBool()) SideDir = -SideDir;
+		FVector AvoidTarget = MyLoc + SideDir * 700.f;
+
+		if (NavSys)
+		{
+			FNavLocation NavLoc;
+			if (NavSys->ProjectPointToNavigation(AvoidTarget, NavLoc, FVector(500.f, 500.f, 200.f)))
+				AvoidTarget = NavLoc.Location;
 		}
 
+		CurrentState = EBotState::AvoidingObstacle;
 		MoveToLocation(AvoidTarget, 100.f);
-		UE_LOG(LogTemp, Log, TEXT("봇: 장애물 회피 시도"));
+		UE_LOG(LogTemp, Log, TEXT("봇: 장애물 측면 회피"));
 	}
 }
 
@@ -326,31 +493,54 @@ void ABotPlayController::PickGoalAsTarget()
 	if (!GetPawn() || !GoalActor)
 	{
 		CurrentState = EBotState::Finished;
+		if (GoalActor) GoalActor->ProcessGoalForActor(GetPawn());
 		return;
 	}
 
 	bGoalIsNextTarget = true;
 	FVector GoalLoc = GoalActor->GetActorLocation();
 
+	// GoalTrigger 위치를 NavMesh로 투영 (NavMesh 밖에 있으면 경로 탐색 실패)
+	UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
+	if (NavSys)
+	{
+		FNavLocation NavLoc;
+		// 반경을 크게 잡아 NavMesh 위 가장 가까운 점을 찾음
+		if (NavSys->ProjectPointToNavigation(GoalLoc, NavLoc, FVector(1000.f, 1000.f, 500.f)))
+			GoalLoc = NavLoc.Location;
+	}
+
 	UE_LOG(LogTemp, Warning, TEXT("봇: 웨이포인트 %d개 완료 → 골로 이동 (마지막 웨이포인트)"), WaypointsVisited);
 
-	EPathFollowingRequestResult::Type Result = MoveToLocation(GoalLoc, 5.f);
+	EPathFollowingRequestResult::Type Result = MoveToLocation(GoalLoc, 50.f);
+
+	auto FinishRun = [this]()
+	{
+		CurrentState = EBotState::Finished;
+		if (GoalActor) GoalActor->ProcessGoalForActor(GetPawn());
+		FTimerHandle ReloadTimer;
+		GetWorldTimerManager().SetTimer(ReloadTimer, [this]()
+		{
+			FString LevelName = GetWorld()->GetName();
+			UGameplayStatics::OpenLevel(this, FName(*LevelName));
+		}, 1.5f, false);
+	};
 
 	if (Result == EPathFollowingRequestResult::AlreadyAtGoal)
 	{
-		CurrentState = EBotState::Finished;
-		UE_LOG(LogTemp, Warning, TEXT("봇: 이미 골 위치"));
+		UE_LOG(LogTemp, Warning, TEXT("봇: 골 도달(이미 위치) → 정산"));
+		FinishRun();
 	}
 	else if (Result == EPathFollowingRequestResult::Failed)
 	{
-		// 골로 못 가면 재시도
-		bGoalIsNextTarget = false;
-		FTimerHandle RetryTimer;
-		GetWorld()->GetTimerManager().SetTimer(RetryTimer, [this]()
+		UE_LOG(LogTemp, Warning, TEXT("봇: 골 경로 실패 → MoveToActor 재시도"));
+		EPathFollowingRequestResult::Type FallbackResult = MoveToActor(GoalActor, 100.f);
+		// RequestSuccessful 이 아니면 (AlreadyAtGoal 포함) 즉시 정산
+		if (FallbackResult != EPathFollowingRequestResult::RequestSuccessful)
 		{
-			if (CurrentState != EBotState::Finished)
-				PickGoalAsTarget();
-		}, 2.0f, false);
+			UE_LOG(LogTemp, Warning, TEXT("봇: 골 즉시 정산 (FallbackResult=%d)"), (int32)FallbackResult);
+			FinishRun();
+		}
 	}
 }
 

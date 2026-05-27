@@ -64,9 +64,9 @@ void AQuadtreeManager::UpdateNodeVisit(FQuadtreeNode* Node, FVector PlayerLocati
 {
 	if (Node == nullptr) return;
 
-	// 플레이어 위치가 이 노드 영역 안에 있는지 검사
-	FBox NodeBox(Node->Center - Node->Extent, Node->Center + Node->Extent);
-	if (!NodeBox.IsInside(PlayerLocation)) return;
+	// XY 평면만 체크 (Z는 캡슐 중심 높이에 따라 달라지므로 무시)
+	if (FMath::Abs(PlayerLocation.X - Node->Center.X) > Node->Extent.X) return;
+	if (FMath::Abs(PlayerLocation.Y - Node->Center.Y) > Node->Extent.Y) return;
 
 	// 리프 노드라면 방문 횟수 증가
 	if (Node->Children[0] == nullptr)

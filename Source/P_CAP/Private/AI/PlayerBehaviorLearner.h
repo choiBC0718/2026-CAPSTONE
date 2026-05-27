@@ -14,16 +14,16 @@ struct FPlayerTendencyModifier
 {
 	GENERATED_BODY()
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "AI Tendency")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tendency")
 	float ExplorationRate;  // 탐색을 좋아하는 정도 (방문율+시간 기반)
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "AI Tendency")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tendency")
 	float CombatAggression; // 전투를 좋아하는 정도 (처치율)
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "AI Tendency")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tendency")
 	float MeleePreference;  // 근접전을 선호하는 정도
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "AI Tendency")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tendency")
 	float ObstacleBypass;   // 장애물을 피하지 않고 돌파하는 정도
 
 	FPlayerTendencyModifier()

@@ -146,6 +146,27 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 		return;
 	}
 
+	// 성향 결정: 수동 오버라이드 or K-Means 결과
+	FPlayerTendencyModifier Tendency;
+	if (bUseManualTendency)
+	{
+		Tendency = ManualTendency;
+		UE_LOG(LogTemp, Warning, TEXT("MapManager: 수동 성향 적용 — Combat=%.2f, Explore=%.2f, Obstacle=%.2f"),
+			Tendency.CombatAggression, Tendency.ExplorationRate, Tendency.ObstacleBypass);
+	}
+	else
+	{
+		APlayerBehaviorLearner* Learner = Cast<APlayerBehaviorLearner>(
+			UGameplayStatics::GetActorOfClass(World, APlayerBehaviorLearner::StaticClass()));
+		if (Learner)
+		{
+			Tendency = Learner->GetCurrentPlayerTendency();
+			UE_LOG(LogTemp, Log, TEXT("MapManager: K-Means 성향 적용 — Combat=%.2f, Explore=%.2f, Obstacle=%.2f"),
+				Tendency.CombatAggression, Tendency.ExplorationRate, Tendency.ObstacleBypass);
+		}
+	}
+	LastAppliedTendency = Tendency;
+
 	for (const TPair<FIntPoint, FRoomData>& Pair : Layout.Rooms)
 	{
 		const FRoomData& RoomData = Pair.Value;
@@ -171,7 +192,7 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 			continue;
 		}
 
-		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed, CurrentMonsterSpawnDataAsset);
+		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed, CurrentMonsterSpawnDataAsset, Tendency);
 		SpawnedRooms.Add(SpawnedRoom);
 		SpawnedRoomMap.Add(RoomData.GridPos, SpawnedRoom);
 

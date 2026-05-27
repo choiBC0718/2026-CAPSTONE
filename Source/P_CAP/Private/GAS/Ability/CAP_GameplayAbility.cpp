@@ -59,7 +59,7 @@ void UCAP_GameplayAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 	
 	bIsCasting = false;
 	ChargedTime = 1.f;
-	
+
 	float AttackSpeed = 1.f;
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
 	if (ASC)

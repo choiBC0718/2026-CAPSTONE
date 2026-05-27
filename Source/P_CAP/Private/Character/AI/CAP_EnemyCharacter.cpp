@@ -7,6 +7,10 @@
 #include "Components/WidgetComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "Widget/Common/CAP_OverheadStatsGauge.h"
+#include "AI/PlayerTrackerComponent.h"
+#include "AI/PlayerBehaviorLearner.h"
+#include "GameFramework/PlayerController.h"
+#include "EngineUtils.h"
 
 ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 {
@@ -71,6 +75,33 @@ void ACAP_EnemyCharacter::OnRoomDeactivated_Implementation()
 void ACAP_EnemyCharacter::OnDead()
 {
 	SetEnemyAIEnabled(false);
+
+	// AITESTMAP처럼 PlayerBehaviorLearner가 있는 맵에서만 카운트
+	bool bLearnerExists = false;
+	for (TActorIterator<APlayerBehaviorLearner> It(GetWorld()); It; ++It)
+	{
+		bLearnerExists = true;
+		break;
+	}
+	if (!bLearnerExists) return;
+
+	// 순수 플레이어(APlayerController)만 카운트 — 봇(ABotPlayController)은 KillMonster()에서 직접 처리
+	for (TActorIterator<APawn> It(GetWorld()); It; ++It)
+	{
+		UPlayerTrackerComponent* Tracker = It->FindComponentByClass<UPlayerTrackerComponent>();
+		if (!Tracker) continue;
+
+		if (!Cast<APlayerController>(It->GetController())) break;
+
+		float Dist = FVector::Dist(GetActorLocation(), It->GetActorLocation());
+		if (Dist <= 300.f)
+			Tracker->MeleeKillCount++;
+		else
+			Tracker->RangedKillCount++;
+
+		Tracker->AddMonsterKill();
+		break;
+	}
 }
 
 void ACAP_EnemyCharacter::InitializeHealthBarWidget()

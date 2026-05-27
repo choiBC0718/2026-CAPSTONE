@@ -4,7 +4,6 @@
 #include "AIController.h"
 #include "BotPlayController.generated.h"
 
-class ABaseMonster;
 class AStageGoalTrigger;
 class AQuadtreeManager;
 class AAnalysisObstacle;
@@ -14,6 +13,7 @@ enum class EBotState : uint8
 	Idle,
 	Roaming,
 	ApproachingMonster,
+	AvoidingMonster,
 	AvoidingObstacle,
 	PassingObstacle,
 	Finished
@@ -39,7 +39,8 @@ private:
 	float CombatWeight;
 	float MeleePreference;
 	float ObstaclePassPreference;
-	int32 MaxWaypointsBeforeGoal; // 이만큼 돌아다닌 후 마지막에 골로 감
+	float ExplorationPreference;  // 0=골 직행(스피드런) / 1=맵 전체 탐험
+	int32 MaxWaypointsBeforeGoal;
 	int32 WaypointsVisited;
 	bool bGoalIsNextTarget;       // 현재 이동 중인 목표가 골인지
 
@@ -54,11 +55,21 @@ private:
 	AQuadtreeManager* CachedQuadtree;
 
 	UPROPERTY()
+	ACharacter* LastHandledMonster;
+
+	UPROPERTY()
 	AAnalysisObstacle* LastHandledObstacle;
+
+	bool bIsRangedAttack;
 
 	float IdleTimer;
 	float MonsterCheckTimer;
 	float ObstacleCheckTimer;
+	float RunTimer;
+	float MaxRunTime;
+
+	FTimerHandle ReloadTimerHandle;
+	bool bReloadScheduled;
 
 	void RandomizeParameters();
 	void DecideNextAction();

@@ -10,10 +10,15 @@ class P_CAP_API AStageGoalTrigger : public AActor
 {
 	GENERATED_BODY()
 	
-public:	
+public:
 	AStageGoalTrigger();
 
+	// 봇이 물리 충돌 없이 골 처리를 직접 호출할 때 사용
+	void ProcessGoalForActor(AActor* OtherActor);
+
 protected:
+	virtual void BeginPlay() override;
+
 	UPROPERTY(VisibleAnywhere, Category = "Trigger")
 	UBoxComponent* GoalZone;
 
