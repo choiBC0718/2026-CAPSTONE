@@ -12,7 +12,7 @@ ACAP_WorldNPC::ACAP_WorldNPC()
 	NPCMesh = CreateDefaultSubobject<USkeletalMeshComponent>("NPCMesh");
 	NPCMesh->SetupAttachment(InteractionSphere);
 	NPCMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	NPCMesh->SetRelativeLocation(FVector(0.f,0.f,-250.f));
+	NPCMesh->SetRelativeLocation(FVector(0.f,0.f,-130.f));
 	NPCMesh->SetRelativeRotation(FRotator(0.0f,-90.f,0.f));
 
 	InteractionSphere->SetSphereRadius(250.f);

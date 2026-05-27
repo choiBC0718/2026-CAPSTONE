@@ -10,27 +10,34 @@
 ACAP_InteractableBase::ACAP_InteractableBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
+
+	BaseCollision = CreateDefaultSubobject<USphereComponent>("BaseCollision");
+	SetRootComponent(BaseCollision);
+
+	BaseCollision->SetSphereRadius(30.f);
+	BaseCollision->SetCollisionProfileName(FName("InteractableBody"));
+	BaseCollision->SetSimulatePhysics(true);
+	
+	BaseCollision->BodyInstance.bLockXRotation = true;
+	BaseCollision->BodyInstance.bLockYRotation = true;
+	BaseCollision->BodyInstance.bLockXTranslation = true;
+	BaseCollision->BodyInstance.bLockYTranslation = true;
+	BaseCollision->SetNotifyRigidBodyCollision(true);
 	
 	InteractionSphere = CreateDefaultSubobject<USphereComponent>("InteractionSphere");
-	SetRootComponent(InteractionSphere);
-	
-	InteractionSphere->SetSphereRadius(130.f);
+	InteractionSphere->SetupAttachment(RootComponent);
+	InteractionSphere->SetSphereRadius(200.f);
 	InteractionSphere->SetCollisionProfileName(FName("Interactable"));
-	InteractionSphere->SetSimulatePhysics(true);
-	
-	InteractionSphere->BodyInstance.bLockXRotation = true;
-	InteractionSphere->BodyInstance.bLockYRotation = true;
-	InteractionSphere->BodyInstance.bLockXTranslation = true;
-	InteractionSphere->BodyInstance.bLockYTranslation = true;
-	InteractionSphere->SetNotifyRigidBodyCollision(true);
+	InteractionSphere->SetRelativeLocation(FVector(0, 0, 100.f));
 }
 
 
 void ACAP_InteractableBase::BeginPlay()
 {
 	Super::BeginPlay();
-	InteractionSphere->SetSimulatePhysics(true);
-	InteractionSphere->OnComponentHit.AddDynamic(this, &ACAP_InteractableBase::OnGroundHit);
+	BaseCollision->SetSimulatePhysics(true);
+	BaseCollision->OnComponentHit.AddDynamic(this, &ACAP_InteractableBase::OnGroundHit);
+	
 	InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &ACAP_InteractableBase::OnInteractSphereBeginOverlap);
 	InteractionSphere->OnComponentEndOverlap.AddDynamic(this, &ACAP_InteractableBase::OnInteractSphereEndOverlap);
 }
@@ -39,7 +46,7 @@ void ACAP_InteractableBase::BeginPlay()
 void ACAP_InteractableBase::OnGroundHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	InteractionSphere->SetSimulatePhysics(false);
+	BaseCollision->SetSimulatePhysics(false);
 }
 
 void ACAP_InteractableBase::OnInteractSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,

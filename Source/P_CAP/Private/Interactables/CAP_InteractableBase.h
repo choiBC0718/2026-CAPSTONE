@@ -24,6 +24,9 @@ public:
 	virtual void DropItem() {}
 	
 protected:
+	// 바닥 충돌 담당
+	UPROPERTY(VisibleAnywhere, Category="Interaction")
+	class USphereComponent* BaseCollision;
 	// 플레이어 오버랩 상호작용 컴포넌트
 	UPROPERTY(VisibleAnywhere, Category="Interaction")
 	class USphereComponent* InteractionSphere;
