@@ -33,6 +33,16 @@ FGameplayTag UCAP_AbilitySystemStatics::GetSkillAttackTag()
 	return FGameplayTag::RequestGameplayTag("Ability.Attack.Skill");
 }
 
+FGameplayTag UCAP_AbilitySystemStatics::GetAnimHitTag()
+{
+	return FGameplayTag::RequestGameplayTag("Ability.Event.AnimHit");
+}
+
+FGameplayTag UCAP_AbilitySystemStatics::GetAnimSpawnTag()
+{
+	return FGameplayTag::RequestGameplayTag("Ability.Event.AnimSpawn");
+}
+
 FGameplayTag UCAP_AbilitySystemStatics::GetDamageTag()
 {
 	return FGameplayTag::RequestGameplayTag("Ability.Event.Damage");
@@ -50,7 +60,7 @@ FGameplayTag UCAP_AbilitySystemStatics::GetSpawnProjectileTag()
 
 FGameplayTag UCAP_AbilitySystemStatics::GetAbilityChargeTimeTag()
 {
-	return FGameplayTag::RequestGameplayTag("Ability.Event.Charge.Time");
+	return FGameplayTag::RequestGameplayTag("Data.Damage.Charge");
 }
 
 FGameplayTag UCAP_AbilitySystemStatics::GetDataDamageMultiplierTag()

@@ -14,16 +14,6 @@
 ACAP_WorldWeapon::ACAP_WorldWeapon()
 {
 	PrimaryActorTick.bCanEverTick = false;
-
-	RootCollision = CreateDefaultSubobject<USphereComponent>("RootCollision");
-	SetRootComponent(RootCollision);
-	RootCollision->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
-	RootCollision->SetCollisionResponseToAllChannels(ECR_Ignore);
-	RootCollision->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
-	RootCollision->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
-	RootCollision->SetSimulatePhysics(true);
-
-	RootScene->SetupAttachment(RootCollision);
 	
 	MeshContainer=CreateDefaultSubobject<USceneComponent>("MeshContainer");
 	MeshContainer->SetupAttachment(InteractionSphere);
@@ -50,18 +40,24 @@ void ACAP_WorldWeapon::BeginPlay()
 	if (!WeaponInstance && WeaponDA)
 	{
 		WeaponInstance = NewObject<UCAP_WeaponInstance>(this);
-		WeaponInstance->InitializeWeapon(WeaponDA);
+		WeaponInstance->Initialize(WeaponDA);
 		WeaponInstance->LoadWeaponAssets(FStreamableDelegate::CreateLambda([](){}));
 	}
-	RootCollision->OnComponentHit.AddDynamic(this, &ACAP_WorldWeapon::OnRootCollisionHit);
 	
 	if (WeaponInstance)
 	{
 		const UCAP_RewardSettings* RewardSetting = GetDefault<UCAP_RewardSettings>();
-		if (const FDisassembleRewardRow* Row = RewardSetting->DisassembleRewardMap.Find(WeaponInstance->GetCurrentGrade()))
+		if (RewardSetting->DisassembleRewardDT.IsNull())
+			return;
+
+		if (UDataTable* LoadedDT = RewardSetting->DisassembleRewardDT.LoadSynchronous())
 		{
-			CachedBaseRewardAmount = Row->WeaponRewardAmount;
-			CachedRewardCurrencyType = Row->WeaponCurrencyType;
+			FName Grade = RewardSetting->GetRowNameFromGrade(WeaponInstance->GetCurrentGrade());
+			if (const FDisassembleRewardRow* RewardRow = LoadedDT->FindRow<FDisassembleRewardRow>(Grade,""))
+			{
+				CachedBaseRewardAmount = RewardRow->WeaponRewardAmount;
+				CachedRewardCurrencyType = RewardRow->WeaponCurrencyType;
+			}
 		}
 	}
 }
@@ -71,19 +67,6 @@ void ACAP_WorldWeapon::OnConstruction(const FTransform& Transform)
 	Super::OnConstruction(Transform);
 
 	if (!WeaponMesh_L || !WeaponMesh_R)	return;
-/*
-	WeaponMesh_R->SetSkeletalMesh(nullptr);
-	WeaponMesh_L->SetSkeletalMesh(nullptr);
-
-	UCAP_WeaponDataAsset* DAToUse = nullptr;
-	// 생성된 Instance가 있다면 그 Instance를 만들 때 사용한 DA 이용
-	if (WeaponInstance && WeaponInstance->GetWeaponDA())
-	{
-		DAToUse = WeaponInstance->GetWeaponDA();
-	}// Instance없다면 그냥 설정한 DA 이용
-	else if (WeaponDA){
-		DAToUse = WeaponDA;
-	}*/
 
 	if (WeaponDA && !WeaponDA->WeaponVisualInfos.IsEmpty())
 	{
@@ -144,15 +127,35 @@ FInteractionPayload ACAP_WorldWeapon::GetInteractionPayload() const
 
 void ACAP_WorldWeapon::DropItem()
 {
-	if (RootCollision)
+	if (InteractionSphere)
 	{
 		FVector DropImpulse = FVector(0.f,0.f, 600.f);
-		RootCollision->AddImpulse(DropImpulse, NAME_None, true);
+		InteractionSphere->AddImpulse(DropImpulse, NAME_None, true);
+	}
+	SetWeaponSkeletalMesh();
+}
+
+void ACAP_WorldWeapon::SetWeaponSkeletalMesh()
+{
+	if (WeaponInstance && WeaponInstance->GetWeaponDA())
+	{
+		for (const FWeaponVisualInfo& VisualInfo : WeaponInstance->GetWeaponDA()->WeaponVisualInfos)
+		{
+			if (VisualInfo.EquipHand == EEquipHand::Left)
+			{
+				WeaponMesh_L->SetSkeletalMesh(VisualInfo.WeaponMesh.LoadSynchronous());
+				WeaponMesh_L->SetRelativeTransform(VisualInfo.ConstructionOffset);
+			}
+			else
+			{
+				WeaponMesh_R->SetSkeletalMesh(VisualInfo.WeaponMesh.LoadSynchronous());
+				WeaponMesh_R->SetRelativeTransform(VisualInfo.ConstructionOffset);
+			}
+		}
 	}
 }
 
-void ACAP_WorldWeapon::OnRootCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
-                                          UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+void ACAP_WorldWeapon::InitializeWeaponData(class UCAP_WeaponDataAsset* NewWeaponDA)
 {
-	RootCollision->SetSimulatePhysics(false);
+	WeaponDA = NewWeaponDA;
 }

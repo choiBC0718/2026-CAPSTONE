@@ -26,9 +26,6 @@ public:
 	// 최대 스택 수
 	UPROPERTY(EditDefaultsOnly, meta=(ClampMin="1"), Category="Effect")
 	int32 MaxStackCount = 1;
-	// 다른 DOT를 구별하기 위한 태그
-	UPROPERTY(EditDefaultsOnly, meta=(Categories="State.Debuff"), Category="Effect")
-	FGameplayTag DynamicTag;
 	
 	UPROPERTY(EditDefaultsOnly, Category="Value")
 	ESkillDamageType DamageType = ESkillDamageType::Physical;

@@ -26,12 +26,13 @@ public:
 
 	virtual void NativeOpenMenu() override;
 	virtual void NativeCloseMenu() override;
-	virtual FOnMenuClosedSignature& GetOnMenuClosedDelegate() override;
+	virtual FOnMenuClosedSignature& GetOnMenuClosedDelegate() override {return OnMenuClosed;}
+	virtual void HandleUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime) override;
+	virtual void HandleChangeSelectedSlot(FVector2D InputVal) override;
 	
 	void NavigationInput(FVector2D InputVal);
 	void RefreshMenu();
 	void SwitchCharacterMenuTab();
-	void RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime);
 	
 	UPROPERTY()
 	FOnMenuClosedSignature OnMenuClosed;

@@ -58,9 +58,20 @@ void UCAP_CharacterMenuWidget::NativeCloseMenu()
 	}
 }
 
-FOnMenuClosedSignature& UCAP_CharacterMenuWidget::GetOnMenuClosedDelegate()
+void UCAP_CharacterMenuWidget::HandleUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime)
 {
-	return OnMenuClosed;
+	if (!bIsAttributeTabOpen && InventoryTabWidget && InventoryTabWidget->GetItemEquipPanel())
+	{
+		InventoryTabWidget->GetItemEquipPanel()->HandleInteractionInput(TriggerEvent, ElapsedTime);
+	}
+}
+
+void UCAP_CharacterMenuWidget::HandleChangeSelectedSlot(FVector2D InputVal)
+{
+	if (InventoryTabWidget && InventoryTabWidget->IsVisible())
+	{
+		InventoryTabWidget->NavigationInput(InputVal);
+	}
 }
 
 void UCAP_CharacterMenuWidget::NavigationInput(FVector2D InputVal)
@@ -94,14 +105,6 @@ void UCAP_CharacterMenuWidget::SwitchCharacterMenuTab()
 	{
 		bIsAttributeTabOpen = false;
 		PlayAnimation(SwitchTab, 0.f, 1, EUMGSequencePlayMode::Reverse, 1.f, false);
-	}
-}
-
-void UCAP_CharacterMenuWidget::RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime)
-{
-	if (!bIsAttributeTabOpen && InventoryTabWidget && InventoryTabWidget->GetItemEquipPanel())
-	{
-		InventoryTabWidget->GetItemEquipPanel()->HandleInteractionInput(TriggerEvent, ElapsedTime);
 	}
 }
 

@@ -23,6 +23,7 @@ class UAN_HitBox : public UAnimNotify
 {
 	GENERATED_BODY()
 public:
+	UAN_HitBox();
 	virtual void Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
 	
 protected:

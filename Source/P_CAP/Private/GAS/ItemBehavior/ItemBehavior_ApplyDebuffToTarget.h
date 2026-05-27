@@ -19,7 +19,7 @@ class UItemBehavior_ApplyDebuffToTarget : public UCAP_ItemBehaviorBase
 
 public:
 	// 효과를 발동시킬 조건의 트리거 태그
-	UPROPERTY(EditDefaultsOnly, meta=(Categories="Item.Trigger"), Category="Trigger")
+	UPROPERTY(EditDefaultsOnly, meta=(Categories="Item.Trigger.Hit"), Category="Trigger")
 	FGameplayTag TriggerEventTag;
 	// 효과를 발동시킬 확률
 	UPROPERTY(EditDefaultsOnly, meta=(ClampMin="0.0", ClampMax="100.0"), Category="Trigger")

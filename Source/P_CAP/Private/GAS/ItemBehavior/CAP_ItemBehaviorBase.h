@@ -26,9 +26,6 @@ public:
 	virtual void OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
 	//아이템 해제 시 호출
 	virtual void OnUnequipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
-
-	UPROPERTY(EditDefaultsOnly, meta=(ClampMin="0.0"))
-	float Cooldown = 0.f;
 	
 protected:
 	// 아이템이 장착될 때 트리거 태그를 들을 수 있도록 ASC에 태그 주파수 설정
@@ -42,8 +39,14 @@ protected:
 	bool IsOnCooldown(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
 	void ConsumeCooldown(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
 	
-	void InitGameplayEffectToZero(const FGameplayEffectSpecHandle& SpecHandle, TSubclassOf<UGameplayEffect> BuffGE) const;
+	void InitGameplayEffectToDefault(const FGameplayEffectSpecHandle& SpecHandle, TSubclassOf<UGameplayEffect> BuffGE, float DefaultVal=0.f) const;
 
+	UPROPERTY(EditDefaultsOnly, meta=(ClampMin="0.0"))
+	float Cooldown = 0.f;
+	// 아이템 내부 여러 효과를 식별하기 위한 행동의 고유 태그 (한개의 아이템에 2개 Behavior 존재시, 각자 다른 태그로 설정해야 함)
+	UPROPERTY(EditDefaultsOnly, meta=(Categories="Item.Behavior"))
+	FGameplayTag BehaviorTag;
+	
 	FGameplayTag BaseDamageTag;
 	FGameplayTag DamageMultiplierTag;
 	FGameplayTag StackTag;

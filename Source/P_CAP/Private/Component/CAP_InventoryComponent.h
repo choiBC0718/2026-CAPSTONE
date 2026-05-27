@@ -10,6 +10,15 @@
 #include "Data/CAP_EquipItemEffectTypes.h"
 #include "CAP_InventoryComponent.generated.h"
 
+
+USTRUCT()
+struct FActiveGEHandleArray
+{	// UPROPERTY() Map의 Value로 사용하기 위한 구조체
+	GENERATED_BODY()
+	UPROPERTY()
+	TArray<FActiveGameplayEffectHandle> Handles;
+};
+
 // 인벤토리 변경 알림 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInventoryChanged, class UCAP_ItemInstance*, ChangedItem, bool, bIsAdded);
 // 인벤토리 가득 참 델리게이트
@@ -80,7 +89,7 @@ private:
 
 	// 아이템의 효과를 저장해 놓을 Map <Key: 아이템 정보 || Value: 아이템 효과>
 	UPROPERTY()
-	TMap<class UCAP_ItemInstance*, FActiveGameplayEffectHandle> ItemStatHandleMap;
+	TMap<class UCAP_ItemInstance*, FActiveGEHandleArray> ItemStatHandleMap;
 	// 아이템의 스킬 저장해놓을 Map <Key: 아이템 정보 || Value: 아이템 스킬>
 	UPROPERTY()
 	TMap<class UCAP_ItemInstance*, FGameplayAbilitySpecHandle> GrantedItemAbilityMap;

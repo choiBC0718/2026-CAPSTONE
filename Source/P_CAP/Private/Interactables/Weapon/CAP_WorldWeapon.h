@@ -23,17 +23,14 @@ public:
 
 	virtual void Interact(class AActor* InsActor, EInteractAction ActionType) override;
 	virtual FInteractionPayload GetInteractionPayload() const override;
-	
-	UPROPERTY(EditDefaultsOnly, Category="Weapon Data")
-	class UCAP_WeaponDataAsset* WeaponDA;
+
+	void InitializeWeaponData(class UCAP_WeaponDataAsset* NewWeaponDA);
 	
 	UPROPERTY(BlueprintReadWrite,Category="Weapon Data", meta=(ExposeOnSpawn="true"))
 	class UCAP_WeaponInstance* WeaponInstance;
 
 	virtual void DropItem() override;
 protected:
-	UPROPERTY(VisibleAnywhere, Category="Component")
-	class USphereComponent* RootCollision;
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class USceneComponent* MeshContainer;
 	UPROPERTY(VisibleAnywhere, Category="Component")
@@ -42,12 +39,15 @@ protected:
 	class USkeletalMeshComponent* WeaponMesh_L;
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class URotatingMovementComponent* RotatingMovement;
-
-	UFUNCTION()
-	void OnRootCollisionHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+	
+	UPROPERTY(EditDefaultsOnly, Category="Weapon Data")
+	class UCAP_WeaponDataAsset* WeaponDA;
 
 	UPROPERTY()
 	int32 CachedBaseRewardAmount = 0;
 	UPROPERTY()
 	ECurrencyType CachedRewardCurrencyType;
+
+private:
+	void SetWeaponSkeletalMesh();
 };

@@ -18,6 +18,9 @@ void UCAP_CurrencyComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	const UCAP_RewardSettings* RewardSetting = GetDefault<UCAP_RewardSettings>();
+	if (!RewardSetting->DisassembleRewardDT.IsNull())
+		LoadedRewardDisassembleDT = RewardSetting->DisassembleRewardDT.LoadSynchronous();
 }
 
 void UCAP_CurrencyComponent::ProcessDisassembleReward(EItemGrade Grade, ECurrencyType Type)
@@ -29,15 +32,18 @@ void UCAP_CurrencyComponent::ProcessDisassembleReward(EItemGrade Grade, ECurrenc
 	UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player));
 	if (!ASC)
 		return;
-
-	const UCAP_RewardSettings* RewardSetting = GetDefault<UCAP_RewardSettings>();
-	if (const FDisassembleRewardRow* Row = RewardSetting->DisassembleRewardMap.Find(Grade))
+	
+	if (LoadedRewardDisassembleDT)
 	{
-		float BonusMul = ASC->GetNumericAttribute(UCAP_AttributeSet::GetDisassembleBonusMultiplierAttribute());
-		int32 BaseAmount = Type==ECurrencyType::WeaponMaterial ? Row->WeaponRewardAmount : Row->ItemRewardAmount;
-		int32 FinalAmount = FMath::RoundToInt(BaseAmount * (1.f + BonusMul));
+		FName GradeName = GetRowNameFromGrade(Grade);
+		if (const FDisassembleRewardRow* RewardRow = LoadedRewardDisassembleDT->FindRow<FDisassembleRewardRow>(GradeName,""))
+		{
+			float BonusMul = ASC->GetNumericAttribute(UCAP_AttributeSet::GetDisassembleBonusMultiplierAttribute());
+			int32 BaseAmount = Type==ECurrencyType::WeaponMaterial ? RewardRow->WeaponRewardAmount : RewardRow->ItemRewardAmount;
+			int32 FinalAmount = FMath::RoundToInt(BaseAmount * (1.f + BonusMul));
 
-		AddCurrency(Type, FinalAmount);
+			AddCurrency(Type, FinalAmount);
+		}
 	}
 }
 
@@ -50,18 +56,12 @@ void UCAP_CurrencyComponent::AddCurrency(ECurrencyType Type, int32 Amount)
 	
 	CurrentAmount += Amount;
 	
-	UE_LOG(LogTemp,Warning,TEXT("재화 타입 %s"), *UEnum::GetValueAsString(Type));
-	UE_LOG(LogTemp,Warning,TEXT("재화 추가 됨 (+%d)"), Amount);
-	UE_LOG(LogTemp,Warning,TEXT("현재 재화 (+%d)"), CurrentAmount);
-
 	if (OnCurrencyChanged.IsBound())
 		OnCurrencyChanged.Broadcast(Type, OldAmount, CurrentAmount);
 }
 
 bool UCAP_CurrencyComponent::ConsumeCurrency(ECurrencyType Type, int32 Amount)
 {
-	if (Amount <=0)	return false;
-
 	int32& CurrentAmount = CurrencyMap.FindOrAdd(Type, 0);
 
 	// 잔액 부족
@@ -77,7 +77,7 @@ bool UCAP_CurrencyComponent::ConsumeCurrency(ECurrencyType Type, int32 Amount)
 	return true;
 }
 
-int32 UCAP_CurrencyComponent::GetCurreny(ECurrencyType Type)
+int32 UCAP_CurrencyComponent::GetCurreny(ECurrencyType Type) const
 {
 	if (const int32* AmountPtr = CurrencyMap.Find(Type))
 		return *AmountPtr;
@@ -93,5 +93,17 @@ void UCAP_CurrencyComponent::SetCurrencyOverride(ECurrencyType Type, int32 Amoun
 
 	if (OldAmount != CurrentAmount && OnCurrencyChanged.IsBound())
 		OnCurrencyChanged.Broadcast(Type, OldAmount, CurrentAmount);
+}
+
+FName UCAP_CurrencyComponent::GetRowNameFromGrade(EItemGrade Grade)
+{
+	switch (Grade)
+	{
+	case EItemGrade::Normal:		return FName("Normal");
+	case EItemGrade::Rare:			return FName("Rare");
+	case EItemGrade::Epic:			return FName("Epic");
+	case EItemGrade::Legendary:		return FName("Legendary");
+	default:						return FName();
+	}
 }
 

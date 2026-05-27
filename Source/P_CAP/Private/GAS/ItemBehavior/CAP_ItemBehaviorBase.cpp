@@ -92,7 +92,7 @@ void UCAP_ItemBehaviorBase::ConsumeCooldown(UCAP_ItemInstance* ItemInst, UAbilit
 	ItemInst->BehaviorLastTriggerTimes.FindOrAdd(this) = World->GetTimeSeconds();
 }
 
-void UCAP_ItemBehaviorBase::InitGameplayEffectToZero(const FGameplayEffectSpecHandle& SpecHandle,TSubclassOf<UGameplayEffect> BuffGE) const
+void UCAP_ItemBehaviorBase::InitGameplayEffectToDefault(const FGameplayEffectSpecHandle& SpecHandle,TSubclassOf<UGameplayEffect> BuffGE,float DefaultVal) const
 {
 	if (const UGameplayEffect* DefaultGE = BuffGE->GetDefaultObject<UGameplayEffect>())
 	{
@@ -101,7 +101,7 @@ void UCAP_ItemBehaviorBase::InitGameplayEffectToZero(const FGameplayEffectSpecHa
 			if (ModifierInfo.ModifierMagnitude.GetMagnitudeCalculationType() == EGameplayEffectMagnitudeCalculation::SetByCaller)
 			{
 				FGameplayTag CallerTag= ModifierInfo.ModifierMagnitude.GetSetByCallerFloat().DataTag;
-					SpecHandle.Data->SetSetByCallerMagnitude(CallerTag, 0.f);
+					SpecHandle.Data->SetSetByCallerMagnitude(CallerTag, DefaultVal);
 			}
 		}
 	}

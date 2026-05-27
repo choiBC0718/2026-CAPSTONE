@@ -40,7 +40,7 @@ void UItemBehavior_ApplyBuffToSelf::OnEventReceived(UCAP_ItemInstance* ItemInst,
 	int32 CurrentItemStack = GetExistingStackCount(ItemInst,ASC,ExistingHandle);
 	// 최대치 넘지 않게 설정
 	int32 TargetStackCount = FMath::Min(CurrentItemStack+1, MaxStackCount);
-
+	
 	// 지속 시간, 스택 갱신하기 위해 기존 GE 파괴
 	if (ExistingHandle.IsValid())
 	{
@@ -52,7 +52,8 @@ void UItemBehavior_ApplyBuffToSelf::OnEventReceived(UCAP_ItemInstance* ItemInst,
 	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(ASC->GetAvatarActor()))
 	{
 		if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
-			InvComp->OnItemEffectTriggered.Broadcast(ItemInst,TriggerEventTag,Cooldown,Duration,TargetStackCount);
+			if (Cooldown > 0.f)
+				InvComp->OnItemEffectTriggered.Broadcast(ItemInst,BehaviorTag,Cooldown,0.f,0);
 	}
 }
 
@@ -77,13 +78,9 @@ void UItemBehavior_ApplyBuffToSelf::ApplyBuffWithStack(UCAP_ItemInstance* ItemIn
 {
 	UCAP_AbilitySystemComponent* CAP_ASC = ItemInst->GetCachedASC();
 	if (!CAP_ASC || !CAP_ASC->GetGenerics())	return;
-	TSubclassOf<UGameplayEffect> DurationBuffGE = CAP_ASC->GetGenerics()->GetItemStatDurationEffect();
+	
+	TSubclassOf<UGameplayEffect> DurationBuffGE = CAP_ASC->GetGenerics()->GetStatGE(false,bIsMultiplier);
 	if (!DurationBuffGE)	return;
-	if (!ScaleAttribute.IsValid())
-	{
-		UE_LOG(LogTemp,Warning,TEXT("어떤 스탯에 영향을 받아 감소시킬지 설정해(ScaleAttribute)"));
-		return;
-	}
 	
 	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
 	Context.AddSourceObject(ItemInst);
@@ -92,14 +89,25 @@ void UItemBehavior_ApplyBuffToSelf::ApplyBuffWithStack(UCAP_ItemInstance* ItemIn
 	if (!SpecHandle.IsValid())
 		return;
 	
-	InitGameplayEffectToZero(SpecHandle, DurationBuffGE);
-	
+	InitGameplayEffectToDefault(SpecHandle, DurationBuffGE, bIsMultiplier?1.f:0.f);
 	SpecHandle.Data->SetSetByCallerMagnitude(StackTag, TargetStackCount);
+
+	float FinalMagnitude;
+	float StatScale=1.f;
+	if (ScaleAttribute.IsValid())
+		StatScale = ASC->GetNumericAttribute(ScaleAttribute);
 	
-	float CleanStatValue = ASC->GetNumericAttribute(ScaleAttribute);
-	float FinalMagnitude = Magnitude * CleanStatValue;
+	if (bIsMultiplier)
+	{
+		FinalMagnitude = 1.f + (Magnitude*StatScale*TargetStackCount);
+	}
+	else
+	{
+		FinalMagnitude = Magnitude*StatScale*TargetStackCount;
+	}
 	
-	SpecHandle.Data->SetSetByCallerMagnitude(TargetStatTag, FinalMagnitude*TargetStackCount);
+	SpecHandle.Data->SetSetByCallerMagnitude(TargetStatTag, FinalMagnitude);
+	SpecHandle.Data->DynamicGrantedTags.AddTag(FGameplayTag::RequestGameplayTag("UI.Buff"));
 
 	if (Duration>0.f)
 	{
@@ -113,7 +121,7 @@ int32 UItemBehavior_ApplyBuffToSelf::GetExistingStackCount(UCAP_ItemInstance* It
 {
 	UCAP_AbilitySystemComponent* CAP_ASC = ItemInst->GetCachedASC();
 	if (!CAP_ASC || !CAP_ASC->GetGenerics())	return 0;
-	TSubclassOf<UGameplayEffect> DurationBuffGE = CAP_ASC->GetGenerics()->GetItemStatDurationEffect();
+	TSubclassOf<UGameplayEffect> DurationBuffGE = CAP_ASC->GetGenerics()->GetStatGE(false,bIsMultiplier);
 	if (!DurationBuffGE)	return 0;
 	
 	int32 FoundStack =0;

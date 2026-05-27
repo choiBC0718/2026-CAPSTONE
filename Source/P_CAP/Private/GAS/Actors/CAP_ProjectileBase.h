@@ -16,6 +16,25 @@ enum class EProjectileType : uint8
 	Homing,
 };
 
+USTRUCT(BlueprintType)
+struct FProjectileInitData
+{
+	GENERATED_BODY()
+	
+	EProjectileType ProjectileType = EProjectileType::Straight;
+	FVector LaunchDir = FVector::ZeroVector;
+	float ProjectileSpeed = 1000.f;
+	float MaxDistance = 1000.f;
+	float ExplosionRadius = 0.f;
+	float ArcTension = 0.5f;
+	int32 MaxHitCount = 1;
+	FGameplayEffectSpecHandle DamageSpecHandle;
+	FGameplayTag CueTag;
+	FGameplayTag HitTriggerTag;
+	TWeakObjectPtr<USceneComponent> HomingTarget = nullptr;
+	FVector TargetLocation;
+};
+
 UCLASS()
 class ACAP_ProjectileBase : public AActor
 {
@@ -25,13 +44,9 @@ public:
 	ACAP_ProjectileBase();
 
 	virtual void BeginPlay() override;
+	
+	void InitProjectile(const FProjectileInitData& InitData);
 
-	void InitProjectile(FVector TargetOrDirection, float InExplosionRadius, float ArcTension, FGameplayEffectSpecHandle InHitEffectSpecHandle, FGameplayTag CueTag, FGameplayTag InTriggerEventTag, USceneComponent* HomingTarget = nullptr);
-
-	UPROPERTY(EditDefaultsOnly, Category="Setting")
-	EProjectileType ProjectileType = EProjectileType::Straight;
-	UPROPERTY()
-	int32 MaxHitCount =1;
 	
 private:
 	UPROPERTY(VisibleAnywhere)
@@ -40,19 +55,22 @@ private:
 	class UStaticMeshComponent* MeshComp;
 	UPROPERTY(VisibleAnywhere)
 	class UProjectileMovementComponent* ProjMovementComp;
+	UPROPERTY(VisibleAnywhere)
+	class UParticleSystemComponent* TrailParticleComp;
 
 	UPROPERTY(EditDefaultsOnly, Category="Setting")
+	class UParticleSystem* HitVFX;
+	
+	EProjectileType ProjectileType = EProjectileType::Straight;
 	float ProjectileSpeed = 1000.f;
-	UPROPERTY(EditDefaultsOnly, Category="Setting")
 	float MaxDistance = 1500.f;
-
 	float ExplosionRadius = 0.f;
+	int32 MaxHitCount =1;
 
-	FGameplayTag TriggerEventTag;
+	FGameplayTag HitTriggerTag;
 	FGameplayTag HitGameplayCueTag;
 	FGameplayEffectSpecHandle HitEffectHandle;
 	FTimerHandle ProjTimerHandle;
-
 	
 	UFUNCTION()
 	void OnProjectileOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
@@ -66,4 +84,6 @@ private:
 	int32 CurrentHitCount =0;
 	UPROPERTY()
 	TSet<AActor*> HitActors;
+
+	void StraightTypeInit();
 };

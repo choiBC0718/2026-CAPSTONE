@@ -32,6 +32,7 @@ public:
 	void OnRoomDeactivated();
 	virtual void OnRoomDeactivated_Implementation();
 
+	virtual void UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack) override;
 protected:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnDead() override;

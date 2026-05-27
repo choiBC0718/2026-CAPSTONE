@@ -11,6 +11,7 @@
 #include "Components/TextBlock.h"
 #include "Data/CAP_EquipItemEffectTypes.h"
 #include "Interactables/Item/CAP_ItemInstance.h"
+#include "Interactables/Weapon/CAP_WeaponInstance.h"
 
 void UCAP_SwapDetailPanelWIdget::UpdateDetailInfo(UObject* ItemData)
 {
@@ -49,6 +50,20 @@ void UCAP_SwapDetailPanelWIdget::UpdateDetailInfo(UObject* ItemData)
 							AddFeatureIconToBox(FoundRow->SynergyIcon);
 						}
 					}
+				}
+			}
+		}
+		if (UCAP_WeaponInstance* WeaponInst = Cast<UCAP_WeaponInstance>(ItemData))
+		{
+			if (UCAP_WeaponDataAsset* WeaponDA = WeaponInst->GetWeaponDA())
+			{
+				ItemNameText->SetText(WeaponDA->ItemName);
+				ItemGradeText->SetText(GetGradeText(WeaponDA->ItemGrade));
+				ItemDescriptionText->SetText(WeaponDA->ItemDescription);
+
+				for (const FWeaponSkillData SkillData : WeaponInst->GetGrantedSkills())
+				{
+					AddFeatureIconToBox(SkillData.SkillIcon);
 				}
 			}
 		}

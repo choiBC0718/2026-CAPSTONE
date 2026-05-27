@@ -79,7 +79,7 @@ bool UItemBehavior_SpawnProjectile::CheckTriggerCondition(UCAP_ItemInstance* Ite
 		if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(ASC->GetAvatarActor()))
 		{
 			if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
-				InvComp->OnItemEffectTriggered.Broadcast(ItemInst,TriggerEventTag,Cooldown,-1.f,CurrentCount);
+				InvComp->OnItemEffectTriggered.Broadcast(ItemInst,BehaviorTag,0.f,0.f,CurrentCount);
 		}
 		return false;
 	}
@@ -90,7 +90,7 @@ bool UItemBehavior_SpawnProjectile::CheckTriggerCondition(UCAP_ItemInstance* Ite
 	{
 		if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
 		{
-			InvComp->OnItemEffectTriggered.Broadcast(ItemInst, TriggerEventTag, Cooldown, 0.f, CurrentCount);
+			InvComp->OnItemEffectTriggered.Broadcast(ItemInst, BehaviorTag, Cooldown, 0.f, CurrentCount);
 		}
 	}
 	return true;

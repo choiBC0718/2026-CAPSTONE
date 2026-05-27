@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Data/CAP_EquipItemEffectTypes.h"
 #include "Engine/DeveloperSettings.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "CAP_RewardSettings.generated.h"
@@ -17,6 +16,8 @@ class UCAP_RewardSettings : public UDeveloperSettings
 	GENERATED_BODY()
 	
 public:
-	UPROPERTY(EditAnywhere)
-	TMap<EItemGrade, FDisassembleRewardRow> DisassembleRewardMap;
+	UPROPERTY(EditAnywhere, Config, Category="Reward")
+	TSoftObjectPtr<UDataTable> DisassembleRewardDT;
+
+	static FName GetRowNameFromGrade(EItemGrade Grade);
 };

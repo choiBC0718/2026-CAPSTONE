@@ -11,6 +11,7 @@
 #include "AI/PlayerBehaviorLearner.h"
 #include "GameFramework/PlayerController.h"
 #include "EngineUtils.h"
+#include "Widget/Common/CAP_TargetEffectWidget.h"
 
 ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 {
@@ -70,6 +71,15 @@ void ACAP_EnemyCharacter::OnRoomActivated_Implementation(AActor* TargetActor)
 void ACAP_EnemyCharacter::OnRoomDeactivated_Implementation()
 {
 	SetEnemyAIEnabled(false);
+}
+
+void ACAP_EnemyCharacter::UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack)
+{
+	if (TargetEffectWidgetComp)
+	{
+		if (UCAP_TargetEffectWidget* EffectWidget = Cast<UCAP_TargetEffectWidget>(TargetEffectWidgetComp->GetUserWidgetObject()))
+			EffectWidget->UpdateEffectUI(BehaviorTag, CurrentStack,MaxStack);
+	}
 }
 
 void ACAP_EnemyCharacter::OnDead()

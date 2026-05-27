@@ -22,7 +22,6 @@
 void UCAP_ItemSwapWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	SetIsFocusable(true);
 }
 
 void UCAP_ItemSwapWidget::OnAnimationFinished_Implementation(const UWidgetAnimation* Animation)
@@ -30,15 +29,23 @@ void UCAP_ItemSwapWidget::OnAnimationFinished_Implementation(const UWidgetAnimat
 	Super::OnAnimationFinished_Implementation(Animation);
 	if (Animation == CloseAnim)
 	{
+		if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn()))
+		{
+			if (UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent())
+			{
+				InteractionComp->SetComponentTickEnabled(true);
+			}
+		}
 		OnMenuClosed.Broadcast();
 	}
 }
 
-void UCAP_ItemSwapWidget::InitSwapUI(class ACAP_PlayerCharacter* Player, class UCAP_ItemInstance* NewItemInst)
+void UCAP_ItemSwapWidget::InitSwapUI(class ACAP_PlayerCharacter* Player, class AActor* InInteractActor, class UCAP_ItemInstance* NewItemInst)
 {
 	if (!Player || !NewItemInst)
 		return;
 
+	TargetInteractActor = InInteractActor;
 	NewItemToSwap = NewItemInst;
 	UCAP_InventoryComponent* Inventory = Player->GetInventoryComponent();
 	if (!Inventory || !ItemWrapBox || !ItemSlotWidgetClass)
@@ -77,59 +84,6 @@ void UCAP_ItemSwapWidget::InitSwapUI(class ACAP_PlayerCharacter* Player, class U
 	if (InformationText)
 	{
 		InformationText->SetText(FText::FromString(TEXT("방향키: 선택 | F: 교체 | ESC: 취소")));
-	}
-}
-
-void UCAP_ItemSwapWidget::MoveSelection(FVector2D InputVal)
-{
-	if (!CurrentSelectedSlot)	return;
-
-	UCAP_ItemSlotWidget* NextSlot = nullptr;
-
-	if (InputVal.X >0)			NextSlot = CurrentSelectedSlot->RightSlot;
-	else if (InputVal.X < 0)	NextSlot = CurrentSelectedSlot->LeftSlot;
-	else if (InputVal.Y > 0)	NextSlot = CurrentSelectedSlot->UpSlot;
-	else if (InputVal.Y < 0)	NextSlot = CurrentSelectedSlot->DownSlot;
-
-	if (NextSlot)
-	{
-		HandleSlotLeftClicked(NextSlot);
-	}
-}
-
-void UCAP_ItemSwapWidget::ConfirmSwap()
-{
-	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn());
-	if (CurrentSelectedSlot && CurrentSelectedSlot->SlotItemData && NewItemToSwap && Player)
-	{
-		UCAP_ItemInstance* OldItem = Cast<UCAP_ItemInstance>(CurrentSelectedSlot->SlotItemData);
-		AActor* InteractActor = Player->GetInteractionComponent()->GetNearbyInteractable();
-
-		UCAP_InventoryComponent* InventoryComp = Player->GetInventoryComponent();
-		UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent();
-		if (!InventoryComp || !InteractionComp)
-			return;
-		
-		if (InventoryComp->SwapItem(OldItem, NewItemToSwap))
-		{
-			if (InteractActor)
-			{
-				InteractActor->Destroy();
-				InteractionComp->SetNearbyInteractable(nullptr);
-			}
-			FVector SpawnLoc = Player->GetActorLocation();
-			FTransform SpawnTransform(FRotator::ZeroRotator, SpawnLoc);
-			
-			ACAP_WorldItem* DroppedItem = GetWorld()->SpawnActorDeferred<ACAP_WorldItem>(ACAP_WorldItem::StaticClass(), SpawnTransform);
-			if (DroppedItem)
-			{
-				DroppedItem->ItemInstance = OldItem;
-				DroppedItem->ItemDA = Cast<UCAP_ItemDataAsset>(OldItem->GetItemDA());
-				DroppedItem->FinishSpawning(SpawnTransform);
-				DroppedItem->DropItem();
-			}
-		}
-		NativeCloseMenu();
 	}
 }
 
@@ -297,11 +251,67 @@ void UCAP_ItemSwapWidget::NativeCloseMenu()
 	}
 	else
 	{
+		if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn()))
+		{
+			if (UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent())
+			{
+				InteractionComp->SetComponentTickEnabled(true);
+			}
+		}
 		OnMenuClosed.Broadcast();
 	}
 }
 
-FOnMenuClosedSignature& UCAP_ItemSwapWidget::GetOnMenuClosedDelegate()
+void UCAP_ItemSwapWidget::HandleUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime)
 {
-	return OnMenuClosed;
+	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn());
+	if (CurrentSelectedSlot && CurrentSelectedSlot->SlotItemData && NewItemToSwap && Player)
+	{
+		UCAP_ItemInstance* OldItem = Cast<UCAP_ItemInstance>(CurrentSelectedSlot->SlotItemData);
+
+		UCAP_InventoryComponent* InventoryComp = Player->GetInventoryComponent();
+		UCAP_InteractionComponent* InteractionComp = Player->GetInteractionComponent();
+		if (!InventoryComp || !InteractionComp)
+			return;
+		
+		if (InventoryComp->SwapItem(OldItem, NewItemToSwap))
+		{
+			InteractionComp->SetNearbyInteractable(nullptr);
+			if (TargetInteractActor)
+			{
+				TargetInteractActor->Destroy();
+				TargetInteractActor = nullptr;
+			}
+			FVector SpawnLoc = Player->GetActorLocation();
+			FTransform SpawnTransform(FRotator::ZeroRotator, SpawnLoc);
+			
+			ACAP_WorldItem* DroppedItem = GetWorld()->SpawnActorDeferred<ACAP_WorldItem>(ACAP_WorldItem::StaticClass(), SpawnTransform);
+			if (DroppedItem)
+			{
+				DroppedItem->ItemInstance = OldItem;
+				DroppedItem->ItemDA = Cast<UCAP_ItemDataAsset>(OldItem->GetItemDA());
+				DroppedItem->FinishSpawning(SpawnTransform);
+				DroppedItem->DropItem();
+			}
+			NewItemToSwap=nullptr;
+		}
+		NativeCloseMenu();
+	}
+}
+
+void UCAP_ItemSwapWidget::HandleChangeSelectedSlot(FVector2D InputVal)
+{
+	if (!CurrentSelectedSlot)	return;
+
+	UCAP_ItemSlotWidget* NextSlot = nullptr;
+
+	if (InputVal.X >0)			NextSlot = CurrentSelectedSlot->RightSlot;
+	else if (InputVal.X < 0)	NextSlot = CurrentSelectedSlot->LeftSlot;
+	else if (InputVal.Y > 0)	NextSlot = CurrentSelectedSlot->UpSlot;
+	else if (InputVal.Y < 0)	NextSlot = CurrentSelectedSlot->DownSlot;
+
+	if (NextSlot)
+	{
+		HandleSlotLeftClicked(NextSlot);
+	}
 }

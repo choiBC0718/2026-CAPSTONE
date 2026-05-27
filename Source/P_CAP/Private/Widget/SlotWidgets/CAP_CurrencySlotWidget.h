@@ -32,4 +32,6 @@ private:
 	
 	UFUNCTION()
 	void OnCurrencyChanged(ECurrencyType CurrencyType, int32 OldAmount, int32 NewAmount);
+
+	void SetCurrencyText(int32 Amount);
 };

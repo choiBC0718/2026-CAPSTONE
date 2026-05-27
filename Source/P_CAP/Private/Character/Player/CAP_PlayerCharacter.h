@@ -9,7 +9,9 @@
 #include "Component/CAP_CurrencyComponent.h"
 #include "Component/CAP_InteractionComponent.h"
 #include "Component/CAP_InventoryComponent.h"
+#include "Component/CAP_StatEnhanceComponent.h"
 #include "Component/CAP_WeaponComponent.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "CAP_PlayerCharacter.generated.h"
 
@@ -27,14 +29,20 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void BeginPlay() override;
-	
+
+	USpringArmComponent* GetSpringArmComponent() const {return SpringArm;}
 	UCAP_WeaponComponent* GetWeaponComponent() const {return WeaponComponent;}
 	UCAP_InventoryComponent* GetInventoryComponent() const {return InventoryComponent;}
 	UCAP_CurrencyComponent* GetCurrencyComponent() const {return CurrencyComponent;}
 	UCAP_InteractionComponent* GetInteractionComponent() const {return InteractionComponent;}
+	UCAP_StatEnhanceComponent* GetStatEnhanceComponent() const {return StatEnhanceComponent;}
 	
 	FString GetInteractKeyName() const;
-	
+
+	UFUNCTION(Exec)
+	void AddCurrency(ECurrencyType Type, int32 Amount);
+
+	virtual void UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack) override;
 private:
 	/**		Components		**/
 	UPROPERTY(VisibleAnywhere, Category="View")
@@ -49,9 +57,12 @@ private:
 	class UCAP_CurrencyComponent* CurrencyComponent;
 	UPROPERTY(VisibleAnywhere, Category="Interaction")
 	class UCAP_InteractionComponent* InteractionComponent;
+	UPROPERTY(VisibleAnywhere, Category="StatEnhance")
+	class UCAP_StatEnhanceComponent* StatEnhanceComponent;
 	UPROPERTY(VisibleAnywhere, Category="AI|Tracker")
 	class UPlayerTrackerComponent* PlayerTracker;
-
+	
+	
 	/**		Input			**/
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	class UInputMappingContext* GameplayIMC;

@@ -3,8 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayEffect.h"
 #include "GameplayTagContainer.h"
 #include "Blueprint/UserWidget.h"
+#include "Data/CAP_UIBuffListTypes.h"
 #include "CAP_BuffListPanelWidget.generated.h"
 
 /**
@@ -17,7 +19,6 @@ class UCAP_BuffListPanelWidget : public UUserWidget
 
 public:
 	void virtual NativeConstruct() override;
-	void InitializeWidget(class ACAP_PlayerCharacter* InPlayerCharacter);
 
 protected:
 	// 영구적인 꺼지지 않을 아이템 효과를 나타내는 WrapBox
@@ -31,6 +32,12 @@ protected:
 	UPROPERTY()
 	TArray<class UCAP_ItemEffectSlot*> ActiveSlots;
 private:
+	void AddOrUpdateBuffSlot(const FBuffSlotID& SlotID, const FBuffUIData& UIData);
+	void RemoveBuffSlot(const FBuffSlotID& SlotID);
+	class UCAP_ItemEffectSlot* FindSlot(const FBuffSlotID& SlotID) const;
+
+	void OnGEAdded(UAbilitySystemComponent* ASC, const FGameplayEffectSpec& Spec, FActiveGameplayEffectHandle Handle);
+	void OnGERemoved(const FActiveGameplayEffect& EffectRemoved);
 
 	// 효과 발동시 호출될 함수
 	UFUNCTION()
@@ -39,9 +46,4 @@ private:
 	// 아이템 해제 감지용
 	UFUNCTION()
 	void HandleInventoryChanged(class UCAP_ItemInstance* ChangedItem, bool bIsAdded);
-
-	// 중복 슬롯 검색
-	class UCAP_ItemEffectSlot* FindExistingSlot(class UCAP_ItemInstance* ItemInst, FGameplayTag DynamicTag) const;
-
-	void CleanUpInvalidSlots();
 };
