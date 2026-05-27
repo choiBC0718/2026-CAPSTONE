@@ -19,3 +19,11 @@ enum class ERoomType : uint8
 	Shop    UMETA(DisplayName = "Shop"),
 	Event   UMETA(DisplayName = "Event")
 };
+
+UENUM(BlueprintType)
+enum class ECombatRoomRewardType : uint8
+{
+	None UMETA(DisplayName = "None"),
+	Gold UMETA(DisplayName = "Gold"),
+	Item UMETA(DisplayName = "Item")
+};

@@ -11,6 +11,7 @@
 #include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
 #include "Map/RoomTypes.h"
+#include "Map/NextRoomChoiceManager.h"
 #include "Stage/StageExitActor.h"
 #include "Stage/StageDataAsset.h"
 
@@ -18,6 +19,7 @@ AMapManager::AMapManager()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	StageExitActorClass = AStageExitActor::StaticClass();
+	NextRoomChoiceManagerClass = ANextRoomChoiceManager::StaticClass();
 }
 
 void AMapManager::BeginPlay()
@@ -25,6 +27,7 @@ void AMapManager::BeginPlay()
 	Super::BeginPlay();
 
 	EnsureMapGenerator();
+	EnsureNextRoomChoiceManager();
 
 	if (bUseRandomSeedOnBeginPlay)
 	{
@@ -36,6 +39,36 @@ void AMapManager::BeginPlay()
 	{
 		GenerateMapAndSpawnRooms();
 	}
+}
+
+void AMapManager::EnsureNextRoomChoiceManager()
+{
+	if (NextRoomChoiceManager)
+	{
+		return;
+	}
+
+	NextRoomChoiceManager = Cast<ANextRoomChoiceManager>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ANextRoomChoiceManager::StaticClass()));
+
+	if (NextRoomChoiceManager || !NextRoomChoiceManagerClass)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	NextRoomChoiceManager = World->SpawnActor<ANextRoomChoiceManager>(
+		NextRoomChoiceManagerClass,
+		FVector::ZeroVector,
+		FRotator::ZeroRotator,
+		SpawnParams);
 }
 
 void AMapManager::BindInput()
@@ -274,7 +307,17 @@ ARoomActor* AMapManager::FindSpawnedRoomByGridPos(const FIntPoint& InGridPos) co
 	return nullptr;
 }
 
-void AMapManager::RequestMovePlayer(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
+FRoomData* AMapManager::FindRoomData(const FIntPoint& InGridPos)
+{
+	return CurrentLayout.FindRoom(InGridPos);
+}
+
+const FRoomData* AMapManager::FindRoomData(const FIntPoint& InGridPos) const
+{
+	return CurrentLayout.FindRoom(InGridPos);
+}
+
+void AMapManager::MovePlayerToRoom(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
 {
 	if (!PlayerCharacter)
 	{
@@ -313,5 +356,10 @@ void AMapManager::RequestMovePlayer(ACharacter* PlayerCharacter, const FIntPoint
 
 	const FVector TargetLocation = TargetRoom->GetEntrancePoint(EntryDirection);
 	PlayerCharacter->SetActorLocation(TargetLocation);
+}
+
+void AMapManager::RequestMovePlayer(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
+{
+	MovePlayerToRoom(PlayerCharacter, TargetRoomPos, ExitDirection);
 }
 

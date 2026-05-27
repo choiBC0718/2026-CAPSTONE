@@ -7,6 +7,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "GameFramework/Character.h"
 #include "Map/Debug/MapManager.h"
+#include "Map/NextRoomChoiceManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/BoxComponent.h"
 #include "P_CAP/P_CAP.h"
@@ -136,9 +137,14 @@ void ADoorActor::OnTriggerBeginOverlap(UPrimitiveComponent* OverlappedComponent,
 
 	bIsProcessingMove = true;
 
-	AMapManager* MapManager = Cast<AMapManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AMapManager::StaticClass()));
+	ANextRoomChoiceManager* ChoiceManager = Cast<ANextRoomChoiceManager>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ANextRoomChoiceManager::StaticClass()));
 
-	if (MapManager)
+	if (ChoiceManager)
+	{
+		ChoiceManager->RequestEnterRoom(PlayerCharacter, TargetRoomPos, Direction);
+	}
+	else if (AMapManager* MapManager = Cast<AMapManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AMapManager::StaticClass())))
 	{
 		MapManager->RequestMovePlayer(PlayerCharacter, TargetRoomPos, Direction);
 	}

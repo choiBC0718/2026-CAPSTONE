@@ -23,6 +23,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room")
 	ERoomType RoomType = ERoomType::Normal;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room|Combat")
+	ECombatRoomRewardType CombatRewardType = ECombatRoomRewardType::None;
+
 	/* 문 연결 정보 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Room|Connection")
 	bool bConnectedUp = false;

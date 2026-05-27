@@ -105,6 +105,11 @@ void ARoomActor::InitializeRoom(
 	}
 }
 
+void ARoomActor::SetCombatRewardType(ECombatRoomRewardType NewRewardType)
+{
+	CachedRoomData.CombatRewardType = NewRewardType;
+}
+
 void ARoomActor::ActivateRoom(AActor* TargetActor)
 {
 	if (bRoomActivated)
@@ -221,6 +226,7 @@ void ARoomActor::CheckRoomClear()
 	if (MonsterSpawnerComponent && MonsterSpawnerComponent->AreAllSpawnedMonstersDefeated())
 	{
 		bRoomCleared = true;
+		HandleCombatRoomCleared();
 		SetSpawnedDoorsPortalEnabled(true);
 		SetActorTickEnabled(false);
 	}
@@ -231,6 +237,47 @@ bool ARoomActor::ShouldLockPortalsForCombat() const
 	return CachedRoomData.RoomType == ERoomType::Normal &&
 		MonsterSpawnerComponent &&
 		MonsterSpawnerComponent->HasSpawnedMonsters();
+}
+
+void ARoomActor::HandleCombatRoomCleared()
+{
+	if (CachedRoomData.RoomType != ERoomType::Normal)
+	{
+		return;
+	}
+
+	const TCHAR* RewardTypeText = TEXT("None");
+	switch (CachedRoomData.CombatRewardType)
+	{
+	case ECombatRoomRewardType::Gold:
+		RewardTypeText = TEXT("Gold");
+		break;
+
+	case ECombatRoomRewardType::Item:
+		RewardTypeText = TEXT("Item");
+		break;
+
+	case ECombatRoomRewardType::None:
+	default:
+		break;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Log,
+		TEXT("RoomActor: combat room cleared at (%d, %d), reward type = %s"),
+		CachedRoomData.GridPos.X,
+		CachedRoomData.GridPos.Y,
+		RewardTypeText);
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			-1,
+			3.0f,
+			FColor::Green,
+			FString::Printf(TEXT("Combat reward ready: %s"), RewardTypeText));
+	}
 }
 
 void ARoomActor::SetSpawnedDoorsPortalEnabled(bool bEnabled)

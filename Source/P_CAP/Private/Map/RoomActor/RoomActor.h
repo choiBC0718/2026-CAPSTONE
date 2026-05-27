@@ -31,6 +31,7 @@ public:
 		const FRoomData& InRoomData,
 		int32 InMapSeed,
 		URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset = nullptr);
+	void SetCombatRewardType(ECombatRoomRewardType NewRewardType);
 	FVector GetEntrancePoint(EDoorDirection Direction) const;
 	virtual void Destroyed() override;
 
@@ -143,6 +144,7 @@ private:
 	void CheckPlayerInsideRoom();
 	void CheckRoomClear();
 	bool ShouldLockPortalsForCombat() const;
+	void HandleCombatRoomCleared();
 	void SetSpawnedDoorsPortalEnabled(bool bEnabled);
 
 	void ClearSpawnedDoors();

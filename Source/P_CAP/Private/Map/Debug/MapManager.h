@@ -11,6 +11,7 @@
 #include "MapManager.generated.h"
 
 class AStageExitActor;
+class ANextRoomChoiceManager;
 class URoomMonsterSpawnDataAsset;
 struct FStageConfig;
 
@@ -33,6 +34,11 @@ public:
 
 	/* 현재 스폰된 RoomActor 중에서 그 좌표에 해당하는 방 반환 */
 	ARoomActor* FindSpawnedRoomByGridPos(const FIntPoint& InGridPos) const;
+
+	FRoomData* FindRoomData(const FIntPoint& InGridPos);
+	const FRoomData* FindRoomData(const FIntPoint& InGridPos) const;
+
+	void MovePlayerToRoom(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection);
 
 	/* 플레이어를 실제 이동시키는 함수 */
 	void RequestMovePlayer(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection);
@@ -71,6 +77,12 @@ private:
 	UPROPERTY(EditAnywhere, Category="Stage Exit")
 	FVector StageExitLocalOffset = FVector(0.f, 0.f, 120.f);
 
+	UPROPERTY(EditAnywhere, Category="Room Choice")
+	TSubclassOf<ANextRoomChoiceManager> NextRoomChoiceManagerClass;
+
+	UPROPERTY()
+	TObjectPtr<ANextRoomChoiceManager> NextRoomChoiceManager;
+
 	UPROPERTY()
 	FMapLayout CurrentLayout;
 
@@ -92,6 +104,7 @@ private:
 	void RegenerateWithCurrentSeed();
 
 	void EnsureMapGenerator();
+	void EnsureNextRoomChoiceManager();
 	void GenerateMapAndSpawnRooms();
 	void SpawnRooms(const FMapLayout& Layout);
 	void SpawnStageExitInRoom(ARoomActor* RoomActor, const FRoomData& RoomData);
