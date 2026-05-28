@@ -37,7 +37,8 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 	const FRoomInteriorLayout& InteriorLayout,
 	int32 MapSeed,
 	const FTransform& RoomTransform,
-	const FPlayerTendencyModifier& Tendency)
+	const FPlayerTendencyModifier& Tendency,
+	ERoomZone Zone)
 {
 	ClearSpawnedMonsters();
 
@@ -61,9 +62,32 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 	// CombatAggression에 따라 ScoreRange 스케일 (0.5x ~ 1.5x)
 	// 공격적 플레이어 → 몬스터 더 많이, 회피형 → 적게
 	const float AggressionScale = FMath::Lerp(0.5f, 1.5f, Tendency.CombatAggression);
+
+	// 구역 가중치: ExplorationRate 낮은 플레이어는 Core에 몬스터 집중, 높은 플레이어는 Outer에 집중
+	float ZoneMultiplier = 1.0f;
+	switch (Zone)
+	{
+	case ERoomZone::Core:
+		ZoneMultiplier = FMath::Lerp(1.5f, 0.5f, Tendency.ExplorationRate);
+		break;
+	case ERoomZone::Outer:
+		ZoneMultiplier = FMath::Lerp(0.5f, 1.5f, Tendency.ExplorationRate);
+		break;
+	default:
+		break;
+	}
+	const float FinalScale = AggressionScale * ZoneMultiplier;
+
 	FRoomMonsterSpawnRule AdjustedRule = *SpawnRule;
-	AdjustedRule.ScoreRange.X = FMath::Max(1, FMath::RoundToInt(SpawnRule->ScoreRange.X * AggressionScale));
-	AdjustedRule.ScoreRange.Y = FMath::Max(1, FMath::RoundToInt(SpawnRule->ScoreRange.Y * AggressionScale));
+	AdjustedRule.ScoreRange.X = FMath::Max(1, FMath::RoundToInt(SpawnRule->ScoreRange.X * FinalScale));
+	AdjustedRule.ScoreRange.Y = FMath::Max(1, FMath::RoundToInt(SpawnRule->ScoreRange.Y * FinalScale));
+
+	UE_LOG(LogTemp, Log, TEXT("[Zone] Room(%d,%d) Zone=%s | Combat=%.2f Aggr=%.2f × ZoneMult=%.2f = FinalScale=%.2f | Score %d~%d → %d~%d"),
+		RoomData.GridPos.X, RoomData.GridPos.Y,
+		Zone == ERoomZone::Core ? TEXT("Core") : Zone == ERoomZone::Mid ? TEXT("Mid") : TEXT("Outer"),
+		Tendency.CombatAggression, AggressionScale, ZoneMultiplier, FinalScale,
+		SpawnRule->ScoreRange.X, SpawnRule->ScoreRange.Y,
+		AdjustedRule.ScoreRange.X, AdjustedRule.ScoreRange.Y);
 
 	FRandomStream RandomStream = MakeRoomRandomStream(RoomData, MapSeed);
 	TArray<FRoomMonsterSpawnPick> MonsterSpawnList = BuildMonsterSpawnList(AdjustedRule, RandomStream);
@@ -79,10 +103,10 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 	}
 
 	// ExplorationRate에 따라 배치 편향 조정
-	// 탐험형(1.0) → 방 외곽 분산 (편향 약하게)
-	// 직진형(0.0) → 문/통로 쪽 중앙 집중 (편향 강하게)
+	// 직진형(0.0) → 편향 약하게(0.2) → NormalizedDistance 지배 → 중앙 고정
+	// 탐험형(1.0) → 편향 강하게(1.0) → 랜덤 노이즈 커져 외곽까지 분산
 	const float SavedBias = CenterSpawnBias;
-	CenterSpawnBias = CenterSpawnBias * FMath::Lerp(1.0f, 0.2f, Tendency.ExplorationRate);
+	CenterSpawnBias = CenterSpawnBias * FMath::Lerp(0.2f, 1.0f, Tendency.ExplorationRate);
 	SortCellsByCenterBias(SpawnableCells, InteriorLayout, RandomStream);
 	CenterSpawnBias = SavedBias;
 

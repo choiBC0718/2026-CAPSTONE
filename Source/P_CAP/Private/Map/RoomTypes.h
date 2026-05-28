@@ -19,3 +19,12 @@ enum class ERoomType : uint8
 	Shop    UMETA(DisplayName = "Shop"),
 	Event   UMETA(DisplayName = "Event")
 };
+
+// 시작방 기준 거리로 나눈 구역: Core(0-1) Mid(2-3) Outer(4+)
+UENUM(BlueprintType)
+enum class ERoomZone : uint8
+{
+	Core    UMETA(DisplayName = "Core"),
+	Mid     UMETA(DisplayName = "Mid"),
+	Outer   UMETA(DisplayName = "Outer")
+};

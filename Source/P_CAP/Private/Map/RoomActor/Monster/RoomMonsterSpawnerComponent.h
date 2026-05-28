@@ -35,7 +35,8 @@ public:
 		const FRoomInteriorLayout& InteriorLayout,
 		int32 MapSeed,
 		const FTransform& RoomTransform,
-		const FPlayerTendencyModifier& Tendency = FPlayerTendencyModifier{});
+		const FPlayerTendencyModifier& Tendency = FPlayerTendencyModifier{},
+		ERoomZone Zone = ERoomZone::Mid);
 
 	void ClearSpawnedMonsters();
 
@@ -43,6 +44,7 @@ public:
 	void DeactivateSpawnedMonsters();
 	bool HasSpawnedMonsters() const;
 	bool AreAllSpawnedMonstersDefeated() const;
+	int32 GetNumSpawnedMonsters() const { return SpawnedMonsters.Num(); }
 
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Monster Spawn", meta=(AllowPrivateAccess="true"))

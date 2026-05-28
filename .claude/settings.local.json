@@ -8,7 +8,15 @@
       "Bash(Get-ChildItem *)",
       "Bash(Select-Object FullName)",
       "Bash(ConvertTo-Csv -NoTypeInformation)",
-      "Bash(Out-String)"
+      "Bash(Out-String)",
+      "Bash(python -c \"import docx; print\\('python-docx ok'\\)\")",
+      "Bash(pip install *)",
+      "Bash(python3 -c \"import docx; print\\('ok'\\)\")",
+      "PowerShell(python --version; python -c \"import docx; print\\('python-docx available'\\)\" 2>&1)",
+      "PowerShell(pip install *)",
+      "PowerShell(Get-Command *)",
+      "Bash(Sort-Object FullName)",
+      "Bash(grep -E \"\\\\.\\(cpp|h\\)$\")"
     ]
   }
 }

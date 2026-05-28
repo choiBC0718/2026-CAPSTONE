@@ -167,6 +167,22 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 	}
 	LastAppliedTendency = Tendency;
 
+	// 맵 전체 중심 계산
+	FVector2D Centroid(0.f, 0.f);
+	for (const TPair<FIntPoint, FRoomData>& Pair : Layout.Rooms)
+	{
+		Centroid += FVector2D(Pair.Key.X, Pair.Key.Y);
+	}
+	Centroid /= FMath::Max(1, Layout.Rooms.Num());
+
+	// 중심에서 가장 먼 방까지의 거리 (구역 경계 정규화용)
+	float MaxDist = KINDA_SMALL_NUMBER;
+	for (const TPair<FIntPoint, FRoomData>& Pair : Layout.Rooms)
+	{
+		const float D = FVector2D::Distance(FVector2D(Pair.Key.X, Pair.Key.Y), Centroid);
+		if (D > MaxDist) MaxDist = D;
+	}
+
 	for (const TPair<FIntPoint, FRoomData>& Pair : Layout.Rooms)
 	{
 		const FRoomData& RoomData = Pair.Value;
@@ -192,7 +208,14 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 			continue;
 		}
 
-		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed, CurrentMonsterSpawnDataAsset, Tendency);
+		// 맵 중심 기준 공간 거리 비율로 구역 분류
+		// Core(0~33%) = 중앙, Mid(33~66%) = 중간, Outer(66~100%) = 외곽
+		const float DistRatio = FVector2D::Distance(FVector2D(RoomData.GridPos.X, RoomData.GridPos.Y), Centroid) / MaxDist;
+		ERoomZone Zone = ERoomZone::Outer;
+		if (DistRatio < 0.33f) Zone = ERoomZone::Core;
+		else if (DistRatio < 0.66f) Zone = ERoomZone::Mid;
+
+		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed, CurrentMonsterSpawnDataAsset, Tendency, Zone);
 		SpawnedRooms.Add(SpawnedRoom);
 		SpawnedRoomMap.Add(RoomData.GridPos, SpawnedRoom);
 

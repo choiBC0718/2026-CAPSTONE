@@ -33,7 +33,8 @@ public:
 		const FRoomData& InRoomData,
 		int32 InMapSeed,
 		URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset = nullptr,
-		const FPlayerTendencyModifier& InTendency = FPlayerTendencyModifier{});
+		const FPlayerTendencyModifier& InTendency = FPlayerTendencyModifier{},
+		ERoomZone InZone = ERoomZone::Mid);
 	FVector GetEntrancePoint(EDoorDirection Direction) const;
 	virtual void Destroyed() override;
 
@@ -106,7 +107,7 @@ protected:
 
 	/* ObstacleBypass=1.0일 때 배치할 최대 장애물 수 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Obstacle", meta=(ClampMin="0", ClampMax="5"))
-	int32 MaxObstaclesPerRoom = 2;
+	int32 MaxObstaclesPerRoom = 3;
 	
 	UPROPERTY()
 	TArray<TObjectPtr<ADoorActor>> SpawnedDoors;
@@ -133,6 +134,9 @@ protected:
 
 	/* MapManager에서 전달받은 K-Means 성향 데이터 */
 	FPlayerTendencyModifier CachedTendency;
+
+	/* 시작방 기준 거리로 분류된 구역 */
+	ERoomZone CachedZone = ERoomZone::Mid;
 
 	/* 마지막 내부 생성 결과를 캐싱 */
 	UPROPERTY()
@@ -183,6 +187,8 @@ private:
 	void SpawnLargeStructureMeshes(const FRoomInteriorLayout& Layout);
 	/* 셀 기반 구조 결과를 디버그 박스로 시각화 */
 	void DrawInteriorCellDebug(const FRoomInteriorLayout& Layout) const;
+	/* 방 위에 구역/장애물/몬스터 수치를 텍스트로 표시 */
+	void DrawZoneDebug() const;
 	
 	FTransform GetDoorTransform(EDoorDirection Direction) const;
 	FIntPoint GetNeighborGridPos(EDoorDirection Direction) const;

@@ -66,12 +66,14 @@ void ARoomActor::InitializeRoom(
 	const FRoomData& InRoomData,
 	int32 InMapSeed,
 	URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset,
-	const FPlayerTendencyModifier& InTendency)
+	const FPlayerTendencyModifier& InTendency,
+	ERoomZone InZone)
 {
 	/* 현재 방 정보와 맵 시드, 성향 데이터를 캐싱 */
 	CachedRoomData = InRoomData;
 	CachedMapSeed = InMapSeed;
 	CachedTendency = InTendency;
+	CachedZone = InZone;
 	bRoomActivated = false;
 	bRoomCleared = false;
 	UpdateRoomEnterTriggerExtent();
@@ -417,10 +419,11 @@ void ARoomActor::GenerateAndSpawnInterior()
 	SpawnLargeStructureMeshes(Layout);
 	if (MonsterSpawnerComponent)
 	{
-		MonsterSpawnerComponent->SpawnMonsters(CachedRoomData, CachedInteriorLayout, CachedMapSeed, GetActorTransform(), CachedTendency);
+		MonsterSpawnerComponent->SpawnMonsters(CachedRoomData, CachedInteriorLayout, CachedMapSeed, GetActorTransform(), CachedTendency, CachedZone);
 	}
 	SpawnObstaclesByTendency(CachedTendency);
 	DrawInteriorCellDebug(Layout);
+	DrawZoneDebug();
 }
 
 void ARoomActor::SpawnGuaranteedPaths(const FRoomInteriorLayout& Layout)
@@ -735,9 +738,29 @@ void ARoomActor::SpawnObstaclesByTendency(const FPlayerTendencyModifier& Tendenc
 		return;
 	}
 
-	// ObstacleBypass가 높을수록 장애물 많이 배치 (돌파형 플레이어에게 더 도전적인 환경)
-	const int32 ObstacleCount = FMath::RoundToInt(
-		FMath::Lerp(0.f, static_cast<float>(MaxObstaclesPerRoom), Tendency.ObstacleBypass));
+	// 구역 가중치: ExplorationRate 낮은 플레이어는 Core에 집중, 높은 플레이어는 Outer에 집중
+	float ZoneMultiplier = 1.0f;
+	switch (CachedZone)
+	{
+	case ERoomZone::Core:
+		ZoneMultiplier = FMath::Lerp(1.5f, 0.5f, Tendency.ExplorationRate);
+		break;
+	case ERoomZone::Outer:
+		ZoneMultiplier = FMath::Lerp(0.5f, 1.5f, Tendency.ExplorationRate);
+		break;
+	default:
+		break;
+	}
+
+	// ObstacleBypass × ZoneMultiplier 로 최종 장애물 수 결정
+	const float BaseCount = FMath::Lerp(0.f, static_cast<float>(MaxObstaclesPerRoom), Tendency.ObstacleBypass);
+	const int32 ObstacleCount = FMath::RoundToInt(BaseCount * ZoneMultiplier);
+
+	UE_LOG(LogTemp, Log, TEXT("[Zone] Room(%d,%d) Zone=%s | Explore=%.2f ZoneMult=%.2f | Bypass=%.2f Base=%.1f → 장애물 %d개"),
+		CachedRoomData.GridPos.X, CachedRoomData.GridPos.Y,
+		CachedZone == ERoomZone::Core ? TEXT("Core") : CachedZone == ERoomZone::Mid ? TEXT("Mid") : TEXT("Outer"),
+		Tendency.ExplorationRate, ZoneMultiplier,
+		Tendency.ObstacleBypass, BaseCount, ObstacleCount);
 
 	if (ObstacleCount <= 0)
 	{
@@ -810,4 +833,35 @@ void ARoomActor::SpawnObstaclesByTendency(const FPlayerTendencyModifier& Tendenc
 				Tendency.ObstacleBypass, SpawnedObstacles.Num(), ObstacleCount);
 		}
 	}
+}
+
+void ARoomActor::DrawZoneDebug() const
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const FVector TextBase = GetActorLocation() + FVector(0.f, 0.f, 600.f);
+
+	// 구역별 색상
+	FColor ZoneColor = FColor::White;
+	FString ZoneName;
+	switch (CachedZone)
+	{
+	case ERoomZone::Core:  ZoneColor = FColor::Red;    ZoneName = TEXT("CORE");  break;
+	case ERoomZone::Mid:   ZoneColor = FColor::Yellow; ZoneName = TEXT("MID");   break;
+	case ERoomZone::Outer: ZoneColor = FColor::Cyan;   ZoneName = TEXT("OUTER"); break;
+	}
+
+	const int32 MonsterCount = MonsterSpawnerComponent ? MonsterSpawnerComponent->GetNumSpawnedMonsters() : 0;
+
+	const FString Line1 = FString::Printf(TEXT("[%s] Dist=%d"), *ZoneName, CachedRoomData.DistanceFromStart);
+	const FString Line2 = FString::Printf(TEXT("Monster:%d  Obstacle:%d"), MonsterCount, SpawnedObstacles.Num());
+	const FString Line3 = FString::Printf(TEXT("Explore:%.2f Combat:%.2f"), CachedTendency.ExplorationRate, CachedTendency.CombatAggression);
+
+	DrawDebugString(World, TextBase,                        Line1, nullptr, ZoneColor,  -1.f, true, 1.5f);
+	DrawDebugString(World, TextBase - FVector(0,0,60),      Line2, nullptr, FColor::White, -1.f, true, 1.2f);
+	DrawDebugString(World, TextBase - FVector(0,0,110),     Line3, nullptr, FColor::Green, -1.f, true, 1.0f);
 }
