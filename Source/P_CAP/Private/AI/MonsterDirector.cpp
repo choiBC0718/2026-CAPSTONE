@@ -2,9 +2,8 @@
 #include "Components/BoxComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
-#include "AI/PlayerTrackerComponent.h" 
-#include "BaseMonster.h"
-#include "EngineUtils.h"               
+#include "AI/PlayerTrackerComponent.h"
+#include "EngineUtils.h"
 
 AMonsterDirector::AMonsterDirector()
 {
@@ -40,7 +39,6 @@ void AMonsterDirector::BeginPlay()
     }, 1.0f, false);
 }
 
-// [변경됨] 함수 이름과 매개변수가 FPlayerTendencyModifier로 변경되었습니다.
 void AMonsterDirector::SpawnMonstersByTendency(const FPlayerTendencyModifier& PlayerTendency)
 {
     if (!MonsterClass)
@@ -49,52 +47,100 @@ void AMonsterDirector::SpawnMonstersByTendency(const FPlayerTendencyModifier& Pl
         return;
     }
 
-    FVector Origin = SpawnVolume->Bounds.Origin;
-    FVector BoxExtent = SpawnVolume->Bounds.BoxExtent;
+    SpawnedMonsters.Empty();
 
-    int32 ExplorerSpawnCount = 0;
-    int32 SpeedRunnerSpawnCount = 0;
-
+    int32 ExplorerCount = 0, SpeedRunnerCount = 0;
     for (int32 i = 0; i < MonsterCount; i++)
     {
-        FVector SpawnLocation = Origin;
-
-        // [핵심 변경됨] ExplorationRate(0.0~1.0)를 확률로 사용하여 스폰 위치를 결정합니다.
-        // 예: 수치가 0.7이면 70% 확률로 외곽(탐험형 패턴)에, 30% 확률로 중앙(직진형 패턴)에 배치됩니다.
-        if (FMath::FRand() < PlayerTendency.ExplorationRate)
+        ACharacter* Spawned = SpawnOneMonster(PlayerTendency);
+        if (Spawned)
         {
-            SpawnLocation = GetExplorerSpawnPoint(Origin, BoxExtent);
-            ExplorerSpawnCount++;
-        }
-        else
-        {
-            SpawnLocation = GetSpeedRunnerSpawnPoint(Origin, BoxExtent);
-            SpeedRunnerSpawnCount++;
-        }
-
-        ABaseMonster* SpawnedEntity = GetWorld()->SpawnActor<ABaseMonster>(MonsterClass, SpawnLocation, FRotator::ZeroRotator);
-        
-        if (SpawnedEntity)
-        {
-            // GetPlayerCharacter는 봇 모드에서 null 반환 → 폰 직접 탐색
-            for (TActorIterator<APawn> It(GetWorld()); It; ++It)
-            {
-                UPlayerTrackerComponent* Tracker = It->FindComponentByClass<UPlayerTrackerComponent>();
-                if (Tracker)
-                {
-                    Tracker->TotalSpawnedMonsters++;
-                    break;
-                }
-            }
+            SpawnedMonsters.Add(Spawned);
+            if (FMath::FRand() < PlayerTendency.ExplorationRate) ExplorerCount++;
+            else SpeedRunnerCount++;
         }
     }
-    
-    // [변경됨] 스폰 결과 로그도 디테일하게 변경
-    UE_LOG(LogTemp, Warning, TEXT("=== 스폰 완료! 총 %d마리 ==="), MonsterCount);
-    UE_LOG(LogTemp, Warning, TEXT("  ㄴ 적용된 유저 탐색률: %.2f (%.0f%% 확률로 외곽 배치)"), 
-           PlayerTendency.ExplorationRate, PlayerTendency.ExplorationRate * 100.f);
-    UE_LOG(LogTemp, Warning, TEXT("  ㄴ 실제 배치 결과 - 외곽 분산: %d마리 / 중앙 집중: %d마리"), 
-           ExplorerSpawnCount, SpeedRunnerSpawnCount);
+
+    UE_LOG(LogTemp, Warning, TEXT("=== 스폰 완료! %d마리 (외곽:%d / 중앙:%d) ==="),
+           SpawnedMonsters.Num(), ExplorerCount, SpeedRunnerCount);
+
+    // TotalSpawnedMonsters를 실제 배치 수가 아닌 MonsterCount 기준으로 고정
+    // (배치 실패로 인한 분모 불일치 방지 → KillRatio 정확도 확보)
+    for (TActorIterator<APawn> It(GetWorld()); It; ++It)
+    {
+        UPlayerTrackerComponent* Tracker = It->FindComponentByClass<UPlayerTrackerComponent>();
+        if (Tracker) { Tracker->TotalSpawnedMonsters = MonsterCount; break; }
+    }
+
+    if (RespawnInterval > 0.f)
+    {
+        GetWorld()->GetTimerManager().SetTimer(RespawnTimerHandle, this,
+            &AMonsterDirector::CheckAndRespawn, RespawnInterval, true);
+    }
+}
+
+ACharacter* AMonsterDirector::SpawnOneMonster(const FPlayerTendencyModifier& Tendency)
+{
+    FVector Origin    = SpawnVolume->Bounds.Origin;
+    FVector BoxExtent = SpawnVolume->Bounds.BoxExtent;
+
+    // 최소 간격(600u) 만족하는 위치를 최대 10회 시도
+    const float MinDist = 600.f;
+    FVector SpawnLocation;
+    bool bFound = false;
+    for (int32 Try = 0; Try < 10; Try++)
+    {
+        FVector Candidate = (FMath::FRand() < Tendency.ExplorationRate)
+            ? GetExplorerSpawnPoint(Origin, BoxExtent)
+            : GetSpeedRunnerSpawnPoint(Origin, BoxExtent);
+
+        bool bTooClose = false;
+        for (auto& Weak : SpawnedMonsters)
+        {
+            if (Weak.IsValid() && FVector::Dist(Candidate, Weak->GetActorLocation()) < MinDist)
+            {
+                bTooClose = true;
+                break;
+            }
+        }
+        if (!bTooClose) { SpawnLocation = Candidate; bFound = true; break; }
+    }
+    if (!bFound) return nullptr; // 공간 없으면 스킵
+
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+    ACharacter* Spawned = GetWorld()->SpawnActor<ACharacter>(
+        MonsterClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
+
+    return Spawned;
+}
+
+void AMonsterDirector::CheckAndRespawn()
+{
+    if (!MonsterClass) return;
+
+    // 살아있는 몬스터 수 계산
+    int32 AliveCount = 0;
+    for (auto& Weak : SpawnedMonsters)
+        if (Weak.IsValid()) AliveCount++;
+
+    int32 ToSpawn = MonsterCount - AliveCount;
+    if (ToSpawn <= 0) return;
+
+    FPlayerTendencyModifier DefaultTendency;
+    APlayerBehaviorLearner* Learner = Cast<APlayerBehaviorLearner>(
+        UGameplayStatics::GetActorOfClass(GetWorld(), APlayerBehaviorLearner::StaticClass()));
+    if (Learner) DefaultTendency = Learner->GetCurrentPlayerTendency();
+
+    for (int32 i = 0; i < ToSpawn; i++)
+    {
+        ACharacter* Spawned = SpawnOneMonster(DefaultTendency);
+        if (Spawned) SpawnedMonsters.Add(Spawned);
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("MonsterDirector: %d마리 보충 스폰 (현재 %d/%d)"),
+           ToSpawn, AliveCount + ToSpawn, MonsterCount);
 }
 
 FVector AMonsterDirector::GetSpeedRunnerSpawnPoint(FVector Center, FVector Extent)

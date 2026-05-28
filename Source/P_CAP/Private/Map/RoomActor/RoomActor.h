@@ -15,6 +15,8 @@
 #include "Map/RoomData.h"
 #include "Map/RoomActor/DoorDirection.h"
 #include "Map/RoomActor/DoorActor.h"
+#include "AI/AnalysisObstacle.h"
+#include "AI/PlayerBehaviorLearner.h"
 #include "RoomActor.generated.h"
 
 class URoomMonsterSpawnDataAsset;
@@ -30,7 +32,8 @@ public:
 	void InitializeRoom(
 		const FRoomData& InRoomData,
 		int32 InMapSeed,
-		URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset = nullptr);
+		URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset = nullptr,
+		const FPlayerTendencyModifier& InTendency = FPlayerTendencyModifier{});
 	FVector GetEntrancePoint(EDoorDirection Direction) const;
 	virtual void Destroyed() override;
 
@@ -96,6 +99,14 @@ protected:
 	/* 큰 구조물 메쉬 후보를 담는 데이터 에셋 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
 	TObjectPtr<URoomInteriorPropSet> LargeStructurePropSet;
+
+	/* K-Means 성향 기반으로 스폰할 장애물 블루프린트 클래스 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Obstacle")
+	TSubclassOf<AAnalysisObstacle> ObstacleClass;
+
+	/* ObstacleBypass=1.0일 때 배치할 최대 장애물 수 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Obstacle", meta=(ClampMin="0", ClampMax="5"))
+	int32 MaxObstaclesPerRoom = 2;
 	
 	UPROPERTY()
 	TArray<TObjectPtr<ADoorActor>> SpawnedDoors;
@@ -104,6 +115,10 @@ protected:
 	   - 방이 다시 초기화될 때 함께 정리 */
 	UPROPERTY()
 	TArray<TObjectPtr<ARoomPathActor>> SpawnedPathActors;
+
+	/* 성향 기반으로 동적 스폰된 장애물 목록 */
+	UPROPERTY()
+	TArray<TObjectPtr<AAnalysisObstacle>> SpawnedObstacles;
 
 	/* 이 방에서 동적으로 생성한 큰 구조물 메쉬 컴포넌트 */
 	UPROPERTY(Transient)
@@ -115,6 +130,9 @@ protected:
 	/* 내부 생성에 사용한 맵 시드 보관 */
 	UPROPERTY()
 	int32 CachedMapSeed = 0;
+
+	/* MapManager에서 전달받은 K-Means 성향 데이터 */
+	FPlayerTendencyModifier CachedTendency;
 
 	/* 마지막 내부 생성 결과를 캐싱 */
 	UPROPERTY()
@@ -150,6 +168,10 @@ private:
 	void ClearSpawnedPathActors();
 	/* 이 방이 소유하는 큰 구조물 메쉬 컴포넌트를 정리 */
 	void ClearSpawnedStructureMeshes();
+	/* 성향 기반으로 동적 스폰된 장애물 정리 */
+	void ClearSpawnedObstacles();
+	/* ObstacleBypass 성향에 따라 장애물 동적 스폰 */
+	void SpawnObstaclesByTendency(const FPlayerTendencyModifier& Tendency);
 	void SpawnConnectedDoors();
 	void SpawnDoor(EDoorDirection Direction);
 

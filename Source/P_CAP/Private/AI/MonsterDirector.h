@@ -6,24 +6,27 @@
 #include "MonsterDirector.generated.h"
 
 class UBoxComponent;
-class ABaseMonster; 
 
 UCLASS()
 class P_CAP_API AMonsterDirector : public AActor
 {
 	GENERATED_BODY()
-    
-public: 
+
+public:
 	AMonsterDirector();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawn Area")
 	UBoxComponent* SpawnVolume;
 
 	UPROPERTY(EditAnywhere, Category = "Spawn Settings")
-	TSubclassOf<ABaseMonster> MonsterClass;
+	TSubclassOf<ACharacter> MonsterClass;
 
 	UPROPERTY(EditAnywhere, Category = "Spawn Settings", meta=(ClampMin="1"))
-	int32 MonsterCount = 5;
+	int32 MonsterCount = 10;
+
+	// 몇 초마다 죽은 몬스터를 보충 스폰할지 (0 = 리스폰 없음)
+	UPROPERTY(EditAnywhere, Category = "Spawn Settings", meta=(ClampMin="0"))
+	float RespawnInterval = 10.f;
 
 	// =============================================
 	// [추가] 스폰 패턴 튜닝 파라미터
@@ -44,6 +47,14 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
+	// 살아있는 몬스터 약한 포인터 목록 (리스폰 계산용)
+	TArray<TWeakObjectPtr<ACharacter>> SpawnedMonsters;
+
+	FTimerHandle RespawnTimerHandle;
+
+	ACharacter* SpawnOneMonster(const FPlayerTendencyModifier& Tendency);
+	void CheckAndRespawn();
+
 	FVector GetSpeedRunnerSpawnPoint(FVector Center, FVector Extent);
 	FVector GetExplorerSpawnPoint(FVector Center, FVector Extent);
 };

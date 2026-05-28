@@ -5,25 +5,28 @@
 #include "AnalysisObstacle.generated.h"
 
 class UBoxComponent;
+class UStaticMeshComponent;
 
 UCLASS()
 class P_CAP_API AAnalysisObstacle : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
 	AAnalysisObstacle();
 
 protected:
 	virtual void BeginPlay() override;
 
-	UPROPERTY(VisibleAnywhere, Category = "Trigger")
-	UBoxComponent* OuterZone; 
+	UPROPERTY(VisibleAnywhere, Category = "Visual")
+	UStaticMeshComponent* MeshComponent;
 
 	UPROPERTY(VisibleAnywhere, Category = "Trigger")
-	UBoxComponent* InnerZone; 
+	UBoxComponent* OuterZone;
 
-	// [변경] 하드코딩 제거 → 에디터에서 장애물 크기 조절 가능
+	UPROPERTY(VisibleAnywhere, Category = "Trigger")
+	UBoxComponent* InnerZone;
+
 	UPROPERTY(EditAnywhere, Category = "Trigger|Size")
 	FVector OuterZoneExtent = FVector(300.f, 300.f, 200.f);
 

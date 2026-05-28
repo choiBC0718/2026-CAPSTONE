@@ -201,12 +201,12 @@ FPlayerTendencyModifier APlayerBehaviorLearner::GetCurrentPlayerTendency()
     int32 ClusterIdx = FindNearestCentroid(LatestPlay);
     FPlayerBehaviorData UserCentroid = Centroids[ClusterIdx];
 
-    // 3. 센트로이드의 수치를 맵 팀이 쓰기 좋게 변환하여 바구니에 담음
-    // 탐색률 = (방문율 + 플레이시간 비율)의 평균
-    Tendency.ExplorationRate = (UserCentroid.VisitedNodeCount + UserCentroid.PlayTime) / 2.0f;
-    Tendency.CombatAggression = UserCentroid.KillRatio;
-    Tendency.MeleePreference = UserCentroid.MeleeRatio;
-    Tendency.ObstacleBypass = UserCentroid.PassRatio;
+    // 3. 플레이어의 실제 플레이 데이터를 성향으로 변환
+    // 클러스터 센트로이드는 분류 용도로만 사용하고, 수치는 실제 raw data에서 가져옴
+    Tendency.ExplorationRate = (LatestPlay.VisitedNodeCount + LatestPlay.PlayTime) / 2.0f;
+    Tendency.CombatAggression = LatestPlay.KillRatio;
+    Tendency.MeleePreference = LatestPlay.MeleeRatio;
+    Tendency.ObstacleBypass = LatestPlay.PassRatio;
 
     return Tendency;
 }

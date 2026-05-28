@@ -4,6 +4,8 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
 #include "AI/PlayerBehaviorLearner.h"
+#include "AI/PlayerTrackerComponent.h"
+#include "EngineUtils.h"
 
 AAutoPlayManager::AAutoPlayManager()
 {
@@ -41,10 +43,6 @@ void AAutoPlayManager::BeginPlay()
 		return;
 	}
 
-	// 학습 미완료 → 속도 올리고 봇 시작
-	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), GameSpeed);
-	UE_LOG(LogTemp, Warning, TEXT("AutoPlay: 게임 속도 %.1f배"), GameSpeed);
-
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Magenta,
@@ -53,9 +51,12 @@ void AAutoPlayManager::BeginPlay()
 
 	UE_LOG(LogTemp, Warning, TEXT("=== 자동 학습 런 %d/%d 시작 ==="), CompletedRuns + 1, TotalAutoRuns);
 
+	// 배속 설정 전에 타이머를 걸어야 실제 0.5초 대기 (배속 적용 시 타이머도 빨라짐)
 	FTimerHandle StartTimer;
 	GetWorld()->GetTimerManager().SetTimer(StartTimer, [this]()
 	{
+		UGameplayStatics::SetGlobalTimeDilation(GetWorld(), GameSpeed);
+		UE_LOG(LogTemp, Warning, TEXT("AutoPlay: 게임 속도 %.1f배"), GameSpeed);
 		StartBotRun();
 	}, 0.5f, false);
 
@@ -65,10 +66,26 @@ void AAutoPlayManager::BeginPlay()
 
 void AAutoPlayManager::StartBotRun()
 {
-	ACharacter* PlayerChar = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
+	// GetPlayerCharacter는 possession 타이밍에 따라 null일 수 있으므로
+	// PlayerTrackerComponent로 직접 캐릭터를 탐색
+	ACharacter* PlayerChar = nullptr;
+	for (TActorIterator<ACharacter> It(GetWorld()); It; ++It)
+	{
+		if (It->FindComponentByClass<UPlayerTrackerComponent>())
+		{
+			PlayerChar = *It;
+			break;
+		}
+	}
+
 	if (!PlayerChar)
 	{
-		UE_LOG(LogTemp, Error, TEXT("AutoPlay: 플레이어 캐릭터 없음!"));
+		UE_LOG(LogTemp, Warning, TEXT("AutoPlay: 플레이어 캐릭터 아직 없음 → 1초 후 재시도"));
+		FTimerHandle RetryTimer;
+		GetWorld()->GetTimerManager().SetTimer(RetryTimer, [this]()
+		{
+			StartBotRun();
+		}, 1.0f, false);
 		return;
 	}
 

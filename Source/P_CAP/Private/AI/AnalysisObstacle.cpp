@@ -1,5 +1,6 @@
 #include "AnalysisObstacle.h"
 #include "Components/BoxComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "AI/PlayerTrackerComponent.h"
 
@@ -7,8 +8,14 @@ AAnalysisObstacle::AAnalysisObstacle()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
+	// 루트: 메시 (순수 비주얼 — 충돌 없음)
+	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
+	RootComponent = MeshComponent;
+	MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// 감지 존들은 메시에 붙임
 	OuterZone = CreateDefaultSubobject<UBoxComponent>(TEXT("OuterZone"));
-	RootComponent = OuterZone;
+	OuterZone->SetupAttachment(RootComponent);
 	OuterZone->SetCollisionProfileName(TEXT("Trigger"));
 
 	InnerZone = CreateDefaultSubobject<UBoxComponent>(TEXT("InnerZone"));
@@ -23,7 +30,15 @@ void AAnalysisObstacle::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// [변경] 에디터에서 설정한 크기를 런타임에 적용
+	// Blueprint 덮어쓰기 방지 — 메시는 완전 비충돌, Zone들은 순수 Overlap Trigger
+	MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	OuterZone->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	OuterZone->SetCollisionResponseToAllChannels(ECR_Overlap);
+
+	InnerZone->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	InnerZone->SetCollisionResponseToAllChannels(ECR_Overlap);
+
 	OuterZone->SetBoxExtent(OuterZoneExtent);
 	InnerZone->SetBoxExtent(InnerZoneExtent);
 
@@ -34,7 +49,7 @@ void AAnalysisObstacle::BeginPlay()
 
 void AAnalysisObstacle::OnOuterOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (OtherActor && OtherActor->IsA(ACharacter::StaticClass()))
+	if (OtherActor && OtherActor->FindComponentByClass<UPlayerTrackerComponent>())
 	{
 		bIsTracking = true;
 		bHasPassedThrough = false; 
@@ -43,7 +58,7 @@ void AAnalysisObstacle::OnOuterOverlapBegin(UPrimitiveComponent* OverlappedComp,
 
 void AAnalysisObstacle::OnInnerOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (bIsTracking && OtherActor && OtherActor->IsA(ACharacter::StaticClass()))
+	if (bIsTracking && OtherActor && OtherActor->FindComponentByClass<UPlayerTrackerComponent>())
 	{
 		bHasPassedThrough = true;
 		
@@ -59,7 +74,7 @@ void AAnalysisObstacle::OnInnerOverlapBegin(UPrimitiveComponent* OverlappedComp,
 
 void AAnalysisObstacle::OnOuterOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	if (bIsTracking && OtherActor && OtherActor->IsA(ACharacter::StaticClass()))
+	if (bIsTracking && OtherActor && OtherActor->FindComponentByClass<UPlayerTrackerComponent>())
 	{
 		if (!bHasPassedThrough)
 		{

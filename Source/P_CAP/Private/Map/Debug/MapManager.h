@@ -40,6 +40,17 @@ public:
 	void GenerateStage(const FStageConfig& StageConfig);
 	void ClearCurrentStage();
 
+	/* 가장 최근에 맵 생성에 적용된 K-Means 성향 — Blueprint 위젯에서 읽기용 */
+	UPROPERTY(BlueprintReadOnly, Category="AI Tendency")
+	FPlayerTendencyModifier LastAppliedTendency;
+
+	/* true면 K-Means 무시하고 아래 수치를 직접 사용 (에디터 테스트용) */
+	UPROPERTY(EditAnywhere, Category="AI Tendency|Manual Override")
+	bool bUseManualTendency = false;
+
+	UPROPERTY(EditAnywhere, Category="AI Tendency|Manual Override", meta=(EditCondition="bUseManualTendency"))
+	FPlayerTendencyModifier ManualTendency;
+
 protected:
 	virtual void BeginPlay() override;
 

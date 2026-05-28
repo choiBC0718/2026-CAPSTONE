@@ -65,11 +65,13 @@ void ARoomActor::Tick(float DeltaSeconds)
 void ARoomActor::InitializeRoom(
 	const FRoomData& InRoomData,
 	int32 InMapSeed,
-	URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset)
+	URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset,
+	const FPlayerTendencyModifier& InTendency)
 {
-	/* 현재 방 정보와 맵 시드를 캐싱 */
+	/* 현재 방 정보와 맵 시드, 성향 데이터를 캐싱 */
 	CachedRoomData = InRoomData;
 	CachedMapSeed = InMapSeed;
+	CachedTendency = InTendency;
 	bRoomActivated = false;
 	bRoomCleared = false;
 	UpdateRoomEnterTriggerExtent();
@@ -79,10 +81,11 @@ void ARoomActor::InitializeRoom(
 		MonsterSpawnerComponent->SetSpawnDataAsset(InMonsterSpawnDataAsset);
 	}
 
-	/* 재초기화 상황을 대비해 기존 문/경로 액터를 정리 */
+	/* 재초기화 상황을 대비해 기존 문/경로/장애물 액터를 정리 */
 	ClearSpawnedDoors();
 	ClearSpawnedPathActors();
 	ClearSpawnedStructureMeshes();
+	ClearSpawnedObstacles();
 	if (MonsterSpawnerComponent)
 	{
 		MonsterSpawnerComponent->ClearSpawnedMonsters();
@@ -285,6 +288,7 @@ void ARoomActor::Destroyed()
 	{
 		MonsterSpawnerComponent->ClearSpawnedMonsters();
 	}
+	ClearSpawnedObstacles();
 	Super::Destroyed();
 }
 
@@ -413,8 +417,9 @@ void ARoomActor::GenerateAndSpawnInterior()
 	SpawnLargeStructureMeshes(Layout);
 	if (MonsterSpawnerComponent)
 	{
-		MonsterSpawnerComponent->SpawnMonsters(CachedRoomData, CachedInteriorLayout, CachedMapSeed, GetActorTransform());
+		MonsterSpawnerComponent->SpawnMonsters(CachedRoomData, CachedInteriorLayout, CachedMapSeed, GetActorTransform(), CachedTendency);
 	}
+	SpawnObstaclesByTendency(CachedTendency);
 	DrawInteriorCellDebug(Layout);
 }
 
@@ -703,5 +708,106 @@ FIntPoint ARoomActor::GetNeighborGridPos(EDoorDirection Direction) const
 
 	default:
 		return CachedRoomData.GridPos;
+	}
+}
+
+void ARoomActor::ClearSpawnedObstacles()
+{
+	for (AAnalysisObstacle* Obstacle : SpawnedObstacles)
+	{
+		if (IsValid(Obstacle))
+		{
+			Obstacle->Destroy();
+		}
+	}
+	SpawnedObstacles.Empty();
+}
+
+void ARoomActor::SpawnObstaclesByTendency(const FPlayerTendencyModifier& Tendency)
+{
+	// 일반 방에만, ObstacleClass가 지정된 경우에만
+	if (!ObstacleClass || MaxObstaclesPerRoom <= 0)
+	{
+		return;
+	}
+	if (CachedRoomData.RoomType != ERoomType::Normal)
+	{
+		return;
+	}
+
+	// ObstacleBypass가 높을수록 장애물 많이 배치 (돌파형 플레이어에게 더 도전적인 환경)
+	const int32 ObstacleCount = FMath::RoundToInt(
+		FMath::Lerp(0.f, static_cast<float>(MaxObstaclesPerRoom), Tendency.ObstacleBypass));
+
+	if (ObstacleCount <= 0)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// 방 시드 기반 랜덤스트림으로 재현 가능한 배치
+	int32 Seed = CachedMapSeed;
+	Seed = HashCombineFast(Seed, GetTypeHash(CachedRoomData.GridPos));
+	Seed = HashCombineFast(Seed, 0xF1A20B3C);
+	FRandomStream RandomStream(Seed);
+
+	// 방 중앙 60% 영역에 배치 (문 주변 제외)
+	const float SafeZone = RoomHalfExtent * 0.6f;
+	const float MinSeparation = 400.f;
+
+	for (int32 i = 0; i < ObstacleCount; i++)
+	{
+		FVector LocalPos;
+		bool bFound = false;
+
+		for (int32 Try = 0; Try < 15; Try++)
+		{
+			LocalPos = FVector(
+				RandomStream.FRandRange(-SafeZone, SafeZone),
+				RandomStream.FRandRange(-SafeZone, SafeZone),
+				0.f);
+
+			bool bTooClose = false;
+			for (const TObjectPtr<AAnalysisObstacle>& Existing : SpawnedObstacles)
+			{
+				if (IsValid(Existing) &&
+					FVector::Dist(GetActorTransform().TransformPosition(LocalPos), Existing->GetActorLocation()) < MinSeparation)
+				{
+					bTooClose = true;
+					break;
+				}
+			}
+
+			if (!bTooClose)
+			{
+				bFound = true;
+				break;
+			}
+		}
+
+		if (!bFound)
+		{
+			continue;
+		}
+
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+		const FVector WorldPos = GetActorTransform().TransformPosition(LocalPos);
+		const FRotator WorldRot = FRotator(0.f, RandomStream.FRandRange(0.f, 360.f), 0.f);
+
+		AAnalysisObstacle* Spawned = World->SpawnActor<AAnalysisObstacle>(ObstacleClass, WorldPos, WorldRot, SpawnParams);
+		if (Spawned)
+		{
+			SpawnedObstacles.Add(Spawned);
+			UE_LOG(LogTemp, Log, TEXT("RoomActor: 장애물 스폰 (ObstacleBypass=%.2f, %d/%d)"),
+				Tendency.ObstacleBypass, SpawnedObstacles.Num(), ObstacleCount);
+		}
 	}
 }

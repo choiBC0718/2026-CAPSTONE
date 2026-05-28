@@ -6,6 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "Map/RoomActor/Interior/RoomInteriorData.h"
 #include "Map/RoomData.h"
+#include "AI/PlayerBehaviorLearner.h"
 #include "RoomMonsterSpawnerComponent.generated.h"
 
 class ACharacter;
@@ -33,7 +34,8 @@ public:
 		const FRoomData& RoomData,
 		const FRoomInteriorLayout& InteriorLayout,
 		int32 MapSeed,
-		const FTransform& RoomTransform);
+		const FTransform& RoomTransform,
+		const FPlayerTendencyModifier& Tendency = FPlayerTendencyModifier{});
 
 	void ClearSpawnedMonsters();
 
