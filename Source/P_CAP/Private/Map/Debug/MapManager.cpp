@@ -12,6 +12,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Map/RoomTypes.h"
 #include "Map/NextRoomChoiceManager.h"
+#include "Map/RoomActor/RoomSizeSettings.h"
 #include "Stage/StageExitActor.h"
 #include "Stage/StageDataAsset.h"
 
@@ -39,6 +40,11 @@ void AMapManager::BeginPlay()
 	{
 		GenerateMapAndSpawnRooms();
 	}
+}
+
+float AMapManager::GetRoomSpacing() const
+{
+	return GetEffectiveRoomSpacing();
 }
 
 void AMapManager::EnsureNextRoomChoiceManager()
@@ -69,6 +75,11 @@ void AMapManager::EnsureNextRoomChoiceManager()
 		FVector::ZeroVector,
 		FRotator::ZeroRotator,
 		SpawnParams);
+}
+
+float AMapManager::GetEffectiveRoomSpacing() const
+{
+	return RoomSizeSettings ? RoomSizeSettings->GetRoomSpacing() : RoomSpacing;
 }
 
 void AMapManager::BindInput()
@@ -182,10 +193,11 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 	for (const TPair<FIntPoint, FRoomData>& Pair : Layout.Rooms)
 	{
 		const FRoomData& RoomData = Pair.Value;
+		const float EffectiveRoomSpacing = GetEffectiveRoomSpacing();
 
 		const FVector SpawnLocation(
-			RoomData.GridPos.X * RoomSpacing,
-			RoomData.GridPos.Y * RoomSpacing,
+			RoomData.GridPos.X * EffectiveRoomSpacing,
+			RoomData.GridPos.Y * EffectiveRoomSpacing,
 			0.f
 		);
 
@@ -204,7 +216,7 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 			continue;
 		}
 
-		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed, CurrentMonsterSpawnDataAsset);
+		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed, CurrentMonsterSpawnDataAsset, RoomSizeSettings);
 		SpawnedRooms.Add(SpawnedRoom);
 		SpawnedRoomMap.Add(RoomData.GridPos, SpawnedRoom);
 

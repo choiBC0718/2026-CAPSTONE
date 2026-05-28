@@ -18,6 +18,7 @@
 #include "RoomActor.generated.h"
 
 class URoomMonsterSpawnDataAsset;
+class URoomSizeSettings;
 
 UCLASS()
 class ARoomActor : public AActor
@@ -30,7 +31,8 @@ public:
 	void InitializeRoom(
 		const FRoomData& InRoomData,
 		int32 InMapSeed,
-		URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset = nullptr);
+		URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset = nullptr,
+		URoomSizeSettings* InRoomSizeSettings = nullptr);
 	void SetCombatRewardType(ECombatRoomRewardType NewRewardType);
 	FVector GetEntrancePoint(EDoorDirection Direction) const;
 	virtual void Destroyed() override;
@@ -66,6 +68,15 @@ protected:
 	/* 문을 방 가장자리 어디에 붙일지 계산할 때 쓰는 값 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Door")
 	float RoomHalfExtent = 1000.f;
+
+	UPROPERTY()
+	TObjectPtr<URoomSizeSettings> CachedRoomSizeSettings;
+
+	UPROPERTY()
+	FVector InitialFloorMeshScale = FVector::OneVector;
+
+	UPROPERTY()
+	bool bHasInitialFloorMeshScale = false;
 
 	/* 문 높이 조절값 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Door")
@@ -141,6 +152,13 @@ private:
 		const FHitResult& SweepResult);
 
 	void UpdateRoomEnterTriggerExtent();
+	float GetEffectiveRoomHalfExtent() const;
+	float GetEffectiveDoorInset() const;
+	float GetEffectiveEntranceInset() const;
+	float GetEffectiveTriggerHalfExtent() const;
+	float GetEffectiveInteriorCellSize() const;
+	float GetEffectiveInteriorMargin() const;
+	void ApplyFloorMeshScale();
 	void CheckPlayerInsideRoom();
 	void CheckRoomClear();
 	bool ShouldLockPortalsForCombat() const;
