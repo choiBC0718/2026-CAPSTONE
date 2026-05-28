@@ -59,6 +59,7 @@ protected:
 private:
 	FQuadtreeNode* RootNode;
 	int32 CurrentNodeID = 0;
+	int32 LastVisitedNodeID = -1;
 
 	// 공간을 4등분하는 재귀 함수
 	void Subdivide(FQuadtreeNode* Node, int32 Depth);

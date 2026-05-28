@@ -68,13 +68,16 @@ void AQuadtreeManager::UpdateNodeVisit(FQuadtreeNode* Node, FVector PlayerLocati
 	if (FMath::Abs(PlayerLocation.X - Node->Center.X) > Node->Extent.X) return;
 	if (FMath::Abs(PlayerLocation.Y - Node->Center.Y) > Node->Extent.Y) return;
 
-	// 리프 노드라면 방문 횟수 증가
+	// 리프 노드라면 직전과 다른 구역일 때만 방문 횟수 증가
 	if (Node->Children[0] == nullptr)
 	{
-		Node->VisitCount++;
-		UE_LOG(LogTemp, Log, TEXT("플레이어가 [%d]번 구역에 진입했습니다! (현재 방문 횟수: %d)"), Node->NodeID, Node->VisitCount);
-		// 밟은 타일은 초록색으로 표시
-		DrawDebugBox(GetWorld(), Node->Center, Node->Extent, FColor::Green, true, -1.0f, 0, 5.0f);
+		if (Node->NodeID != LastVisitedNodeID)
+		{
+			Node->VisitCount++;
+			LastVisitedNodeID = Node->NodeID;
+			UE_LOG(LogTemp, Log, TEXT("플레이어가 [%d]번 구역에 진입했습니다! (현재 방문 횟수: %d)"), Node->NodeID, Node->VisitCount);
+			DrawDebugBox(GetWorld(), Node->Center, Node->Extent, FColor::Green, true, -1.0f, 0, 5.0f);
+		}
 		return;
 	}
 

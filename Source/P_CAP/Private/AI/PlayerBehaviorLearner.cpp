@@ -23,6 +23,13 @@ void APlayerBehaviorLearner::BeginPlay()
 
 void APlayerBehaviorLearner::ProcessPlayerData(FPlayerBehaviorData PlayerDataPoint)
 {
+    if (PlayerDataPoint.PlayTime < MinValidPlayTimeRatio)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Learner] 비정상 런 무시 (PlayTime=%.3f, 최소=%.3f)"),
+               PlayerDataPoint.PlayTime, MinValidPlayTimeRatio);
+        return;
+    }
+
     PlayHistory.Add(PlayerDataPoint);
 
     while (PlayHistory.Num() > MaxHistorySize)
@@ -113,16 +120,23 @@ void APlayerBehaviorLearner::RunKMeans()
         }
     }
 
-    // [변경됨] 강제로 이름표를 붙이던 MapCentroidsToPersonas() 삭제
     bIsClusteringReady = true;
+
+    // 최종 군집 크기 기록
+    ClusterMemberCounts.SetNum(K);
+    for (int32& Count : ClusterMemberCounts) Count = 0;
+    for (int32 i = 0; i < PlayHistory.Num(); i++)
+    {
+        ClusterMemberCounts[FindNearestCentroid(PlayHistory[i])]++;
+    }
 
     for (int32 c = 0; c < K; c++)
     {
-        // [변경됨] 순수 센트로이드 데이터 로그 출력
-        UE_LOG(LogTemp, Warning, TEXT("  Cluster[%d] = (V:%.3f T:%.3f P:%.3f K:%.3f M:%.3f)"),
+        UE_LOG(LogTemp, Warning, TEXT("  Cluster[%d] = (V:%.3f T:%.3f P:%.3f K:%.3f M:%.3f) 멤버:%d"),
                c,
                Centroids[c].VisitedNodeCount, Centroids[c].PlayTime,
-               Centroids[c].PassRatio, Centroids[c].KillRatio, Centroids[c].MeleeRatio);
+               Centroids[c].PassRatio, Centroids[c].KillRatio, Centroids[c].MeleeRatio,
+               ClusterMemberCounts[c]);
     }
 }
 
@@ -194,19 +208,27 @@ FPlayerTendencyModifier APlayerBehaviorLearner::GetCurrentPlayerTendency()
         return Tendency;
     }
 
-    // 1. 방금 플레이한 가장 최근 기록을 가져옴
     FPlayerBehaviorData LatestPlay = PlayHistory.Last();
-
-    // 2. 이 플레이가 어느 군집(Centroid)에 속하는지 찾음
     int32 ClusterIdx = FindNearestCentroid(LatestPlay);
-    FPlayerBehaviorData UserCentroid = Centroids[ClusterIdx];
 
-    // 3. 플레이어의 실제 플레이 데이터를 성향으로 변환
-    // 클러스터 센트로이드는 분류 용도로만 사용하고, 수치는 실제 raw data에서 가져옴
-    Tendency.ExplorationRate = (LatestPlay.VisitedNodeCount + LatestPlay.PlayTime) / 2.0f;
-    Tendency.CombatAggression = LatestPlay.KillRatio;
-    Tendency.MeleePreference = LatestPlay.MeleeRatio;
-    Tendency.ObstacleBypass = LatestPlay.PassRatio;
+    // 소속 클러스터 멤버가 너무 적으면 가장 큰 클러스터로 대체
+    if (ClusterMemberCounts.IsValidIndex(ClusterIdx) && ClusterMemberCounts[ClusterIdx] < MinClusterSize)
+    {
+        int32 DominantCluster = 0;
+        for (int32 c = 1; c < K; c++)
+            if (ClusterMemberCounts.IsValidIndex(c) && ClusterMemberCounts[c] > ClusterMemberCounts[DominantCluster])
+                DominantCluster = c;
+        UE_LOG(LogTemp, Warning, TEXT("[Tendency] Cluster[%d] 크기 부족(%d<%d) → Cluster[%d]로 대체"),
+               ClusterIdx, ClusterMemberCounts[ClusterIdx], MinClusterSize, DominantCluster);
+        ClusterIdx = DominantCluster;
+    }
+
+    const FPlayerBehaviorData& C = Centroids[ClusterIdx];
+
+    Tendency.ExplorationRate = C.VisitedNodeCount;
+    Tendency.CombatAggression = C.KillRatio;
+    Tendency.MeleePreference = C.MeleeRatio;
+    Tendency.ObstacleBypass = C.PassRatio;
 
     return Tendency;
 }

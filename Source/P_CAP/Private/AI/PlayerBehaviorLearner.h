@@ -122,7 +122,7 @@ public:
 	// K-Means 설정
 	// =============================================
 	UPROPERTY(EditAnywhere, Category="AI Learning|K-Means", meta=(ClampMin="2", ClampMax="5"))
-	int32 K = 2;
+	int32 K = 4;
 
 	UPROPERTY(EditAnywhere, Category="AI Learning|K-Means", meta=(ClampMin="1", ClampMax="100"))
 	int32 MaxIterations = 30;
@@ -135,6 +135,14 @@ public:
 
 	UPROPERTY(EditAnywhere, Category="AI Learning|K-Means", meta=(ClampMin="0.0001", ClampMax="0.01"))
 	float ConvergenceThreshold = 0.001f;
+
+	// 정규화된 PlayTime이 이 값 미만이면 비정상 런으로 간주하고 히스토리에서 제외
+	UPROPERTY(EditAnywhere, Category="AI Learning|K-Means", meta=(ClampMin="0.0", ClampMax="0.5"))
+	float MinValidPlayTimeRatio = 0.05f;
+
+	// 이 수 미만의 멤버를 가진 클러스터는 너무 작은 것으로 간주하여 텐던시 계산 시 제외
+	UPROPERTY(EditAnywhere, Category="AI Learning|K-Means", meta=(ClampMin="2"))
+	int32 MinClusterSize = 3;
 
 	// =============================================
 	// K-Means 결과
@@ -166,6 +174,8 @@ private:
 	int32 FindNearestCentroid(const FPlayerBehaviorData& DataPoint) const;
 	
 	// [변경됨] MapCentroidsToPersonas() 삭제 완료
+
+	TArray<int32> ClusterMemberCounts;
 
 	void SaveLearnerData();
 	void LoadLearnerData();
