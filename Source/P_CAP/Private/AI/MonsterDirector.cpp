@@ -49,20 +49,15 @@ void AMonsterDirector::SpawnMonstersByTendency(const FPlayerTendencyModifier& Pl
 
     SpawnedMonsters.Empty();
 
-    int32 ExplorerCount = 0, SpeedRunnerCount = 0;
     for (int32 i = 0; i < MonsterCount; i++)
     {
         ACharacter* Spawned = SpawnOneMonster(PlayerTendency);
         if (Spawned)
-        {
             SpawnedMonsters.Add(Spawned);
-            if (FMath::FRand() < PlayerTendency.ExplorationRate) ExplorerCount++;
-            else SpeedRunnerCount++;
-        }
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("=== 스폰 완료! %d마리 (외곽:%d / 중앙:%d) ==="),
-           SpawnedMonsters.Num(), ExplorerCount, SpeedRunnerCount);
+    UE_LOG(LogTemp, Warning, TEXT("=== 스폰 완료! %d마리 (탐험율:%.2f 기반 배치) ==="),
+           SpawnedMonsters.Num(), PlayerTendency.ExplorationRate);
 
     // TotalSpawnedMonsters를 실제 배치 수가 아닌 MonsterCount 기준으로 고정
     // (배치 실패로 인한 분모 불일치 방지 → KillRatio 정확도 확보)
@@ -133,14 +128,28 @@ void AMonsterDirector::CheckAndRespawn()
         UGameplayStatics::GetActorOfClass(GetWorld(), APlayerBehaviorLearner::StaticClass()));
     if (Learner) DefaultTendency = Learner->GetCurrentPlayerTendency();
 
+    int32 ActuallySpawned = 0;
     for (int32 i = 0; i < ToSpawn; i++)
     {
         ACharacter* Spawned = SpawnOneMonster(DefaultTendency);
-        if (Spawned) SpawnedMonsters.Add(Spawned);
+        if (Spawned)
+        {
+            SpawnedMonsters.Add(Spawned);
+            ActuallySpawned++;
+        }
+    }
+
+    if (ActuallySpawned > 0)
+    {
+        for (TActorIterator<APawn> It(GetWorld()); It; ++It)
+        {
+            UPlayerTrackerComponent* Tracker = It->FindComponentByClass<UPlayerTrackerComponent>();
+            if (Tracker) { Tracker->TotalSpawnedMonsters += ActuallySpawned; break; }
+        }
     }
 
     UE_LOG(LogTemp, Log, TEXT("MonsterDirector: %d마리 보충 스폰 (현재 %d/%d)"),
-           ToSpawn, AliveCount + ToSpawn, MonsterCount);
+           ActuallySpawned, AliveCount + ActuallySpawned, MonsterCount);
 }
 
 FVector AMonsterDirector::GetSpeedRunnerSpawnPoint(FVector Center, FVector Extent)

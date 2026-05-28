@@ -128,7 +128,7 @@ public:
 	int32 MaxIterations = 30;
 
 	UPROPERTY(EditAnywhere, Category="AI Learning|K-Means", meta=(ClampMin="2"))
-	int32 MinDataForClustering = 4;
+	int32 MinDataForClustering = 12;
 
 	UPROPERTY(EditAnywhere, Category="AI Learning|K-Means", meta=(ClampMin="10"))
 	int32 MaxHistorySize = 100;
@@ -180,6 +180,5 @@ private:
 	void SaveLearnerData();
 	void LoadLearnerData();
 
-	void ExportDataToCSV(const FPlayerBehaviorData& PlayerData, const FString& ClusterLabel);
 	void ExportAllDataToCSV();
 };

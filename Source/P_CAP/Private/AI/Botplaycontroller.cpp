@@ -264,10 +264,9 @@ void ABotPlayController::OnMoveCompleted(FAIRequestID RequestID, const FPathFoll
 		return;
 	}
 
-	// 장애물 회피 완료 → 웨이포인트 증가 후 복귀
+	// 장애물 회피 완료 → 복귀 (웨이포인트 카운트에 포함하지 않음)
 	if (CurrentState == EBotState::PassingObstacle || CurrentState == EBotState::AvoidingObstacle)
 	{
-		WaypointsVisited++;
 		CurrentState = EBotState::Roaming;
 		DecideNextAction();
 		return;
@@ -278,11 +277,12 @@ void ABotPlayController::OnMoveCompleted(FAIRequestID RequestID, const FPathFoll
 	{
 		if (bGoalIsNextTarget)
 		{
+			if (bReloadScheduled) return;
+			bReloadScheduled = true;
 			CurrentState = EBotState::Finished;
 			UE_LOG(LogTemp, Warning, TEXT("봇: 골 도달 → 데이터 정산 후 레벨 리로드"));
 			if (GoalActor)
 				GoalActor->ProcessGoalForActor(GetPawn());
-			// 데이터 저장 완료 후 레벨 리로드 (AutoPlayManager.CheckRunCompletion 우회)
 			FTimerHandle ReloadTimer;
 			TWeakObjectPtr<ABotPlayController> WeakThis1(this);
 			GetWorldTimerManager().SetTimer(ReloadTimer, [WeakThis1]()
@@ -532,6 +532,8 @@ void ABotPlayController::PickGoalAsTarget()
 	TWeakObjectPtr<ABotPlayController> WeakThis2(this);
 	auto FinishRun = [this, WeakThis2]()
 	{
+		if (bReloadScheduled) return;
+		bReloadScheduled = true;
 		CurrentState = EBotState::Finished;
 		if (GoalActor) GoalActor->ProcessGoalForActor(GetPawn());
 		FTimerHandle ReloadTimer;

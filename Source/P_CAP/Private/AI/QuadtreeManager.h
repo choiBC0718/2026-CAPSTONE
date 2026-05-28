@@ -45,7 +45,7 @@ public:
 	FVector MapSize = FVector(2000.f, 2000.f, 100.f); 
 
 	UPROPERTY(EditAnywhere, Category = "Quadtree")
-	int32 MaxDepth = 4; // 쪼개는 횟수
+	int32 MaxDepth = 5; // 쪼개는 횟수 (4→5: 256셀→1024셀, 셀 크기 125→62.5u)
 
 	// 플레이어 트래커가 호출할 방문 기록 함수
 	void AddVisit(FVector PlayerLocation);
