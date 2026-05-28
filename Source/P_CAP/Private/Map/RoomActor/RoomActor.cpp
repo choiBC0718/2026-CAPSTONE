@@ -12,6 +12,9 @@
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
+#include "Framework/CAP_RewardSettings.h"
+#include "Framework/Subsystem/CAP_RewardSubsystem.h"
+#include "Interactables/Reward/CAP_RewardChest.h"
 
 ARoomActor::ARoomActor()
 {
@@ -60,6 +63,44 @@ void ARoomActor::Tick(float DeltaSeconds)
 	if (bRoomActivated)
 	{
 		CheckRoomClear();
+	}
+}
+
+void ARoomActor::SpawnRewardChest()
+{
+	if (!RewardChestClass)
+	{
+		UE_LOG(LogTemp,Warning,TEXT("RoomActor에 RewardChestClass 설정 필요"));
+		return;
+	}
+	
+	FVector SpawnLoc = GetActorTransform().GetLocation() + FVector(0.f, 0.f, 150.f);
+	FRotator SpawnRot = FRotator::ZeroRotator;
+	FTransform SpawnTransform(SpawnRot, SpawnLoc);
+	
+	EChestGrade SelectedGrade = EChestGrade::Normal;
+	if (UGameInstance* GI = GetGameInstance())
+		if (UCAP_RewardSubsystem* RewardSubsys = GI->GetSubsystem<UCAP_RewardSubsystem>())
+			SelectedGrade = RewardSubsys->GetNextChestGrade(CachedRoomData.CombatRewardType);
+
+	ERewardChestType SelectedType = ERewardChestType::Item;
+	switch (CachedRoomData.CombatRewardType)
+	{
+	case ECombatRoomRewardType::Gold:
+		SelectedType = ERewardChestType::Gold;		break;
+	case ECombatRoomRewardType::Item:
+		SelectedType = ERewardChestType::Item;		break;
+	case ECombatRoomRewardType::Weapon:
+		SelectedType = ERewardChestType::Weapon;	break;
+	default:
+		SelectedType = ERewardChestType::Item;		break;
+	}
+	
+	if (ACAP_RewardChest* RewardChest = GetWorld()->SpawnActorDeferred<ACAP_RewardChest>(RewardChestClass, SpawnTransform))
+	{
+		RewardChest->ChestType = SelectedType;
+		RewardChest->ChestGrade = SelectedGrade;
+		RewardChest->FinishSpawning(SpawnTransform);
 	}
 }
 
@@ -290,6 +331,7 @@ void ARoomActor::CheckRoomClear()
 		HandleCombatRoomCleared();
 		SetSpawnedDoorsPortalEnabled(true);
 		SetActorTickEnabled(false);
+		SpawnRewardChest();
 	}
 }
 

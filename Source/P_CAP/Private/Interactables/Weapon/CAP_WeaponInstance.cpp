@@ -134,6 +134,35 @@ bool UCAP_WeaponInstance::UpgradeWeapon()
 	return true;
 }
 
+FWeaponSaveData UCAP_WeaponInstance::CreateSaveData() const
+{
+	FWeaponSaveData SaveData;
+	SaveData.WeaponDA = GetWeaponDA();
+	SaveData.CurrentGrade = GetCurrentGrade();
+
+	for (const FWeaponSkillData& Skill : GrantedActiveSkills)
+		SaveData.GrantedSkillRowNames.Add(Skill.SkillName);
+	return SaveData;
+}
+
+void UCAP_WeaponInstance::RestoreFromSaveData(const FWeaponSaveData& InData)
+{
+	CurrentGrade = InData.CurrentGrade;
+	GrantedActiveSkills.Empty();
+	
+	if (UCAP_WeaponDataAsset* DA = GetWeaponDA())
+	{
+		for (const FName& SavedSkillName : InData.GrantedSkillRowNames)
+			for (const FDataTableRowHandle& Handle : DA->ActiveAbilityArray)
+				if (FWeaponSkillData* SkillRow = Handle.GetRow<FWeaponSkillData>(""))
+					if (SkillRow->SkillName == SavedSkillName)
+					{
+						GrantedActiveSkills.Add(*SkillRow);
+						break;
+					}
+	}
+}
+
 int32 UCAP_WeaponInstance::GetSkillCountByGrade(EItemGrade Grade)
 {
 	switch (Grade)

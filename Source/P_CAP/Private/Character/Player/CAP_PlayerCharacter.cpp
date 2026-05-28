@@ -6,7 +6,6 @@
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
-#include "Framework/CAP_GameInstance.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
@@ -15,9 +14,10 @@
 #include "Component/CAP_InteractionComponent.h"
 #include "Component/CAP_InventoryComponent.h"
 #include "Component/CAP_WeaponComponent.h"
-#include "Kismet/GameplayStatics.h"
 #include "AI/BaseMonster.h"         // 몬스터 타격 판별을 위해 추가
 #include "Components/WidgetComponent.h"
+#include "Framework/Subsystem/CAP_ProgressionSubsystem.h"
+#include "GAS/Setting/CAP_AttributeSet.h"
 #include "Widget/Common/CAP_TargetEffectWidget.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
@@ -111,13 +111,8 @@ void ACAP_PlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 void ACAP_PlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (UCAP_GameInstance* GI = Cast<UCAP_GameInstance>(UGameplayStatics::GetGameInstance(this)))
-	{
-		int32 SavedStone = GI->GetSavedMagicStone();
-		CurrencyComponent->SetCurrencyOverride(ECurrencyType::MagicStone,SavedStone);
-		CurrencyComponent->OnCurrencyChanged.AddUniqueDynamic(GI,&UCAP_GameInstance::OnCurrencyChanged);
-	}
+	
+	TryLoadProgressionData();
 }
 
 
@@ -232,4 +227,53 @@ void ACAP_PlayerCharacter::OnDead()
 void ACAP_PlayerCharacter::OnRespawn()
 {
 	SetInputEnabledFromPlayerController(true);
+}
+
+void ACAP_PlayerCharacter::SaveProgressionBeforeChangeLevel()
+{
+	if (UCAP_ProgressionSubsystem* Subsys = GetGameInstance()->GetSubsystem<UCAP_ProgressionSubsystem>())
+	{
+		FPlayerProgressionData Data;
+		Data.bIsValid = true;
+
+		if (UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent()))
+			Data.CurrentHealth = ASC->GetCurrentHealthForSave();
+		if (WeaponComponent)
+			Data.WeaponData = WeaponComponent->CreateSaveData();
+		if (InventoryComponent)
+			Data.InventoryData = InventoryComponent->CreateSaveData();
+		if (CurrencyComponent)
+			Data.CurrencyData = CurrencyComponent->CreateSaveData();
+
+		Subsys->SavePlayerProgression(Data);
+	}
+}
+
+void ACAP_PlayerCharacter::TryLoadProgressionData()
+{
+	UGameInstance* GI = GetGameInstance();
+	if (!GI)
+		return;
+	
+	UCAP_ProgressionSubsystem* Subsys = GI->GetSubsystem<UCAP_ProgressionSubsystem>();
+	if (!Subsys)
+		return;
+
+	FPlayerProgressionData Data;
+	if (Subsys->LoadPlayerProgression(Data))
+	{
+		if (Data.bIsValid)
+		{
+			if (UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent()))
+				ASC->RestoreHealthFromSave(Data.CurrentHealth);
+			if (WeaponComponent)
+				WeaponComponent->RestoreFromSaveData(Data.WeaponData);
+			if (InventoryComponent)
+				InventoryComponent->RestoreFromSaveData(Data.InventoryData);
+			if (CurrencyComponent)
+				CurrencyComponent->RestoreFromSaveData(Data.CurrencyData);
+
+			Subsys->ClearProgression();
+		}
+	}
 }

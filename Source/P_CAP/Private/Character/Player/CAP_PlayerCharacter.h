@@ -87,4 +87,12 @@ private:
 	void SetInputEnabledFromPlayerController(bool bEnabled);
 	virtual void OnDead() override;
 	virtual void OnRespawn() override;
+
+public:
+	// 레벨 이동 전 데이터 저장
+	UFUNCTION(BlueprintCallable)
+	void SaveProgressionBeforeChangeLevel();
+
+protected:
+	void TryLoadProgressionData();
 };

@@ -257,6 +257,58 @@ void UCAP_WeaponComponent::ClearAbilities(class UCAP_WeaponInstance* WeaponInst)
 	WeaponInst->GrantedAbilityHandles.Empty();
 }
 
+struct FWeaponComponentSaveData UCAP_WeaponComponent::CreateSaveData() const
+{
+	FWeaponComponentSaveData SaveData;
+	SaveData.EquippedWeaponIdx = CurrentWeaponIndex;
+	
+	for (int32 i=0 ;i<EquippedWeapons.Num();++i)
+	{
+		if (EquippedWeapons[i])
+			SaveData.HeldWeapons.Add(EquippedWeapons[i]->CreateSaveData());
+		else
+			SaveData.HeldWeapons.Add(FWeaponSaveData());
+	}
+	return SaveData;
+}
+
+void UCAP_WeaponComponent::RestoreFromSaveData(const struct FWeaponComponentSaveData& InData)
+{
+	// 기존 무기 메모리 해제 & 능력 제거
+	for (int32 i=0; i<EquippedWeapons.Num(); ++i)
+	{
+		if (EquippedWeapons[i])
+		{
+			ClearAbilities(EquippedWeapons[i]);
+			EquippedWeapons[i]->UnloadWeaponAssets();
+			EquippedWeapons[i]=nullptr;
+		}
+	}
+
+	// 무기 데이터 백업
+	for (int32 i=0;i<InData.HeldWeapons.Num() && i<MaxWeaponCount ; ++i)
+	{
+		const FWeaponSaveData& Data = InData.HeldWeapons[i];
+		if (Data.WeaponDA)
+		{
+			UCAP_WeaponInstance* NewWeapon = NewObject<UCAP_WeaponInstance>(this);
+			NewWeapon->Initialize(Data.WeaponDA);
+			NewWeapon->RestoreFromSaveData(Data);
+			EquippedWeapons[i] = NewWeapon;
+		}
+	}
+	// 들고있는 무기 백업
+	CurrentWeaponIndex = FMath::Clamp(InData.EquippedWeaponIdx,0,MaxWeaponCount-1);
+	if (EquippedWeapons.IsValidIndex(CurrentWeaponIndex) && EquippedWeapons[CurrentWeaponIndex])
+	{
+		UCAP_WeaponInstance* ActiveWeapon = EquippedWeapons[CurrentWeaponIndex];
+		ActiveWeapon->LoadWeaponAssets(FStreamableDelegate::CreateWeakLambda(this, [this, ActiveWeapon]()
+		{	// 메쉬 & 능력 부여
+			ApplyWeaponData(ActiveWeapon);
+		}));
+	}
+}
+
 class UCAP_WeaponInstance* UCAP_WeaponComponent::GetCurrentWeaponInstance() const
 {
 	if (EquippedWeapons.IsValidIndex(CurrentWeaponIndex))

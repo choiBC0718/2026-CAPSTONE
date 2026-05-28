@@ -54,6 +54,9 @@ public:
 	const TMap<FGameplayTag, int32> & GetCurrentSynergyCounts() const {return CurrentSynergyCounts;}
 	const TMap<FGameplayTag, FSynergyDataTable*>& GetSynergyDataCache() const {return SynergyDataCache;}
 
+	struct FInventorySaveData CreateSaveData() const;
+	void RestoreFromSaveData(const struct FInventorySaveData& InData);
+	
 private:
 	// 아이템 장착 가능 수
 	UPROPERTY(EditDefaultsOnly, Category="Inventory")

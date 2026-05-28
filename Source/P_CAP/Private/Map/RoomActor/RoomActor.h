@@ -49,10 +49,14 @@ public:
 
 	UFUNCTION(BlueprintPure, Category="Room")
 	bool IsRoomActivated() const { return bRoomActivated; }
+
+	UPROPERTY(EditDefaultsOnly, Category="Room|Reward")
+	TSubclassOf<class ACAP_RewardChest> RewardChestClass;
 	
 protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+	void SpawnRewardChest();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Room")
 	USceneComponent* Root;

@@ -102,10 +102,10 @@ FInteractionPayload ACAP_WorldItem::GetInteractionPayload() const
 
 void ACAP_WorldItem::DropItem()
 {
-	if (InteractionSphere)
+	if (BaseCollision)
 	{
 		FVector DropImpulse = FVector(0.f,0.f, 600.f);
-		InteractionSphere->AddImpulse(DropImpulse, NAME_None, true);
+		BaseCollision->AddImpulse(DropImpulse, NAME_None, true);
 	}
 	SetItemStaticMesh();
 }
