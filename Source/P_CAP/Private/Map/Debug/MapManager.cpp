@@ -15,12 +15,18 @@
 #include "Map/RoomActor/RoomSizeSettings.h"
 #include "Stage/StageExitActor.h"
 #include "Stage/StageDataAsset.h"
+#include "UObject/ConstructorHelpers.h"
 
 AMapManager::AMapManager()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	StageExitActorClass = AStageExitActor::StaticClass();
-	NextRoomChoiceManagerClass = ANextRoomChoiceManager::StaticClass();
+
+	static ConstructorHelpers::FClassFinder<ANextRoomChoiceManager> ChoiceManagerClassFinder(
+		TEXT("/Game/_Workspace/6_Room/ChoiceWidget/BP_NextRoomChoiceManager"));
+	NextRoomChoiceManagerClass = ChoiceManagerClassFinder.Succeeded()
+		? ChoiceManagerClassFinder.Class
+		: ANextRoomChoiceManager::StaticClass();
 }
 
 void AMapManager::BeginPlay()

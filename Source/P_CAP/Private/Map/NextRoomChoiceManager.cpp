@@ -184,23 +184,23 @@ TArray<FCombatRewardChoiceOption> ANextRoomChoiceManager::BuildCombatRewardChoic
 	return Options;
 }
 
-void ANextRoomChoiceManager::ShowChoiceWidget()
+bool ANextRoomChoiceManager::ShowChoiceWidget()
 {
 	if (ActiveChoiceWidget || !ChoiceWidgetClass)
 	{
-		return;
+		return false;
 	}
 
 	APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
 	if (!PC)
 	{
-		return;
+		return false;
 	}
 
 	ActiveChoiceWidget = CreateWidget<UCombatRewardChoiceWidget>(PC, ChoiceWidgetClass);
 	if (!ActiveChoiceWidget)
 	{
-		return;
+		return false;
 	}
 
 	ActiveChoiceWidget->InitializeChoiceWidget(this, CurrentChoiceOptions);
@@ -211,6 +211,7 @@ void ANextRoomChoiceManager::ShowChoiceWidget()
 	InputMode.SetWidgetToFocus(ActiveChoiceWidget->TakeWidget());
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	PC->SetInputMode(InputMode);
+	return true;
 }
 
 void ANextRoomChoiceManager::HideChoiceWidget()
@@ -245,7 +246,29 @@ void ANextRoomChoiceManager::BeginCombatRewardChoice(
 	PendingExitDirection = ExitDirection;
 	CurrentChoiceOptions = BuildCombatRewardChoiceOptions();
 	bWaitingForCombatRewardChoice = true;
-	ShowChoiceWidget();
+	if (!ShowChoiceWidget())
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("NextRoomChoiceManager: ChoiceWidgetClass is missing. Moving to room without reward choice."));
+
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				4.0f,
+				FColor::Red,
+				TEXT("Choice widget missing: moved without reward choice"));
+		}
+
+		ClearPendingChoice();
+		if (AMapManager* ResolvedMapManager = ResolveMapManager())
+		{
+			ResolvedMapManager->MovePlayerToRoom(PlayerCharacter, TargetRoomPos, ExitDirection);
+		}
+		return;
+	}
 	OnCombatRewardChoiceRequested.Broadcast(TargetRoomPos);
 
 	UE_LOG(

@@ -86,7 +86,7 @@ private:
 	AMapManager* ResolveMapManager();
 	bool DoesRoomNeedCombatRewardChoice(const FRoomData& RoomData) const;
 	TArray<FCombatRewardChoiceOption> BuildCombatRewardChoiceOptions() const;
-	void ShowChoiceWidget();
+	bool ShowChoiceWidget();
 	void HideChoiceWidget();
 	void BeginCombatRewardChoice(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection);
 	void ApplyCombatRewardChoice(ECombatRoomRewardType SelectedRewardType);
