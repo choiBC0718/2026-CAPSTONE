@@ -24,9 +24,14 @@ AMapManager::AMapManager()
 
 	static ConstructorHelpers::FClassFinder<ANextRoomChoiceManager> ChoiceManagerClassFinder(
 		TEXT("/Game/_Workspace/6_Room/ChoiceWidget/BP_NextRoomChoiceManager"));
-	NextRoomChoiceManagerClass = ChoiceManagerClassFinder.Succeeded()
-		? ChoiceManagerClassFinder.Class
-		: ANextRoomChoiceManager::StaticClass();
+	if (ChoiceManagerClassFinder.Succeeded())
+	{
+		NextRoomChoiceManagerClass = ChoiceManagerClassFinder.Class;
+	}
+	else
+	{
+		NextRoomChoiceManagerClass = ANextRoomChoiceManager::StaticClass();
+	}
 }
 
 void AMapManager::BeginPlay()
