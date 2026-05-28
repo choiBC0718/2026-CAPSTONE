@@ -5,10 +5,6 @@
 #include "CoreMinimal.h"
 #include "RoomTypes.generated.h"
 
-/**
- 방 종류 구분하는 enum 클래스
- */
-
 UENUM(BlueprintType)
 enum class ERoomType : uint8
 {
@@ -18,4 +14,21 @@ enum class ERoomType : uint8
 	Reward  UMETA(DisplayName = "Reward"),
 	Shop    UMETA(DisplayName = "Shop"),
 	Event   UMETA(DisplayName = "Event")
+};
+
+UENUM(BlueprintType)
+enum class ERoomZone : uint8
+{
+	Core    UMETA(DisplayName = "Core"),
+	Mid     UMETA(DisplayName = "Mid"),
+	Outer   UMETA(DisplayName = "Outer")
+};
+
+UENUM(BlueprintType)
+enum class ECombatRoomRewardType : uint8
+{
+	None UMETA(DisplayName = "None"),
+	Gold UMETA(DisplayName = "Gold"),
+	Item UMETA(DisplayName = "Item"),
+	Weapon UMETA(DisplayName = "Weapon")
 };

@@ -6,6 +6,7 @@
 #include "Map/RoomActor/Interior/RoomInteriorData.h"
 #include "Map/RoomActor/Interior/RoomInteriorPropSet.h"
 #include "Map/RoomActor/Interior/PCG/RoomPathActor.h"
+#include "Map/RoomActor/RoomSizeSettings.h"
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
 #include "GameFramework/Pawn.h"
@@ -95,14 +96,19 @@ void ARoomActor::InitializeRoom(
 	const FRoomData& InRoomData,
 	int32 InMapSeed,
 	URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset,
-	const FPlayerTendencyModifier& InTendency)
+	const FPlayerTendencyModifier& InTendency,
+	ERoomZone InZone,
+	URoomSizeSettings* InRoomSizeSettings)
 {
 	/* 현재 방 정보와 맵 시드, 성향 데이터를 캐싱 */
 	CachedRoomData = InRoomData;
 	CachedMapSeed = InMapSeed;
 	CachedTendency = InTendency;
+	CachedZone = InZone;
+	CachedRoomSizeSettings = InRoomSizeSettings;
 	bRoomActivated = false;
 	bRoomCleared = false;
+	ApplyFloorMeshScale();
 	UpdateRoomEnterTriggerExtent();
 
 	if (MonsterSpawnerComponent)
@@ -135,6 +141,11 @@ void ARoomActor::InitializeRoom(
 			0.1f,
 			false);
 	}
+}
+
+void ARoomActor::SetCombatRewardType(ECombatRoomRewardType NewRewardType)
+{
+	CachedRoomData.CombatRewardType = NewRewardType;
 }
 
 void ARoomActor::ActivateRoom(AActor* TargetActor)
@@ -205,9 +216,61 @@ void ARoomActor::UpdateRoomEnterTriggerExtent()
 		return;
 	}
 
-	const float TriggerHalfExtent = FMath::Max(100.f, RoomHalfExtent - 50.f);
+	const float TriggerHalfExtent = GetEffectiveTriggerHalfExtent();
 	RoomEnterTrigger->SetBoxExtent(FVector(TriggerHalfExtent, TriggerHalfExtent, RoomEnterTriggerHeight));
 	RoomEnterTrigger->SetRelativeLocation(FVector(0.f, 0.f, RoomEnterTriggerHeight));
+}
+
+float ARoomActor::GetEffectiveRoomHalfExtent() const
+{
+	return CachedRoomSizeSettings ? CachedRoomSizeSettings->RoomHalfExtent : RoomHalfExtent;
+}
+
+float ARoomActor::GetEffectiveDoorInset() const
+{
+	return CachedRoomSizeSettings ? CachedRoomSizeSettings->DoorInset : DoorInset;
+}
+
+float ARoomActor::GetEffectiveEntranceInset() const
+{
+	return CachedRoomSizeSettings ? CachedRoomSizeSettings->EntranceInset : 200.f;
+}
+
+float ARoomActor::GetEffectiveTriggerHalfExtent() const
+{
+	return CachedRoomSizeSettings
+		? CachedRoomSizeSettings->GetTriggerHalfExtent()
+		: FMath::Max(100.f, RoomHalfExtent - 50.f);
+}
+
+float ARoomActor::GetEffectiveInteriorCellSize() const
+{
+	return CachedRoomSizeSettings ? CachedRoomSizeSettings->InteriorCellSize : InteriorCellSize;
+}
+
+float ARoomActor::GetEffectiveInteriorMargin() const
+{
+	return CachedRoomSizeSettings ? CachedRoomSizeSettings->InteriorMargin : InteriorMargin;
+}
+
+void ARoomActor::ApplyFloorMeshScale()
+{
+	if (!FloorMesh || !CachedRoomSizeSettings || !CachedRoomSizeSettings->bAutoScaleFloorMesh)
+	{
+		return;
+	}
+
+	if (!bHasInitialFloorMeshScale)
+	{
+		InitialFloorMeshScale = FloorMesh->GetRelativeScale3D();
+		bHasInitialFloorMeshScale = true;
+	}
+
+	const float FloorScale = CachedRoomSizeSettings->GetFloorScale();
+	FloorMesh->SetRelativeScale3D(FVector(
+		InitialFloorMeshScale.X * FloorScale,
+		InitialFloorMeshScale.Y * FloorScale,
+		InitialFloorMeshScale.Z));
 }
 
 void ARoomActor::CheckPlayerInsideRoom()
@@ -234,7 +297,7 @@ void ARoomActor::CheckPlayerInsideRoom()
 	}
 
 	const FVector LocalPlayerLocation = GetActorTransform().InverseTransformPosition(PlayerPawn->GetActorLocation());
-	const float TriggerHalfExtent = FMath::Max(100.f, RoomHalfExtent - 50.f);
+	const float TriggerHalfExtent = GetEffectiveTriggerHalfExtent();
 	if (FMath::Abs(LocalPlayerLocation.X) <= TriggerHalfExtent &&
 		FMath::Abs(LocalPlayerLocation.Y) <= TriggerHalfExtent)
 	{
@@ -253,6 +316,7 @@ void ARoomActor::CheckRoomClear()
 	if (MonsterSpawnerComponent && MonsterSpawnerComponent->AreAllSpawnedMonstersDefeated())
 	{
 		bRoomCleared = true;
+		HandleCombatRoomCleared();
 		SetSpawnedDoorsPortalEnabled(true);
 		SetActorTickEnabled(false);
 		SpawnRewardChest();
@@ -264,6 +328,51 @@ bool ARoomActor::ShouldLockPortalsForCombat() const
 	return CachedRoomData.RoomType == ERoomType::Normal &&
 		MonsterSpawnerComponent &&
 		MonsterSpawnerComponent->HasSpawnedMonsters();
+}
+
+void ARoomActor::HandleCombatRoomCleared()
+{
+	if (CachedRoomData.RoomType != ERoomType::Normal)
+	{
+		return;
+	}
+
+	const TCHAR* RewardTypeText = TEXT("None");
+	switch (CachedRoomData.CombatRewardType)
+	{
+	case ECombatRoomRewardType::Gold:
+		RewardTypeText = TEXT("Gold");
+		break;
+
+	case ECombatRoomRewardType::Item:
+		RewardTypeText = TEXT("Item");
+		break;
+
+	case ECombatRoomRewardType::Weapon:
+		RewardTypeText = TEXT("Weapon");
+		break;
+
+	case ECombatRoomRewardType::None:
+	default:
+		break;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Log,
+		TEXT("RoomActor: combat room cleared at (%d, %d), reward type = %s"),
+		CachedRoomData.GridPos.X,
+		CachedRoomData.GridPos.Y,
+		RewardTypeText);
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			-1,
+			3.0f,
+			FColor::Green,
+			FString::Printf(TEXT("Combat reward ready: %s"), RewardTypeText));
+	}
 }
 
 void ARoomActor::SetSpawnedDoorsPortalEnabled(bool bEnabled)
@@ -279,26 +388,27 @@ void ARoomActor::SetSpawnedDoorsPortalEnabled(bool bEnabled)
 
 FVector ARoomActor::GetEntrancePoint(EDoorDirection Direction) const
 {
-	const float EntranceOffset = 200.f;
+	const float RoomHalfExtentValue = GetEffectiveRoomHalfExtent();
+	const float EntranceInsetValue = GetEffectiveEntranceInset();
 
 	FVector LocalLocation = FVector::ZeroVector;
 
 	switch (Direction)
 	{
 	case EDoorDirection::Up:
-		LocalLocation = FVector(0.f, RoomHalfExtent - EntranceOffset, 0.f);
+		LocalLocation = FVector(0.f, RoomHalfExtentValue - EntranceInsetValue, 0.f);
 		break;
 
 	case EDoorDirection::Down:
-		LocalLocation = FVector(0.f, -RoomHalfExtent + EntranceOffset, 0.f);
+		LocalLocation = FVector(0.f, -RoomHalfExtentValue + EntranceInsetValue, 0.f);
 		break;
 
 	case EDoorDirection::Left:
-		LocalLocation = FVector(-RoomHalfExtent + EntranceOffset, 0.f, 0.f);
+		LocalLocation = FVector(-RoomHalfExtentValue + EntranceInsetValue, 0.f, 0.f);
 		break;
 
 	case EDoorDirection::Right:
-		LocalLocation = FVector(RoomHalfExtent - EntranceOffset, 0.f, 0.f);
+		LocalLocation = FVector(RoomHalfExtentValue - EntranceInsetValue, 0.f, 0.f);
 		break;
 
 	default:
@@ -439,7 +549,11 @@ void ARoomActor::GenerateAndSpawnInterior()
 	}
 
 	const FRoomInteriorLayout Layout = InteriorGenerator->GenerateInteriorLayout(
-		CachedRoomData, RoomHalfExtent, InteriorCellSize, InteriorMargin, CachedMapSeed);
+		CachedRoomData,
+		GetEffectiveRoomHalfExtent(),
+		GetEffectiveInteriorCellSize(),
+		GetEffectiveInteriorMargin(),
+		CachedMapSeed);
 	CachedInteriorLayout = Layout;
 
 	/* 생성된 경로 데이터로 실제 path actor를 생성 */
@@ -447,10 +561,11 @@ void ARoomActor::GenerateAndSpawnInterior()
 	SpawnLargeStructureMeshes(Layout);
 	if (MonsterSpawnerComponent)
 	{
-		MonsterSpawnerComponent->SpawnMonsters(CachedRoomData, CachedInteriorLayout, CachedMapSeed, GetActorTransform(), CachedTendency);
+		MonsterSpawnerComponent->SpawnMonsters(CachedRoomData, CachedInteriorLayout, CachedMapSeed, GetActorTransform(), CachedTendency, CachedZone);
 	}
 	SpawnObstaclesByTendency(CachedTendency);
 	DrawInteriorCellDebug(Layout);
+	DrawZoneDebug();
 }
 
 void ARoomActor::SpawnGuaranteedPaths(const FRoomInteriorLayout& Layout)
@@ -685,26 +800,28 @@ FTransform ARoomActor::GetDoorTransform(EDoorDirection Direction) const
 	/* 방향별 로컬 문 위치/회전을 계산 */
 	FVector LocalLocation = FVector::ZeroVector;
 	FRotator LocalRotation = FRotator::ZeroRotator;
+	const float RoomHalfExtentValue = GetEffectiveRoomHalfExtent();
+	const float DoorInsetValue = GetEffectiveDoorInset();
 
 	switch (Direction)
 	{
 	case EDoorDirection::Up:
-		LocalLocation = FVector(0.f, RoomHalfExtent - DoorInset, DoorSpawnZOffset);
+		LocalLocation = FVector(0.f, RoomHalfExtentValue - DoorInsetValue, DoorSpawnZOffset);
 		LocalRotation = FRotator(0.f, 0.f, 0.f);
 		break;
 
 	case EDoorDirection::Down:
-		LocalLocation = FVector(0.f, -RoomHalfExtent + DoorInset, DoorSpawnZOffset);
+		LocalLocation = FVector(0.f, -RoomHalfExtentValue + DoorInsetValue, DoorSpawnZOffset);
 		LocalRotation = FRotator(0.f, 180.f, 0.f);
 		break;
 
 	case EDoorDirection::Left:
-		LocalLocation = FVector(-RoomHalfExtent + DoorInset, 0.f, DoorSpawnZOffset);
+		LocalLocation = FVector(-RoomHalfExtentValue + DoorInsetValue, 0.f, DoorSpawnZOffset);
 		LocalRotation = FRotator(0.f, -90.f, 0.f);
 		break;
 
 	case EDoorDirection::Right:
-		LocalLocation = FVector(RoomHalfExtent - DoorInset, 0.f, DoorSpawnZOffset);
+		LocalLocation = FVector(RoomHalfExtentValue - DoorInsetValue, 0.f, DoorSpawnZOffset);
 		LocalRotation = FRotator(0.f, 90.f, 0.f);
 		break;
 
@@ -765,9 +882,29 @@ void ARoomActor::SpawnObstaclesByTendency(const FPlayerTendencyModifier& Tendenc
 		return;
 	}
 
-	// ObstacleBypass가 높을수록 장애물 많이 배치 (돌파형 플레이어에게 더 도전적인 환경)
-	const int32 ObstacleCount = FMath::RoundToInt(
-		FMath::Lerp(0.f, static_cast<float>(MaxObstaclesPerRoom), Tendency.ObstacleBypass));
+	// 구역 가중치: ExplorationRate 낮은 플레이어는 Core에 집중, 높은 플레이어는 Outer에 집중
+	float ZoneMultiplier = 1.0f;
+	switch (CachedZone)
+	{
+	case ERoomZone::Core:
+		ZoneMultiplier = FMath::Lerp(1.5f, 0.5f, Tendency.ExplorationRate);
+		break;
+	case ERoomZone::Outer:
+		ZoneMultiplier = FMath::Lerp(0.5f, 1.5f, Tendency.ExplorationRate);
+		break;
+	default:
+		break;
+	}
+
+	// ObstacleBypass × ZoneMultiplier 로 최종 장애물 수 결정
+	const float BaseCount = FMath::Lerp(0.f, static_cast<float>(MaxObstaclesPerRoom), Tendency.ObstacleBypass);
+	const int32 ObstacleCount = FMath::RoundToInt(BaseCount * ZoneMultiplier);
+
+	UE_LOG(LogTemp, Log, TEXT("[Zone] Room(%d,%d) Zone=%s | Explore=%.2f ZoneMult=%.2f | Bypass=%.2f Base=%.1f → 장애물 %d개"),
+		CachedRoomData.GridPos.X, CachedRoomData.GridPos.Y,
+		CachedZone == ERoomZone::Core ? TEXT("Core") : CachedZone == ERoomZone::Mid ? TEXT("Mid") : TEXT("Outer"),
+		Tendency.ExplorationRate, ZoneMultiplier,
+		Tendency.ObstacleBypass, BaseCount, ObstacleCount);
 
 	if (ObstacleCount <= 0)
 	{
@@ -840,4 +977,35 @@ void ARoomActor::SpawnObstaclesByTendency(const FPlayerTendencyModifier& Tendenc
 				Tendency.ObstacleBypass, SpawnedObstacles.Num(), ObstacleCount);
 		}
 	}
+}
+
+void ARoomActor::DrawZoneDebug() const
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const FVector TextBase = GetActorLocation() + FVector(0.f, 0.f, 600.f);
+
+	// 구역별 색상
+	FColor ZoneColor = FColor::White;
+	FString ZoneName;
+	switch (CachedZone)
+	{
+	case ERoomZone::Core:  ZoneColor = FColor::Red;    ZoneName = TEXT("CORE");  break;
+	case ERoomZone::Mid:   ZoneColor = FColor::Yellow; ZoneName = TEXT("MID");   break;
+	case ERoomZone::Outer: ZoneColor = FColor::Cyan;   ZoneName = TEXT("OUTER"); break;
+	}
+
+	const int32 MonsterCount = MonsterSpawnerComponent ? MonsterSpawnerComponent->GetNumSpawnedMonsters() : 0;
+
+	const FString Line1 = FString::Printf(TEXT("[%s] Dist=%d"), *ZoneName, CachedRoomData.DistanceFromStart);
+	const FString Line2 = FString::Printf(TEXT("Monster:%d  Obstacle:%d"), MonsterCount, SpawnedObstacles.Num());
+	const FString Line3 = FString::Printf(TEXT("Explore:%.2f Combat:%.2f"), CachedTendency.ExplorationRate, CachedTendency.CombatAggression);
+
+	DrawDebugString(World, TextBase,                        Line1, nullptr, ZoneColor,  -1.f, true, 1.5f);
+	DrawDebugString(World, TextBase - FVector(0,0,60),      Line2, nullptr, FColor::White, -1.f, true, 1.2f);
+	DrawDebugString(World, TextBase - FVector(0,0,110),     Line3, nullptr, FColor::Green, -1.f, true, 1.0f);
 }

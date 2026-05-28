@@ -26,7 +26,7 @@ public:
 
 	// 봇 플레이 속도 배율 (3.0 = 3배속, 5.0 = 5배속)
 	UPROPERTY(EditAnywhere, Category = "AutoPlay", meta=(ClampMin="1.0", ClampMax="10.0"))
-	float GameSpeed = 15.0f;
+	float GameSpeed = 30.0f;
 
 protected:
 	virtual void BeginPlay() override;

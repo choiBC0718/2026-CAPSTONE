@@ -43,6 +43,8 @@ void AStageGoalTrigger::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AAct
 void AStageGoalTrigger::ProcessGoalForActor(AActor* OtherActor)
 {
     if (!OtherActor || OtherActor == this) return;
+    if (bAlreadyProcessed) return;
+    bAlreadyProcessed = true;
 
     UE_LOG(LogTemp, Warning, TEXT("[GoalTrigger] Overlap: %s"), *OtherActor->GetName());
 

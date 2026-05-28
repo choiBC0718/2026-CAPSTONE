@@ -171,7 +171,7 @@ const struct FWeaponSkillData* UCAP_GameplayAbility::GetSkillDataFromContext(con
 	int32 TargetInputID = Spec->InputID;
 	if (TargetInputID >= 100)
 		TargetInputID -= 100;
-	
+
 	if (TargetInputID == static_cast<int32>(EAbilityInputID::BasicAttack))
 	{
 		return WeaponInst->GetBasicAttack();

@@ -11,13 +11,27 @@
 #include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
 #include "Map/RoomTypes.h"
+#include "Map/NextRoomChoiceManager.h"
+#include "Map/RoomActor/RoomSizeSettings.h"
 #include "Stage/StageExitActor.h"
 #include "Stage/StageDataAsset.h"
+#include "UObject/ConstructorHelpers.h"
 
 AMapManager::AMapManager()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	StageExitActorClass = AStageExitActor::StaticClass();
+
+	static ConstructorHelpers::FClassFinder<ANextRoomChoiceManager> ChoiceManagerClassFinder(
+		TEXT("/Game/_Workspace/6_Room/ChoiceWidget/BP_NextRoomChoiceManager"));
+	if (ChoiceManagerClassFinder.Succeeded())
+	{
+		NextRoomChoiceManagerClass = ChoiceManagerClassFinder.Class;
+	}
+	else
+	{
+		NextRoomChoiceManagerClass = ANextRoomChoiceManager::StaticClass();
+	}
 }
 
 void AMapManager::BeginPlay()
@@ -25,6 +39,7 @@ void AMapManager::BeginPlay()
 	Super::BeginPlay();
 
 	EnsureMapGenerator();
+	EnsureNextRoomChoiceManager();
 
 	if (bUseRandomSeedOnBeginPlay)
 	{
@@ -36,6 +51,46 @@ void AMapManager::BeginPlay()
 	{
 		GenerateMapAndSpawnRooms();
 	}
+}
+
+float AMapManager::GetRoomSpacing() const
+{
+	return GetEffectiveRoomSpacing();
+}
+
+void AMapManager::EnsureNextRoomChoiceManager()
+{
+	if (NextRoomChoiceManager)
+	{
+		return;
+	}
+
+	NextRoomChoiceManager = Cast<ANextRoomChoiceManager>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ANextRoomChoiceManager::StaticClass()));
+
+	if (NextRoomChoiceManager || !NextRoomChoiceManagerClass)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	NextRoomChoiceManager = World->SpawnActor<ANextRoomChoiceManager>(
+		NextRoomChoiceManagerClass,
+		FVector::ZeroVector,
+		FRotator::ZeroRotator,
+		SpawnParams);
+}
+
+float AMapManager::GetEffectiveRoomSpacing() const
+{
+	return RoomSizeSettings ? RoomSizeSettings->GetRoomSpacing() : RoomSpacing;
 }
 
 void AMapManager::BindInput()
@@ -167,13 +222,30 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 	}
 	LastAppliedTendency = Tendency;
 
+	// 맵 전체 중심 계산
+	FVector2D Centroid(0.f, 0.f);
+	for (const TPair<FIntPoint, FRoomData>& Pair : Layout.Rooms)
+	{
+		Centroid += FVector2D(Pair.Key.X, Pair.Key.Y);
+	}
+	Centroid /= FMath::Max(1, Layout.Rooms.Num());
+
+	// 중심에서 가장 먼 방까지의 거리 (구역 경계 정규화용)
+	float MaxDist = KINDA_SMALL_NUMBER;
+	for (const TPair<FIntPoint, FRoomData>& Pair : Layout.Rooms)
+	{
+		const float D = FVector2D::Distance(FVector2D(Pair.Key.X, Pair.Key.Y), Centroid);
+		if (D > MaxDist) MaxDist = D;
+	}
+
 	for (const TPair<FIntPoint, FRoomData>& Pair : Layout.Rooms)
 	{
 		const FRoomData& RoomData = Pair.Value;
+		const float EffectiveRoomSpacing = GetEffectiveRoomSpacing();
 
 		const FVector SpawnLocation(
-			RoomData.GridPos.X * RoomSpacing,
-			RoomData.GridPos.Y * RoomSpacing,
+			RoomData.GridPos.X * EffectiveRoomSpacing,
+			RoomData.GridPos.Y * EffectiveRoomSpacing,
 			0.f
 		);
 
@@ -192,7 +264,14 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 			continue;
 		}
 
-		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed, CurrentMonsterSpawnDataAsset, Tendency);
+		// 맵 중심 기준 공간 거리 비율로 구역 분류
+		// Core(0~33%) = 중앙, Mid(33~66%) = 중간, Outer(66~100%) = 외곽
+		const float DistRatio = FVector2D::Distance(FVector2D(RoomData.GridPos.X, RoomData.GridPos.Y), Centroid) / MaxDist;
+		ERoomZone Zone = ERoomZone::Outer;
+		if (DistRatio < 0.33f) Zone = ERoomZone::Core;
+		else if (DistRatio < 0.66f) Zone = ERoomZone::Mid;
+
+		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed, CurrentMonsterSpawnDataAsset, Tendency, Zone, RoomSizeSettings);
 		SpawnedRooms.Add(SpawnedRoom);
 		SpawnedRoomMap.Add(RoomData.GridPos, SpawnedRoom);
 
@@ -295,7 +374,17 @@ ARoomActor* AMapManager::FindSpawnedRoomByGridPos(const FIntPoint& InGridPos) co
 	return nullptr;
 }
 
-void AMapManager::RequestMovePlayer(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
+FRoomData* AMapManager::FindRoomData(const FIntPoint& InGridPos)
+{
+	return CurrentLayout.FindRoom(InGridPos);
+}
+
+const FRoomData* AMapManager::FindRoomData(const FIntPoint& InGridPos) const
+{
+	return CurrentLayout.FindRoom(InGridPos);
+}
+
+void AMapManager::MovePlayerToRoom(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
 {
 	if (!PlayerCharacter)
 	{
@@ -334,5 +423,10 @@ void AMapManager::RequestMovePlayer(ACharacter* PlayerCharacter, const FIntPoint
 
 	const FVector TargetLocation = TargetRoom->GetEntrancePoint(EntryDirection);
 	PlayerCharacter->SetActorLocation(TargetLocation);
+}
+
+void AMapManager::RequestMovePlayer(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
+{
+	MovePlayerToRoom(PlayerCharacter, TargetRoomPos, ExitDirection);
 }
 

@@ -168,9 +168,11 @@ void ABotPlayController::Tick(float DeltaTime)
 			UE_LOG(LogTemp, Warning, TEXT("봇: 골 근접(%.0fu) → 데이터 정산 후 리로드"), DistToGoal);
 			GoalActor->ProcessGoalForActor(GetPawn());
 			FString LevelName = GetWorld()->GetName();
-			GetWorldTimerManager().SetTimer(ReloadTimerHandle, [this, LevelName]()
+			TWeakObjectPtr<ABotPlayController> WeakThis(this);
+			GetWorldTimerManager().SetTimer(ReloadTimerHandle, [WeakThis, LevelName]()
 			{
-				UGameplayStatics::OpenLevel(this, FName(*LevelName));
+				if (WeakThis.IsValid())
+					UGameplayStatics::OpenLevel(WeakThis.Get(), FName(*LevelName));
 			}, 1.5f, false);
 			return;
 		}
@@ -282,10 +284,14 @@ void ABotPlayController::OnMoveCompleted(FAIRequestID RequestID, const FPathFoll
 				GoalActor->ProcessGoalForActor(GetPawn());
 			// 데이터 저장 완료 후 레벨 리로드 (AutoPlayManager.CheckRunCompletion 우회)
 			FTimerHandle ReloadTimer;
-			GetWorldTimerManager().SetTimer(ReloadTimer, [this]()
+			TWeakObjectPtr<ABotPlayController> WeakThis1(this);
+			GetWorldTimerManager().SetTimer(ReloadTimer, [WeakThis1]()
 			{
-				FString LevelName = GetWorld()->GetName();
-				UGameplayStatics::OpenLevel(this, FName(*LevelName));
+				if (WeakThis1.IsValid())
+				{
+					FString LevelName = WeakThis1->GetWorld()->GetName();
+					UGameplayStatics::OpenLevel(WeakThis1.Get(), FName(*LevelName));
+				}
 			}, 1.5f, false);
 			return;
 		}
@@ -426,14 +432,23 @@ void ABotPlayController::CheckAndHandleObstacles()
 
 	if (FMath::FRand() < ObstaclePassPreference)
 	{
-		// 돌파 결정: 즉시 카운트, 웨이포인트 1 증가, 현재 경로 유지
-		if (Tracker) Tracker->PassedObstacleCount++;
-		WaypointsVisited++;
-		UE_LOG(LogTemp, Log, TEXT("봇: 장애물 돌파 결정 (웨이포인트 %d/%d)"), WaypointsVisited, MaxWaypointsBeforeGoal);
+		// 돌파: 장애물 너머로 실제 이동 → InnerZone overlap이 PassedObstacleCount++ 처리
+		FVector PassTarget = ObstacleLoc + ToObstacle * 500.f;
+
+		if (NavSys)
+		{
+			FNavLocation NavLoc;
+			if (NavSys->ProjectPointToNavigation(PassTarget, NavLoc, FVector(500.f, 500.f, 200.f)))
+				PassTarget = NavLoc.Location;
+		}
+
+		CurrentState = EBotState::PassingObstacle;
+		MoveToLocation(PassTarget, 100.f);
+		UE_LOG(LogTemp, Log, TEXT("봇: 장애물 실제 돌파 이동 시작"));
 	}
 	else
 	{
-		// 회피 결정: 즉시 카운트 후 측면으로 이동
+		// 회피: 측면으로 이동 → 수동 카운트 (OuterZone 진입 보장이 어려워 직접 집계)
 		if (Tracker) Tracker->AvoidedObstacleCount++;
 
 		FVector SideDir = FVector(-ToObstacle.Y, ToObstacle.X, 0.f);
@@ -514,15 +529,19 @@ void ABotPlayController::PickGoalAsTarget()
 
 	EPathFollowingRequestResult::Type Result = MoveToLocation(GoalLoc, 50.f);
 
-	auto FinishRun = [this]()
+	TWeakObjectPtr<ABotPlayController> WeakThis2(this);
+	auto FinishRun = [this, WeakThis2]()
 	{
 		CurrentState = EBotState::Finished;
 		if (GoalActor) GoalActor->ProcessGoalForActor(GetPawn());
 		FTimerHandle ReloadTimer;
-		GetWorldTimerManager().SetTimer(ReloadTimer, [this]()
+		GetWorldTimerManager().SetTimer(ReloadTimer, [WeakThis2]()
 		{
-			FString LevelName = GetWorld()->GetName();
-			UGameplayStatics::OpenLevel(this, FName(*LevelName));
+			if (WeakThis2.IsValid())
+			{
+				FString LevelName = WeakThis2->GetWorld()->GetName();
+				UGameplayStatics::OpenLevel(WeakThis2.Get(), FName(*LevelName));
+			}
 		}, 1.5f, false);
 	};
 
