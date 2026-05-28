@@ -39,6 +39,9 @@ public:
 	UPROPERTY()
 	FOnCurrencyChanged OnCurrencyChanged;
 
+	struct FCurrencySaveData CreateSaveData() const;
+	void RestoreFromSaveData(const struct FCurrencySaveData& InData);
+	
 private:
 	UPROPERTY(VisibleAnywhere)
 	TMap<ECurrencyType, int32> CurrencyMap;

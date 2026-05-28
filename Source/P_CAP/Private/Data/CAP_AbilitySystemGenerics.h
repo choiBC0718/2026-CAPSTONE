@@ -19,6 +19,7 @@ class UCAP_AbilitySystemGenerics : public UPrimaryDataAsset
 public:
 	FORCEINLINE TSubclassOf<UGameplayEffect> GetFullStatEffect() const {return FullStatEffect;}
 	FORCEINLINE TSubclassOf<UGameplayEffect> GetDeathEffect() const {return DeathEffect;}
+	FORCEINLINE TSubclassOf<UGameplayEffect> GetOverrideEffect() const {return OverrideEffect;}
 	FORCEINLINE const TArray<TSubclassOf<UGameplayEffect>>& GetInitialEffects() const {return InitialEffects;}
 	FORCEINLINE const TArray<TSubclassOf<UGameplayAbility>>& GetPassiveAbilities() const {return PassiveAbilities;}
 
@@ -40,6 +41,9 @@ private:
 	/**플레이어 & 몬스터 사망 시 사망 태그 부여할 GE*/
 	UPROPERTY(EditDefaultsOnly, Category="Gameplay Effect")
 	TSubclassOf<UGameplayEffect> DeathEffect;
+	/**스테이지 이동 시 초기화 되지 않도록 플레이어 스탯 오버라이드 할 GE */
+	UPROPERTY(EditDefaultsOnly, Category="Gameplay Effect")
+	TSubclassOf<UGameplayEffect> OverrideEffect;
 	/**플레이어 & 몬스터 초기화 GE (시간당 HP 회복 / 태그 부여 등) */
 	UPROPERTY(EditDefaultsOnly, Category="Gameplay Effect")
 	TArray<TSubclassOf<UGameplayEffect>> InitialEffects;

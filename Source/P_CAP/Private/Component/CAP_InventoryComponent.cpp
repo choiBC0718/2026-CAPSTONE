@@ -10,6 +10,7 @@
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
 #include "Data/CAP_EquipItemEffectTypes.h"
+#include "Framework/Subsystem/CAP_ProgressionSubsystem.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Ability/CAP_ItemGameplayAbility.h"
 
@@ -121,6 +122,34 @@ void UCAP_InventoryComponent::RemoveItem(class UCAP_ItemInstance* ItemInst)
 	
 	if (OnInventoryChanged.IsBound())
 		OnInventoryChanged.Broadcast(ItemInst, false);
+}
+
+struct FInventorySaveData UCAP_InventoryComponent::CreateSaveData() const
+{
+	FInventorySaveData SaveData;
+	for (UCAP_ItemInstance* Item : InventoryItems)
+	{
+		if (Item && Item->GetItemDA())
+			SaveData.HeldItemDAs.Add(Item->GetItemDA());
+	}
+	return SaveData;
+}
+
+void UCAP_InventoryComponent::RestoreFromSaveData(const struct FInventorySaveData& InData)
+{
+	// 초기화
+	for (UCAP_ItemInstance* Item : InventoryItems)
+		if (Item)
+			RemoveItemEffect(Item);
+	InventoryItems.Empty();
+
+	for (UCAP_ItemDataBase* ItemDA : InData.HeldItemDAs)
+		if (ItemDA)
+		{
+			UCAP_ItemInstance* NewItem = NewObject<UCAP_ItemInstance>(this);
+			NewItem->Initialize(ItemDA);
+			AddItem(NewItem);
+		}
 }
 
 

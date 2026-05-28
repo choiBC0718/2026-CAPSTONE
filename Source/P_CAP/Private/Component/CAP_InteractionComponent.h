@@ -50,7 +50,6 @@ public:
 	void RemoveInteractable(AActor* TargetActor);
 	// 가장 가까이에 있는 액터로 업데이트
 	void UpdateNearbyInteractable();
-	bool CanInteract() const;
 
 	bool bIsInDialogue = false;
 

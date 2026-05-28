@@ -34,6 +34,28 @@ void UCAP_AbilitySystemComponent::ApplyFullStatEffect()
 	ApplyGameplayEffect(AbilitySystemGenerics->GetFullStatEffect());
 }
 
+float UCAP_AbilitySystemComponent::GetCurrentHealthForSave() const
+{
+	return GetNumericAttribute(UCAP_AttributeSet::GetHealthAttribute());
+}
+
+void UCAP_AbilitySystemComponent::RestoreHealthFromSave(float SavedHealth)
+{
+	if (const UCAP_AbilitySystemGenerics* Generics = GetGenerics())
+	{
+		if (TSubclassOf<UGameplayEffect> OverrideGE = Generics->GetOverrideEffect())
+		{
+			FGameplayEffectContextHandle Context = MakeEffectContext();
+			FGameplayEffectSpecHandle Spec = MakeOutgoingSpec(OverrideGE,1, Context);
+			if (Spec.IsValid())
+			{
+				Spec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag("Data.Stat.Health"),SavedHealth);
+				ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+			}
+		}
+	}
+}
+
 void UCAP_AbilitySystemComponent::ApplyInitialEffects()
 {
 	if (!AbilitySystemGenerics || !GetOwner())
@@ -127,14 +149,11 @@ void UCAP_AbilitySystemComponent::HealthUpdated(const FOnAttributeChangeData& Ch
 	if (ChangeData.NewValue <= 0.f)
 	{
 		if (!HasMatchingGameplayTag(UCAP_AbilitySystemStatics::GetHealthEmptyStatTag()))
-		{
 			AddLooseGameplayTag(UCAP_AbilitySystemStatics::GetHealthEmptyStatTag());
-		}
 		
 		if (AbilitySystemGenerics && AbilitySystemGenerics->GetDeathEffect())
-		{
 			ApplyGameplayEffect(AbilitySystemGenerics->GetDeathEffect());
-		}
+		
 		FGameplayEventData DeadAbilityEventData;
 		if (ChangeData.GEModData)
 			DeadAbilityEventData.ContextHandle = ChangeData.GEModData->EffectSpec.GetContext();

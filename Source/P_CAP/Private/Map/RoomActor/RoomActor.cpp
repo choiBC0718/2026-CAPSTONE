@@ -11,6 +11,9 @@
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
+#include "Framework/CAP_RewardSettings.h"
+#include "Framework/Subsystem/CAP_RewardSubsystem.h"
+#include "Interactables/Reward/CAP_RewardChest.h"
 
 ARoomActor::ARoomActor()
 {
@@ -59,6 +62,32 @@ void ARoomActor::Tick(float DeltaSeconds)
 	if (bRoomActivated)
 	{
 		CheckRoomClear();
+	}
+}
+
+void ARoomActor::SpawnRewardChest()
+{
+	if (!RewardChestClass)
+	{
+		UE_LOG(LogTemp,Warning,TEXT("RoomActor에 RewardChestClass 설정 필요"));
+		return;
+	}
+	
+	FVector SpawnLoc = GetActorTransform().GetLocation() + FVector(0.f, 0.f, 150.f);
+	FRotator SpawnRot = FRotator::ZeroRotator;
+	FTransform SpawnTransform(SpawnRot, SpawnLoc);
+	
+	EChestGrade SelectedGrade = EChestGrade::Normal;
+	if (UGameInstance* GI = GetGameInstance())
+		if (UCAP_RewardSubsystem* RewardSubsys = GI->GetSubsystem<UCAP_RewardSubsystem>())
+			SelectedGrade = RewardSubsys->GetNextChestGrade(CachedRoomData.RoomType);
+	
+	// TODO: RoomType을 (무기, 아이템, 골드) 타입으로 따로 맞게 설정 필요 -> CAP_RewardSubsystem파일 매개변수 수정 + CAP_RewardSetting파일 Map의 Key 매개변수 타입 수정
+	if (ACAP_RewardChest* RewardChest = GetWorld()->SpawnActorDeferred<ACAP_RewardChest>(RewardChestClass, SpawnTransform))
+	{
+		RewardChest->ChestType = ERewardChestType::Item;
+		RewardChest->ChestGrade = SelectedGrade;
+		RewardChest->FinishSpawning(SpawnTransform);
 	}
 }
 
@@ -226,6 +255,7 @@ void ARoomActor::CheckRoomClear()
 		bRoomCleared = true;
 		SetSpawnedDoorsPortalEnabled(true);
 		SetActorTickEnabled(false);
+		SpawnRewardChest();
 	}
 }
 

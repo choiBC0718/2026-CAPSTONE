@@ -39,6 +39,9 @@ public:
 	void GrantAbilities(class UCAP_WeaponInstance* WeaponInst);
 	// 무기 드랍 시에 ClearAbility
 	void ClearAbilities(class UCAP_WeaponInstance* WeaponInst);
+
+	struct FWeaponComponentSaveData CreateSaveData() const;
+	void RestoreFromSaveData(const struct FWeaponComponentSaveData& InData);
 private:
 	UPROPERTY()
 	class USkeletalMeshComponent* WeaponMesh_L;

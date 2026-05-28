@@ -31,10 +31,10 @@ struct FChestVisualTableRow : public FTableRowBase
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	ERewardChestType ChestType;
+	ERewardChestType ChestType = ERewardChestType::Item;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	EChestGrade ChestGrade;
+	EChestGrade ChestGrade = EChestGrade::Normal;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<ACAP_ChestVisualBase> VisualPrefabClass;
@@ -47,7 +47,7 @@ struct FDropPoolTableRow : public FTableRowBase
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drop Data")
-	class UCAP_ItemDataBase* DropData;
+	class UCAP_ItemDataBase* DropData = nullptr;
 };
 /**
  * 

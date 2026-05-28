@@ -5,9 +5,12 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "Framework/CAP_GameInstance.h"
 #include "Framework/CAP_RewardSettings.h"
+#include "Framework/Subsystem/CAP_ProgressionSubsystem.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
+#include "Kismet/GameplayStatics.h"
 
 UCAP_CurrencyComponent::UCAP_CurrencyComponent()
 {
@@ -17,7 +20,12 @@ UCAP_CurrencyComponent::UCAP_CurrencyComponent()
 void UCAP_CurrencyComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
+	if (UCAP_GameInstance* GI = Cast<UCAP_GameInstance>(UGameplayStatics::GetGameInstance(this)))
+	{
+		int32 SavedStone = GI->GetSavedMagicStone();
+		SetCurrencyOverride(ECurrencyType::MagicStone,SavedStone);
+		OnCurrencyChanged.AddUniqueDynamic(GI,&UCAP_GameInstance::OnCurrencyChanged);
+	}
 	const UCAP_RewardSettings* RewardSetting = GetDefault<UCAP_RewardSettings>();
 	if (!RewardSetting->DisassembleRewardDT.IsNull())
 		LoadedRewardDisassembleDT = RewardSetting->DisassembleRewardDT.LoadSynchronous();
@@ -93,6 +101,25 @@ void UCAP_CurrencyComponent::SetCurrencyOverride(ECurrencyType Type, int32 Amoun
 
 	if (OldAmount != CurrentAmount && OnCurrencyChanged.IsBound())
 		OnCurrencyChanged.Broadcast(Type, OldAmount, CurrentAmount);
+}
+
+struct FCurrencySaveData UCAP_CurrencyComponent::CreateSaveData() const
+{
+	FCurrencySaveData SaveData;
+	SaveData.SavedCurrencies = CurrencyMap;
+	return SaveData;
+}
+
+void UCAP_CurrencyComponent::RestoreFromSaveData(const struct FCurrencySaveData& InData)
+{
+	CurrencyMap = InData.SavedCurrencies;
+	for (const TPair<ECurrencyType, int32>& Pair : CurrencyMap)
+	{
+		if (OnCurrencyChanged.IsBound())
+		{
+			OnCurrencyChanged.Broadcast(Pair.Key, 0, Pair.Value);
+		}
+	}
 }
 
 FName UCAP_CurrencyComponent::GetRowNameFromGrade(EItemGrade Grade)

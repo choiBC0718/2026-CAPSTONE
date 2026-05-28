@@ -4,7 +4,6 @@
 #include "Component/CAP_InteractionComponent.h"
 
 #include "Character/Player/CAP_PlayerCharacter.h"
-#include "GAS/CAP_AbilitySystemComponent.h"
 #include "Interface/CAP_InteractInterface.h"
 
 UCAP_InteractionComponent::UCAP_InteractionComponent()
@@ -165,7 +164,7 @@ void UCAP_InteractionComponent::UpdateNearbyInteractable()
 {
 	if (bIsInDialogue)
 		return;
-	if (!CanInteract() || OverlappedInteractable.IsEmpty())
+	if (OverlappedInteractable.IsEmpty())
 	{
 		SetNearbyInteractable(nullptr);
 		return;
@@ -188,25 +187,4 @@ void UCAP_InteractionComponent::UpdateNearbyInteractable()
 		}
 	}
 	SetNearbyInteractable(ClosestActor);
-}
-
-bool UCAP_InteractionComponent::CanInteract() const
-{
-	if (bIsInDialogue)
-		return false;
-/*
-	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner());
-	if (Player)
-	{
-		UCAP_AbilitySystemComponent* ASC = Player->GetComponentByClass<UCAP_AbilitySystemComponent>();
-		if (ASC)
-		{
-			if (ASC->HasMatchingGameplayTag(FGameplayTag::RequestGameplayTag("")))
-				return false;
-
-				특정 태그 있는 상황에서 상호작용 불가능하도록 설정
-		}
-	}
-	*/
-	return true;
 }

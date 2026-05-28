@@ -168,13 +168,17 @@ const struct FWeaponSkillData* UCAP_GameplayAbility::GetSkillDataFromContext(con
 	FGameplayAbilitySpec* Spec = ActorInfo->AbilitySystemComponent->FindAbilitySpecFromHandle(Handle);
 	if (!Spec) return nullptr;
 
-	if (Spec->InputID == static_cast<int32>(EAbilityInputID::BasicAttack))
+	int32 TargetInputID = Spec->InputID;
+	if (TargetInputID >= 100)
+		TargetInputID -= 100;
+	
+	if (TargetInputID == static_cast<int32>(EAbilityInputID::BasicAttack))
 	{
 		return WeaponInst->GetBasicAttack();
 	}
-	else if (Spec->InputID >= static_cast<int32>(EAbilityInputID::Skill1))
+	else if (TargetInputID >= static_cast<int32>(EAbilityInputID::Skill1))
 	{
-		int32 SkillIndex = Spec->InputID - static_cast<int32>(EAbilityInputID::Skill1);
+		int32 SkillIndex = TargetInputID - static_cast<int32>(EAbilityInputID::Skill1);
 		if (WeaponInst->GetGrantedSkills().IsValidIndex(SkillIndex))
 		{
 			return &WeaponInst->GetGrantedSkills()[SkillIndex];

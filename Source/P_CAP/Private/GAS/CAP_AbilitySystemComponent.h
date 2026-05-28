@@ -21,6 +21,9 @@ public:
 	void ApplyFullStatEffect();
 
 	FORCEINLINE const class UCAP_AbilitySystemGenerics* GetGenerics() const {return AbilitySystemGenerics;}
+
+	float GetCurrentHealthForSave() const;
+	void RestoreHealthFromSave(float SavedHealth);
 	
 private:
 	void ApplyInitialEffects();

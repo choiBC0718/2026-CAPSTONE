@@ -11,7 +11,6 @@
 #include "GAS/Setting/CAP_AttributeSet.h"
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "Perception/AISense_Sight.h"
-#include "P_CAP/P_CAP.h"
 
 ACAP_Character::ACAP_Character()
 {
