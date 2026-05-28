@@ -206,11 +206,13 @@ bool ANextRoomChoiceManager::ShowChoiceWidget()
 	ActiveChoiceWidget->InitializeChoiceWidget(this, CurrentChoiceOptions);
 	ActiveChoiceWidget->AddToViewport();
 
+	/*
 	PC->bShowMouseCursor = true;
 	FInputModeGameAndUI InputMode;
 	InputMode.SetWidgetToFocus(ActiveChoiceWidget->TakeWidget());
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	PC->SetInputMode(InputMode);
+	*/
 	return true;
 }
 
@@ -224,11 +226,13 @@ void ANextRoomChoiceManager::HideChoiceWidget()
 	ActiveChoiceWidget->CloseChoiceWidget();
 	ActiveChoiceWidget = nullptr;
 
+	/*
 	if (APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr)
 	{
 		PC->bShowMouseCursor = false;
 		PC->SetInputMode(FInputModeGameOnly());
 	}
+	*/
 }
 
 void ANextRoomChoiceManager::BeginCombatRewardChoice(

@@ -13,7 +13,7 @@ void UCAP_RewardSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	LegendaryFailCount = 0;
 }
 
-EChestGrade UCAP_RewardSubsystem::GetNextChestGrade(ERoomType RoomType)
+EChestGrade UCAP_RewardSubsystem::GetNextChestGrade(ECombatRoomRewardType RoomType)
 {
 	const UCAP_RewardSettings* Settings = GetDefault<UCAP_RewardSettings>();
 	if (!Settings)

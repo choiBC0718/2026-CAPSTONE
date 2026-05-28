@@ -20,7 +20,7 @@ class UCAP_RewardSubsystem : public UGameInstanceSubsystem
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
-	EChestGrade GetNextChestGrade(ERoomType RoomType);
+	EChestGrade GetNextChestGrade(ECombatRoomRewardType RoomType);
 private:
 	int32 EpicFailCount;
 	int32 LegendaryFailCount;

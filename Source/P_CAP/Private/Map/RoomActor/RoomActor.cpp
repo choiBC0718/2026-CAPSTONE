@@ -81,12 +81,24 @@ void ARoomActor::SpawnRewardChest()
 	EChestGrade SelectedGrade = EChestGrade::Normal;
 	if (UGameInstance* GI = GetGameInstance())
 		if (UCAP_RewardSubsystem* RewardSubsys = GI->GetSubsystem<UCAP_RewardSubsystem>())
-			SelectedGrade = RewardSubsys->GetNextChestGrade(CachedRoomData.RoomType);
+			SelectedGrade = RewardSubsys->GetNextChestGrade(CachedRoomData.CombatRewardType);
+
+	ERewardChestType SelectedType = ERewardChestType::Item;
+	switch (CachedRoomData.CombatRewardType)
+	{
+	case ECombatRoomRewardType::Gold:
+		SelectedType = ERewardChestType::Gold;		break;
+	case ECombatRoomRewardType::Item:
+		SelectedType = ERewardChestType::Item;		break;
+	case ECombatRoomRewardType::Weapon:
+		SelectedType = ERewardChestType::Weapon;	break;
+	default:
+		SelectedType = ERewardChestType::Item;		break;
+	}
 	
-	// TODO: RoomType을 (무기, 아이템, 골드) 타입으로 따로 맞게 설정 필요 -> CAP_RewardSubsystem파일 매개변수 수정 + CAP_RewardSetting파일 Map의 Key 매개변수 타입 수정
 	if (ACAP_RewardChest* RewardChest = GetWorld()->SpawnActorDeferred<ACAP_RewardChest>(RewardChestClass, SpawnTransform))
 	{
-		RewardChest->ChestType = ERewardChestType::Item;
+		RewardChest->ChestType = SelectedType;
 		RewardChest->ChestGrade = SelectedGrade;
 		RewardChest->FinishSpawning(SpawnTransform);
 	}

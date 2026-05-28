@@ -47,5 +47,5 @@ public:
 
 	// 방 타입별 기본 드랍 확률
 	UPROPERTY(Config, EditAnywhere, Category = "Room Data")
-	TMap<ERoomType, FRoomRewardChance> RoomTypeBaseChances;
+	TMap<ECombatRoomRewardType, FRoomRewardChance> RoomTypeBaseChances;
 };
