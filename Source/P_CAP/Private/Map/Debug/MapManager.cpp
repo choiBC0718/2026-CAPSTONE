@@ -11,6 +11,8 @@
 #include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
 #include "Map/RoomTypes.h"
+#include "Map/NextRoomChoiceManager.h"
+#include "Map/RoomActor/RoomSizeSettings.h"
 #include "Stage/StageExitActor.h"
 #include "Stage/StageDataAsset.h"
 
@@ -18,6 +20,7 @@ AMapManager::AMapManager()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	StageExitActorClass = AStageExitActor::StaticClass();
+	NextRoomChoiceManagerClass = ANextRoomChoiceManager::StaticClass();
 }
 
 void AMapManager::BeginPlay()
@@ -25,6 +28,7 @@ void AMapManager::BeginPlay()
 	Super::BeginPlay();
 
 	EnsureMapGenerator();
+	EnsureNextRoomChoiceManager();
 
 	if (bUseRandomSeedOnBeginPlay)
 	{
@@ -36,6 +40,46 @@ void AMapManager::BeginPlay()
 	{
 		GenerateMapAndSpawnRooms();
 	}
+}
+
+float AMapManager::GetRoomSpacing() const
+{
+	return GetEffectiveRoomSpacing();
+}
+
+void AMapManager::EnsureNextRoomChoiceManager()
+{
+	if (NextRoomChoiceManager)
+	{
+		return;
+	}
+
+	NextRoomChoiceManager = Cast<ANextRoomChoiceManager>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ANextRoomChoiceManager::StaticClass()));
+
+	if (NextRoomChoiceManager || !NextRoomChoiceManagerClass)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	NextRoomChoiceManager = World->SpawnActor<ANextRoomChoiceManager>(
+		NextRoomChoiceManagerClass,
+		FVector::ZeroVector,
+		FRotator::ZeroRotator,
+		SpawnParams);
+}
+
+float AMapManager::GetEffectiveRoomSpacing() const
+{
+	return RoomSizeSettings ? RoomSizeSettings->GetRoomSpacing() : RoomSpacing;
 }
 
 void AMapManager::BindInput()
@@ -186,10 +230,11 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 	for (const TPair<FIntPoint, FRoomData>& Pair : Layout.Rooms)
 	{
 		const FRoomData& RoomData = Pair.Value;
+		const float EffectiveRoomSpacing = GetEffectiveRoomSpacing();
 
 		const FVector SpawnLocation(
-			RoomData.GridPos.X * RoomSpacing,
-			RoomData.GridPos.Y * RoomSpacing,
+			RoomData.GridPos.X * EffectiveRoomSpacing,
+			RoomData.GridPos.Y * EffectiveRoomSpacing,
 			0.f
 		);
 
@@ -215,7 +260,7 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 		if (DistRatio < 0.33f) Zone = ERoomZone::Core;
 		else if (DistRatio < 0.66f) Zone = ERoomZone::Mid;
 
-		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed, CurrentMonsterSpawnDataAsset, Tendency, Zone);
+		SpawnedRoom->InitializeRoom(RoomData, Layout.UsedSeed, CurrentMonsterSpawnDataAsset, Tendency, Zone, RoomSizeSettings);
 		SpawnedRooms.Add(SpawnedRoom);
 		SpawnedRoomMap.Add(RoomData.GridPos, SpawnedRoom);
 
@@ -318,7 +363,17 @@ ARoomActor* AMapManager::FindSpawnedRoomByGridPos(const FIntPoint& InGridPos) co
 	return nullptr;
 }
 
-void AMapManager::RequestMovePlayer(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
+FRoomData* AMapManager::FindRoomData(const FIntPoint& InGridPos)
+{
+	return CurrentLayout.FindRoom(InGridPos);
+}
+
+const FRoomData* AMapManager::FindRoomData(const FIntPoint& InGridPos) const
+{
+	return CurrentLayout.FindRoom(InGridPos);
+}
+
+void AMapManager::MovePlayerToRoom(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
 {
 	if (!PlayerCharacter)
 	{
@@ -357,5 +412,10 @@ void AMapManager::RequestMovePlayer(ACharacter* PlayerCharacter, const FIntPoint
 
 	const FVector TargetLocation = TargetRoom->GetEntrancePoint(EntryDirection);
 	PlayerCharacter->SetActorLocation(TargetLocation);
+}
+
+void AMapManager::RequestMovePlayer(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
+{
+	MovePlayerToRoom(PlayerCharacter, TargetRoomPos, ExitDirection);
 }
 

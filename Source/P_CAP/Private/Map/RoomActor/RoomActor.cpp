@@ -6,6 +6,7 @@
 #include "Map/RoomActor/Interior/RoomInteriorData.h"
 #include "Map/RoomActor/Interior/RoomInteriorPropSet.h"
 #include "Map/RoomActor/Interior/PCG/RoomPathActor.h"
+#include "Map/RoomActor/RoomSizeSettings.h"
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
 #include "GameFramework/Pawn.h"
@@ -67,15 +68,18 @@ void ARoomActor::InitializeRoom(
 	int32 InMapSeed,
 	URoomMonsterSpawnDataAsset* InMonsterSpawnDataAsset,
 	const FPlayerTendencyModifier& InTendency,
-	ERoomZone InZone)
+	ERoomZone InZone,
+	URoomSizeSettings* InRoomSizeSettings)
 {
 	/* 현재 방 정보와 맵 시드, 성향 데이터를 캐싱 */
 	CachedRoomData = InRoomData;
 	CachedMapSeed = InMapSeed;
 	CachedTendency = InTendency;
 	CachedZone = InZone;
+	CachedRoomSizeSettings = InRoomSizeSettings;
 	bRoomActivated = false;
 	bRoomCleared = false;
+	ApplyFloorMeshScale();
 	UpdateRoomEnterTriggerExtent();
 
 	if (MonsterSpawnerComponent)
@@ -108,6 +112,11 @@ void ARoomActor::InitializeRoom(
 			0.1f,
 			false);
 	}
+}
+
+void ARoomActor::SetCombatRewardType(ECombatRoomRewardType NewRewardType)
+{
+	CachedRoomData.CombatRewardType = NewRewardType;
 }
 
 void ARoomActor::ActivateRoom(AActor* TargetActor)
@@ -178,9 +187,61 @@ void ARoomActor::UpdateRoomEnterTriggerExtent()
 		return;
 	}
 
-	const float TriggerHalfExtent = FMath::Max(100.f, RoomHalfExtent - 50.f);
+	const float TriggerHalfExtent = GetEffectiveTriggerHalfExtent();
 	RoomEnterTrigger->SetBoxExtent(FVector(TriggerHalfExtent, TriggerHalfExtent, RoomEnterTriggerHeight));
 	RoomEnterTrigger->SetRelativeLocation(FVector(0.f, 0.f, RoomEnterTriggerHeight));
+}
+
+float ARoomActor::GetEffectiveRoomHalfExtent() const
+{
+	return CachedRoomSizeSettings ? CachedRoomSizeSettings->RoomHalfExtent : RoomHalfExtent;
+}
+
+float ARoomActor::GetEffectiveDoorInset() const
+{
+	return CachedRoomSizeSettings ? CachedRoomSizeSettings->DoorInset : DoorInset;
+}
+
+float ARoomActor::GetEffectiveEntranceInset() const
+{
+	return CachedRoomSizeSettings ? CachedRoomSizeSettings->EntranceInset : 200.f;
+}
+
+float ARoomActor::GetEffectiveTriggerHalfExtent() const
+{
+	return CachedRoomSizeSettings
+		? CachedRoomSizeSettings->GetTriggerHalfExtent()
+		: FMath::Max(100.f, RoomHalfExtent - 50.f);
+}
+
+float ARoomActor::GetEffectiveInteriorCellSize() const
+{
+	return CachedRoomSizeSettings ? CachedRoomSizeSettings->InteriorCellSize : InteriorCellSize;
+}
+
+float ARoomActor::GetEffectiveInteriorMargin() const
+{
+	return CachedRoomSizeSettings ? CachedRoomSizeSettings->InteriorMargin : InteriorMargin;
+}
+
+void ARoomActor::ApplyFloorMeshScale()
+{
+	if (!FloorMesh || !CachedRoomSizeSettings || !CachedRoomSizeSettings->bAutoScaleFloorMesh)
+	{
+		return;
+	}
+
+	if (!bHasInitialFloorMeshScale)
+	{
+		InitialFloorMeshScale = FloorMesh->GetRelativeScale3D();
+		bHasInitialFloorMeshScale = true;
+	}
+
+	const float FloorScale = CachedRoomSizeSettings->GetFloorScale();
+	FloorMesh->SetRelativeScale3D(FVector(
+		InitialFloorMeshScale.X * FloorScale,
+		InitialFloorMeshScale.Y * FloorScale,
+		InitialFloorMeshScale.Z));
 }
 
 void ARoomActor::CheckPlayerInsideRoom()
@@ -207,7 +268,7 @@ void ARoomActor::CheckPlayerInsideRoom()
 	}
 
 	const FVector LocalPlayerLocation = GetActorTransform().InverseTransformPosition(PlayerPawn->GetActorLocation());
-	const float TriggerHalfExtent = FMath::Max(100.f, RoomHalfExtent - 50.f);
+	const float TriggerHalfExtent = GetEffectiveTriggerHalfExtent();
 	if (FMath::Abs(LocalPlayerLocation.X) <= TriggerHalfExtent &&
 		FMath::Abs(LocalPlayerLocation.Y) <= TriggerHalfExtent)
 	{
@@ -226,6 +287,7 @@ void ARoomActor::CheckRoomClear()
 	if (MonsterSpawnerComponent && MonsterSpawnerComponent->AreAllSpawnedMonstersDefeated())
 	{
 		bRoomCleared = true;
+		HandleCombatRoomCleared();
 		SetSpawnedDoorsPortalEnabled(true);
 		SetActorTickEnabled(false);
 	}
@@ -236,6 +298,51 @@ bool ARoomActor::ShouldLockPortalsForCombat() const
 	return CachedRoomData.RoomType == ERoomType::Normal &&
 		MonsterSpawnerComponent &&
 		MonsterSpawnerComponent->HasSpawnedMonsters();
+}
+
+void ARoomActor::HandleCombatRoomCleared()
+{
+	if (CachedRoomData.RoomType != ERoomType::Normal)
+	{
+		return;
+	}
+
+	const TCHAR* RewardTypeText = TEXT("None");
+	switch (CachedRoomData.CombatRewardType)
+	{
+	case ECombatRoomRewardType::Gold:
+		RewardTypeText = TEXT("Gold");
+		break;
+
+	case ECombatRoomRewardType::Item:
+		RewardTypeText = TEXT("Item");
+		break;
+
+	case ECombatRoomRewardType::Weapon:
+		RewardTypeText = TEXT("Weapon");
+		break;
+
+	case ECombatRoomRewardType::None:
+	default:
+		break;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Log,
+		TEXT("RoomActor: combat room cleared at (%d, %d), reward type = %s"),
+		CachedRoomData.GridPos.X,
+		CachedRoomData.GridPos.Y,
+		RewardTypeText);
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			-1,
+			3.0f,
+			FColor::Green,
+			FString::Printf(TEXT("Combat reward ready: %s"), RewardTypeText));
+	}
 }
 
 void ARoomActor::SetSpawnedDoorsPortalEnabled(bool bEnabled)
@@ -251,26 +358,27 @@ void ARoomActor::SetSpawnedDoorsPortalEnabled(bool bEnabled)
 
 FVector ARoomActor::GetEntrancePoint(EDoorDirection Direction) const
 {
-	const float EntranceOffset = 200.f;
+	const float RoomHalfExtentValue = GetEffectiveRoomHalfExtent();
+	const float EntranceInsetValue = GetEffectiveEntranceInset();
 
 	FVector LocalLocation = FVector::ZeroVector;
 
 	switch (Direction)
 	{
 	case EDoorDirection::Up:
-		LocalLocation = FVector(0.f, RoomHalfExtent - EntranceOffset, 0.f);
+		LocalLocation = FVector(0.f, RoomHalfExtentValue - EntranceInsetValue, 0.f);
 		break;
 
 	case EDoorDirection::Down:
-		LocalLocation = FVector(0.f, -RoomHalfExtent + EntranceOffset, 0.f);
+		LocalLocation = FVector(0.f, -RoomHalfExtentValue + EntranceInsetValue, 0.f);
 		break;
 
 	case EDoorDirection::Left:
-		LocalLocation = FVector(-RoomHalfExtent + EntranceOffset, 0.f, 0.f);
+		LocalLocation = FVector(-RoomHalfExtentValue + EntranceInsetValue, 0.f, 0.f);
 		break;
 
 	case EDoorDirection::Right:
-		LocalLocation = FVector(RoomHalfExtent - EntranceOffset, 0.f, 0.f);
+		LocalLocation = FVector(RoomHalfExtentValue - EntranceInsetValue, 0.f, 0.f);
 		break;
 
 	default:
@@ -411,7 +519,11 @@ void ARoomActor::GenerateAndSpawnInterior()
 	}
 
 	const FRoomInteriorLayout Layout = InteriorGenerator->GenerateInteriorLayout(
-		CachedRoomData, RoomHalfExtent, InteriorCellSize, InteriorMargin, CachedMapSeed);
+		CachedRoomData,
+		GetEffectiveRoomHalfExtent(),
+		GetEffectiveInteriorCellSize(),
+		GetEffectiveInteriorMargin(),
+		CachedMapSeed);
 	CachedInteriorLayout = Layout;
 
 	/* 생성된 경로 데이터로 실제 path actor를 생성 */
@@ -658,26 +770,28 @@ FTransform ARoomActor::GetDoorTransform(EDoorDirection Direction) const
 	/* 방향별 로컬 문 위치/회전을 계산 */
 	FVector LocalLocation = FVector::ZeroVector;
 	FRotator LocalRotation = FRotator::ZeroRotator;
+	const float RoomHalfExtentValue = GetEffectiveRoomHalfExtent();
+	const float DoorInsetValue = GetEffectiveDoorInset();
 
 	switch (Direction)
 	{
 	case EDoorDirection::Up:
-		LocalLocation = FVector(0.f, RoomHalfExtent - DoorInset, DoorSpawnZOffset);
+		LocalLocation = FVector(0.f, RoomHalfExtentValue - DoorInsetValue, DoorSpawnZOffset);
 		LocalRotation = FRotator(0.f, 0.f, 0.f);
 		break;
 
 	case EDoorDirection::Down:
-		LocalLocation = FVector(0.f, -RoomHalfExtent + DoorInset, DoorSpawnZOffset);
+		LocalLocation = FVector(0.f, -RoomHalfExtentValue + DoorInsetValue, DoorSpawnZOffset);
 		LocalRotation = FRotator(0.f, 180.f, 0.f);
 		break;
 
 	case EDoorDirection::Left:
-		LocalLocation = FVector(-RoomHalfExtent + DoorInset, 0.f, DoorSpawnZOffset);
+		LocalLocation = FVector(-RoomHalfExtentValue + DoorInsetValue, 0.f, DoorSpawnZOffset);
 		LocalRotation = FRotator(0.f, -90.f, 0.f);
 		break;
 
 	case EDoorDirection::Right:
-		LocalLocation = FVector(RoomHalfExtent - DoorInset, 0.f, DoorSpawnZOffset);
+		LocalLocation = FVector(RoomHalfExtentValue - DoorInsetValue, 0.f, DoorSpawnZOffset);
 		LocalRotation = FRotator(0.f, 90.f, 0.f);
 		break;
 
