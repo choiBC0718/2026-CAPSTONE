@@ -149,29 +149,42 @@ void APlayerBehaviorLearner::InitializeCentroidsKMeansPP()
 
     for (int32 c = 1; c < K; c++)
     {
-        float BestDist = -1.f;
-        int32 BestIdx = 0;
+        // 각 데이터 포인트의 가중치 = 기존 센트로이드까지의 최소 거리²
+        TArray<float> Weights;
+        float TotalWeight = 0.f;
 
         for (int32 i = 0; i < PlayHistory.Num(); i++)
         {
-            float MinDistToExisting = TNumericLimits<float>::Max();
+            float MinDist = TNumericLimits<float>::Max();
             for (int32 e = 0; e < Centroids.Num(); e++)
             {
                 float Dist = FPlayerBehaviorData::Distance(PlayHistory[i], Centroids[e]);
-                if (Dist < MinDistToExisting)
-                {
-                    MinDistToExisting = Dist;
-                }
+                if (Dist < MinDist)
+                    MinDist = Dist;
             }
+            float Weight = MinDist * MinDist;
+            Weights.Add(Weight);
+            TotalWeight += Weight;
+        }
 
-            if (MinDistToExisting > BestDist)
+        // 가중치에 비례한 확률로 다음 센트로이드 선택
+        int32 SelectedIdx = PlayHistory.Num() - 1;
+        if (TotalWeight > 0.f)
+        {
+            float Rand = FMath::FRandRange(0.f, TotalWeight);
+            float Cumulative = 0.f;
+            for (int32 i = 0; i < Weights.Num(); i++)
             {
-                BestDist = MinDistToExisting;
-                BestIdx = i;
+                Cumulative += Weights[i];
+                if (Rand <= Cumulative)
+                {
+                    SelectedIdx = i;
+                    break;
+                }
             }
         }
 
-        Centroids.Add(PlayHistory[BestIdx]);
+        Centroids.Add(PlayHistory[SelectedIdx]);
     }
 
     UE_LOG(LogTemp, Log, TEXT("K-Means++ 초기 센트로이드 %d개 선택 완료"), K);
@@ -225,7 +238,7 @@ FPlayerTendencyModifier APlayerBehaviorLearner::GetCurrentPlayerTendency()
 
     const FPlayerBehaviorData& C = Centroids[ClusterIdx];
 
-    Tendency.ExplorationRate = C.VisitedNodeCount;
+    Tendency.ExplorationRate = FMath::Clamp((C.VisitedNodeCount + C.PlayTime) * 0.5f, 0.f, 1.f);
     Tendency.CombatAggression = C.KillRatio;
     Tendency.MeleePreference = C.MeleeRatio;
     Tendency.ObstacleBypass = C.PassRatio;
@@ -281,27 +294,6 @@ void APlayerBehaviorLearner::LoadLearnerData()
     {
         UE_LOG(LogTemp, Error, TEXT("세이브 파일 변환 실패"));
     }
-}
-
-void APlayerBehaviorLearner::ExportDataToCSV(const FPlayerBehaviorData& PlayerData, const FString& ClusterLabel)
-{
-    FString FilePath = FPaths::ProjectSavedDir() + TEXT("Logs/AILearningData.csv");
-
-    if (!FPlatformFileManager::Get().GetPlatformFile().FileExists(*FilePath))
-    {
-        FString Header = TEXT("VisitedNodeCount,PlayTime,PassRatio,KillRatio,MeleeRatio,Cluster\n");
-        FFileHelper::SaveStringToFile(Header, *FilePath);
-    }
-
-    FString DataLine = FString::Printf(TEXT("%f,%f,%f,%f,%f,%s\n"),
-                                       PlayerData.VisitedNodeCount,
-                                       PlayerData.PlayTime,
-                                       PlayerData.PassRatio,
-                                       PlayerData.KillRatio,
-                                       PlayerData.MeleeRatio,
-                                       *ClusterLabel);
-
-    FFileHelper::SaveStringToFile(DataLine, *FilePath, FFileHelper::EEncodingOptions::AutoDetect, &IFileManager::Get(), FILEWRITE_Append);
 }
 
 void APlayerBehaviorLearner::ExportAllDataToCSV()

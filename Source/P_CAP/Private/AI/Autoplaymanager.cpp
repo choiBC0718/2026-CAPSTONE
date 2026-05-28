@@ -28,40 +28,40 @@ void AAutoPlayManager::BeginPlay()
 		return;
 	}
 
-	int32 CompletedRuns = CachedLearner->PlayHistory.Num();
-	LastKnownHistoryCount = CompletedRuns;
-
-	if (CompletedRuns >= TotalAutoRuns)
-	{
-		// 학습 완료 → 속도 건드리지 않고 일반 플레이 모드
-		UE_LOG(LogTemp, Warning, TEXT("자동 학습 완료 (%d/%d런)"), CompletedRuns, TotalAutoRuns);
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green,
-				FString::Printf(TEXT("자동 학습 완료! (%d런) - 직접 플레이 가능"), CompletedRuns));
-		}
-		return;
-	}
-
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Magenta,
-			FString::Printf(TEXT("=== 자동 학습 런 %d/%d ==="), CompletedRuns + 1, TotalAutoRuns));
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("=== 자동 학습 런 %d/%d 시작 ==="), CompletedRuns + 1, TotalAutoRuns);
-
-	// 배속 설정 전에 타이머를 걸어야 실제 0.5초 대기 (배속 적용 시 타이머도 빨라짐)
+	// 0.5초 대기 후 시작 — PlayerBehaviorLearner::BeginPlay()의 LoadLearnerData()가
+	// 완료된 뒤 PlayHistory를 읽어야 완료 여부를 정확히 판단할 수 있음
 	FTimerHandle StartTimer;
 	GetWorld()->GetTimerManager().SetTimer(StartTimer, [this]()
 	{
+		int32 CompletedRuns = CachedLearner->PlayHistory.Num();
+		LastKnownHistoryCount = CompletedRuns;
+
+		if (CompletedRuns >= TotalAutoRuns)
+		{
+			// 학습 완료 → 속도 건드리지 않고 일반 플레이 모드
+			UE_LOG(LogTemp, Warning, TEXT("자동 학습 완료 (%d/%d런)"), CompletedRuns, TotalAutoRuns);
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green,
+					FString::Printf(TEXT("자동 학습 완료! (%d런) - 직접 플레이 가능"), CompletedRuns));
+			}
+			return;
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("=== 자동 학습 런 %d/%d 시작 ==="), CompletedRuns + 1, TotalAutoRuns);
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Magenta,
+				FString::Printf(TEXT("=== 자동 학습 런 %d/%d ==="), CompletedRuns + 1, TotalAutoRuns));
+		}
+
 		UGameplayStatics::SetGlobalTimeDilation(GetWorld(), GameSpeed);
 		UE_LOG(LogTemp, Warning, TEXT("AutoPlay: 게임 속도 %.1f배"), GameSpeed);
 		StartBotRun();
-	}, 0.5f, false);
 
-	GetWorld()->GetTimerManager().SetTimer(CompletionCheckTimer, this,
-		&AAutoPlayManager::CheckRunCompletion, 1.0f, true);
+		GetWorld()->GetTimerManager().SetTimer(CompletionCheckTimer, this,
+			&AAutoPlayManager::CheckRunCompletion, 1.0f, true);
+	}, 0.5f, false);
 }
 
 void AAutoPlayManager::StartBotRun()
