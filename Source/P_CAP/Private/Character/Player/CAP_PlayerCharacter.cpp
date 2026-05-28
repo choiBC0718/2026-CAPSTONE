@@ -16,8 +16,10 @@
 #include "Component/CAP_WeaponComponent.h"
 #include "AI/BaseMonster.h"         // 몬스터 타격 판별을 위해 추가
 #include "Components/WidgetComponent.h"
+#include "Framework/GameMode/CAP_StageGameMode.h"
 #include "Framework/Subsystem/CAP_ProgressionSubsystem.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
+#include "Kismet/GameplayStatics.h"
 #include "Widget/Common/CAP_TargetEffectWidget.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
@@ -276,4 +278,14 @@ void ACAP_PlayerCharacter::TryLoadProgressionData()
 			Subsys->ClearProgression();
 		}
 	}
+}
+
+void ACAP_PlayerCharacter::DeathMontageFinished()
+{
+	Super::DeathMontageFinished();
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC)
+		return;
+	if (ACAP_StageGameMode* StageGM = Cast<ACAP_StageGameMode>(UGameplayStatics::GetGameMode(this)))
+		StageGM->OnPlayerDeathAnimationFinished(PC);
 }

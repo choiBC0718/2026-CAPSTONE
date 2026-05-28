@@ -95,4 +95,5 @@ public:
 
 protected:
 	void TryLoadProgressionData();
+	virtual void DeathMontageFinished() override;
 };
