@@ -34,6 +34,8 @@ public:
 
 	void RequestEnterRoom(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection);
 
+	void CancelCombatRewardChoiceForRoom(const FIntPoint& TargetRoomPos);
+
 	UFUNCTION(BlueprintCallable, Category="Room Choice")
 	void SelectGoldReward();
 
@@ -82,7 +84,6 @@ private:
 	bool bWaitingForCombatRewardChoice = false;
 
 	AMapManager* ResolveMapManager();
-	void BindInput();
 	bool DoesRoomNeedCombatRewardChoice(const FRoomData& RoomData) const;
 	TArray<FCombatRewardChoiceOption> BuildCombatRewardChoiceOptions() const;
 	void ShowChoiceWidget();

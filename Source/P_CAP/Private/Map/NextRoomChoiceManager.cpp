@@ -3,7 +3,6 @@
 #include "Map/NextRoomChoiceManager.h"
 
 #include "Engine/Engine.h"
-#include "Components/InputComponent.h"
 #include "Engine/DataTable.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
@@ -16,7 +15,7 @@
 ANextRoomChoiceManager::ANextRoomChoiceManager()
 {
 	PrimaryActorTick.bCanEverTick = false;
-	DefaultChoiceRowNames = { TEXT("Gold"), TEXT("Item") };
+	DefaultChoiceRowNames = { TEXT("Gold"), TEXT("Item"), TEXT("Weapon") };
 }
 
 void ANextRoomChoiceManager::BeginPlay()
@@ -24,7 +23,6 @@ void ANextRoomChoiceManager::BeginPlay()
 	Super::BeginPlay();
 
 	ResolveMapManager();
-	BindInput();
 }
 
 void ANextRoomChoiceManager::RequestEnterRoom(
@@ -58,6 +56,16 @@ void ANextRoomChoiceManager::RequestEnterRoom(
 	ResolvedMapManager->MovePlayerToRoom(PlayerCharacter, TargetRoomPos, ExitDirection);
 }
 
+void ANextRoomChoiceManager::CancelCombatRewardChoiceForRoom(const FIntPoint& TargetRoomPos)
+{
+	if (!bWaitingForCombatRewardChoice || PendingTargetRoomPos != TargetRoomPos)
+	{
+		return;
+	}
+
+	ClearPendingChoice();
+}
+
 void ANextRoomChoiceManager::SelectGoldReward()
 {
 	SelectReward(ECombatRoomRewardType::Gold);
@@ -84,23 +92,6 @@ AMapManager* ANextRoomChoiceManager::ResolveMapManager()
 	return MapManager;
 }
 
-void ANextRoomChoiceManager::BindInput()
-{
-	APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
-	if (!PC)
-	{
-		return;
-	}
-
-	EnableInput(PC);
-
-	if (InputComponent)
-	{
-		InputComponent->BindKey(EKeys::One, IE_Pressed, this, &ANextRoomChoiceManager::SelectGoldReward);
-		InputComponent->BindKey(EKeys::Two, IE_Pressed, this, &ANextRoomChoiceManager::SelectItemReward);
-	}
-}
-
 bool ANextRoomChoiceManager::DoesRoomNeedCombatRewardChoice(const FRoomData& RoomData) const
 {
 	return RoomData.RoomType == ERoomType::Normal &&
@@ -114,7 +105,7 @@ TArray<FCombatRewardChoiceOption> ANextRoomChoiceManager::BuildCombatRewardChoic
 
 	if (RowNames.IsEmpty())
 	{
-		RowNames = { TEXT("Gold"), TEXT("Item") };
+		RowNames = { TEXT("Gold"), TEXT("Item"), TEXT("Weapon") };
 	}
 
 	auto MakeFallbackOption = [](ECombatRoomRewardType RewardType) -> FCombatRewardChoiceOption
@@ -135,6 +126,12 @@ TArray<FCombatRewardChoiceOption> ANextRoomChoiceManager::BuildCombatRewardChoic
 			Option.Title = FText::FromString(TEXT("Item"));
 			Option.Description = FText::FromString(TEXT("전투 클리어 시 아이템을 획득합니다."));
 			Option.SortOrder = 1;
+			break;
+
+		case ECombatRoomRewardType::Weapon:
+			Option.Title = FText::FromString(TEXT("Weapon"));
+			Option.Description = FText::FromString(TEXT("전투 클리어 시 무기를 획득합니다."));
+			Option.SortOrder = 2;
 			break;
 
 		default:
@@ -172,6 +169,10 @@ TArray<FCombatRewardChoiceOption> ANextRoomChoiceManager::BuildCombatRewardChoic
 		else if (RowName == TEXT("Item"))
 		{
 			Options.Add(MakeFallbackOption(ECombatRoomRewardType::Item));
+		}
+		else if (RowName == TEXT("Weapon"))
+		{
+			Options.Add(MakeFallbackOption(ECombatRoomRewardType::Weapon));
 		}
 	}
 
@@ -260,7 +261,7 @@ void ANextRoomChoiceManager::BeginCombatRewardChoice(
 			-1,
 			4.0f,
 			FColor::Cyan,
-			TEXT("Choose combat reward: 1 Gold / 2 Item"));
+			TEXT("Choose combat reward"));
 	}
 }
 

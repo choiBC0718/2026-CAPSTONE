@@ -25,5 +25,6 @@ enum class ECombatRoomRewardType : uint8
 {
 	None UMETA(DisplayName = "None"),
 	Gold UMETA(DisplayName = "Gold"),
-	Item UMETA(DisplayName = "Item")
+	Item UMETA(DisplayName = "Item"),
+	Weapon UMETA(DisplayName = "Weapon")
 };

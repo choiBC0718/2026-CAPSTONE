@@ -257,6 +257,10 @@ void ARoomActor::HandleCombatRoomCleared()
 		RewardTypeText = TEXT("Item");
 		break;
 
+	case ECombatRoomRewardType::Weapon:
+		RewardTypeText = TEXT("Weapon");
+		break;
+
 	case ECombatRoomRewardType::None:
 	default:
 		break;

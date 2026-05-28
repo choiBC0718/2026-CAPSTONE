@@ -54,6 +54,7 @@ void ADoorActor::BeginPlay()
 	if (TriggerBox)
 	{
 		TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &ADoorActor::OnTriggerBeginOverlap);
+		TriggerBox->OnComponentEndOverlap.AddDynamic(this, &ADoorActor::OnTriggerEndOverlap);
 	}
 }
 
@@ -152,3 +153,23 @@ void ADoorActor::OnTriggerBeginOverlap(UPrimitiveComponent* OverlappedComponent,
 	bIsProcessingMove = false;
 }
 
+void ADoorActor::OnTriggerEndOverlap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex)
+{
+	ACharacter* PlayerCharacter = Cast<ACharacter>(OtherActor);
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+
+	ANextRoomChoiceManager* ChoiceManager = Cast<ANextRoomChoiceManager>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ANextRoomChoiceManager::StaticClass()));
+
+	if (ChoiceManager)
+	{
+		ChoiceManager->CancelCombatRewardChoiceForRoom(TargetRoomPos);
+	}
+}
