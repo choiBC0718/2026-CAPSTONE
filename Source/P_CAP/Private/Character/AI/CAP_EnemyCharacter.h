@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Character/CAP_Character.h"
+#include "Data/CAP_MonsterRewardDataAsset.h"
 #include "CAP_EnemyCharacter.generated.h"
 
 /**
@@ -67,13 +68,19 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Reward")
 	FVector CoinRewardSpawnOffset = FVector(0.f, 0.f, 45.f);
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Reward|Currency")
+	ECAPMonsterRewardGroup RewardGroup = ECAPMonsterRewardGroup::Normal;
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Enemy|AI")
 	bool bEnemyAIEnabled = false;
 
 private:
 	void InitializeHealthBarWidget();
 	void SpawnCoinRewardVFX();
+	void GiveDeathCurrencyReward();
 
 	UPROPERTY()
 	TObjectPtr<AActor> CurrentTargetActor;
+
+	bool bDeathCurrencyRewardGranted = false;
 };

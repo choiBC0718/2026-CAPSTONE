@@ -7,6 +7,8 @@
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "CAP_RewardSettings.generated.h"
 
+class UCAP_MonsterRewardDataAsset;
+
 /**
  * 
  */
@@ -18,6 +20,9 @@ class UCAP_RewardSettings : public UDeveloperSettings
 public:
 	UPROPERTY(EditAnywhere, Config, Category="Reward")
 	TSoftObjectPtr<UDataTable> DisassembleRewardDT;
+
+	UPROPERTY(EditAnywhere, Config, Category="Reward")
+	TSoftObjectPtr<UCAP_MonsterRewardDataAsset> MonsterRewardDataAsset;
 
 	static FName GetRowNameFromGrade(EItemGrade Grade);
 };

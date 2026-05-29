@@ -4,9 +4,14 @@
 #include "Character/AI/CAP_EnemyCharacter.h"
 
 #include "Character/AI/CAP_AIController.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
+#include "Component/CAP_CurrencyComponent.h"
 #include "Character/Player/Feedback/CAP_CoinRewardVFXActor.h"
 #include "Components/WidgetComponent.h"
+#include "Data/CAP_MonsterRewardDataAsset.h"
+#include "Framework/CAP_RewardSettings.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
+#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraSystem.h"
 #include "UObject/ConstructorHelpers.h"
@@ -16,6 +21,16 @@
 #include "GameFramework/PlayerController.h"
 #include "EngineUtils.h"
 #include "Widget/Common/CAP_TargetEffectWidget.h"
+
+namespace
+{
+int32 RollRewardAmount(const FIntPoint& AmountRange)
+{
+	const int32 MinAmount = FMath::Max(0, FMath::Min(AmountRange.X, AmountRange.Y));
+	const int32 MaxAmount = FMath::Max(0, FMath::Max(AmountRange.X, AmountRange.Y));
+	return MaxAmount > MinAmount ? FMath::RandRange(MinAmount, MaxAmount) : MinAmount;
+}
+}
 
 ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 {
@@ -96,6 +111,7 @@ void ACAP_EnemyCharacter::UpdateStackUI(const FGameplayTag& BehaviorTag, int32 C
 void ACAP_EnemyCharacter::OnDead()
 {
 	SetEnemyAIEnabled(false);
+	GiveDeathCurrencyReward();
 	SpawnCoinRewardVFX();
 
 	// AITESTMAP처럼 PlayerBehaviorLearner가 있는 맵에서만 카운트
@@ -186,6 +202,70 @@ void ACAP_EnemyCharacter::SpawnCoinRewardVFX()
 	Params.AbsorbSpeed = CoinRewardAbsorbSpeed;
 	Params.FindRadius = CoinRewardFindRadius;
 	VFXActor->Play(Params);
+}
+
+void ACAP_EnemyCharacter::GiveDeathCurrencyReward()
+{
+	if (bDeathCurrencyRewardGranted)
+	{
+		return;
+	}
+
+	bDeathCurrencyRewardGranted = true;
+
+	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
+	if (!Player)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Death currency reward skipped: player pawn is missing for %s."), *GetName());
+		return;
+	}
+
+	UCAP_CurrencyComponent* CurrencyComponent = Player->GetCurrencyComponent();
+	if (!CurrencyComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Death currency reward skipped: currency component is missing for %s."), *GetName());
+		return;
+	}
+
+	const UCAP_RewardSettings* RewardSettings = GetDefault<UCAP_RewardSettings>();
+	if (!RewardSettings || RewardSettings->MonsterRewardDataAsset.IsNull())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Death currency reward skipped: MonsterRewardDataAsset is not set for %s."), *GetName());
+		return;
+	}
+
+	const UCAP_MonsterRewardDataAsset* RewardDataAsset = RewardSettings->MonsterRewardDataAsset.LoadSynchronous();
+	if (!RewardDataAsset)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Death currency reward skipped: MonsterRewardDataAsset failed to load for %s."), *GetName());
+		return;
+	}
+
+	FCAPMonsterCurrencyReward ResolvedReward;
+	if (!RewardDataAsset->FindRewardForMonster(GetClass(), RewardGroup, ResolvedReward))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Death currency reward skipped: reward data was not found for %s."), *GetName());
+		return;
+	}
+
+	const int32 GoldRewardAmount = RollRewardAmount(ResolvedReward.GoldRewardAmountRange);
+	if (GoldRewardAmount > 0)
+	{
+		CurrencyComponent->AddCurrency(ECurrencyType::Gold, GoldRewardAmount);
+	}
+
+	if (ResolvedReward.bCanDropMagicStone && ResolvedReward.MagicStoneDropChance > 0.f)
+	{
+		const float ClampedDropChance = FMath::Clamp(ResolvedReward.MagicStoneDropChance, 0.f, 1.f);
+		if (FMath::FRand() <= ClampedDropChance)
+		{
+			const int32 MagicStoneRewardAmount = RollRewardAmount(ResolvedReward.MagicStoneRewardAmountRange);
+			if (MagicStoneRewardAmount > 0)
+			{
+				CurrencyComponent->AddCurrency(ECurrencyType::MagicStone, MagicStoneRewardAmount);
+			}
+		}
+	}
 }
 
 void ACAP_EnemyCharacter::InitializeHealthBarWidget()
