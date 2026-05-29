@@ -41,7 +41,6 @@ public:
 	void ClearAbilities(class UCAP_WeaponInstance* WeaponInst);
 
 	struct FWeaponComponentSaveData CreateSaveData() const;
-	void RestoreFromSaveData(const struct FWeaponComponentSaveData& InData);
 private:
 	UPROPERTY()
 	class USkeletalMeshComponent* WeaponMesh_L;
@@ -63,4 +62,9 @@ private:
 
 	UPROPERTY()
 	class UCAP_AbilitySystemComponent* ASC;
+
+	void RestoreFromSaveData(const struct FWeaponComponentSaveData& InData);
+	void InitializeWeaponMeshes();
+	bool TryRestoreSavedWeapons();
+	void EquipDefaultWeapon();
 };

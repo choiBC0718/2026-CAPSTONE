@@ -136,9 +136,10 @@ FString ACAP_PlayerCharacter::GetInteractKeyName() const
 	return CurrentKeyName;
 }
 
-void ACAP_PlayerCharacter::AddCurrency(ECurrencyType Type, int32 Amount)
+void ACAP_PlayerCharacter::ShowMeTheMoney()
 {
-	CurrencyComponent->AddCurrency(Type,Amount);
+	CurrencyComponent->AddCurrency(ECurrencyType::Gold, 50000);
+	CurrencyComponent->AddCurrency(ECurrencyType::WeaponMaterial, 50000);
 }
 
 void ACAP_PlayerCharacter::UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack)
@@ -268,12 +269,6 @@ void ACAP_PlayerCharacter::TryLoadProgressionData()
 		{
 			if (UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent()))
 				ASC->RestoreHealthFromSave(Data.CurrentHealth);
-			if (WeaponComponent)
-				WeaponComponent->RestoreFromSaveData(Data.WeaponData);
-			if (InventoryComponent)
-				InventoryComponent->RestoreFromSaveData(Data.InventoryData);
-			if (CurrencyComponent)
-				CurrencyComponent->RestoreFromSaveData(Data.CurrencyData);
 
 			Subsys->ClearProgression();
 		}

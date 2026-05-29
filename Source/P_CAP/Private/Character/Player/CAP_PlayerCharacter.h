@@ -40,7 +40,7 @@ public:
 	FString GetInteractKeyName() const;
 
 	UFUNCTION(Exec)
-	void AddCurrency(ECurrencyType Type, int32 Amount);
+	void ShowMeTheMoney();
 
 	virtual void UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack) override;
 private:

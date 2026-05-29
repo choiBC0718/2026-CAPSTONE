@@ -20,6 +20,8 @@ UCAP_CurrencyComponent::UCAP_CurrencyComponent()
 void UCAP_CurrencyComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	TryRestoreSavedCurrency();
+	
 	if (UCAP_GameInstance* GI = Cast<UCAP_GameInstance>(UGameplayStatics::GetGameInstance(this)))
 	{
 		int32 SavedStone = GI->GetSavedMagicStone();
@@ -118,18 +120,6 @@ struct FCurrencySaveData UCAP_CurrencyComponent::CreateSaveData() const
 	return SaveData;
 }
 
-void UCAP_CurrencyComponent::RestoreFromSaveData(const struct FCurrencySaveData& InData)
-{
-	CurrencyMap = InData.SavedCurrencies;
-	for (const TPair<ECurrencyType, int32>& Pair : CurrencyMap)
-	{
-		if (OnCurrencyChanged.IsBound())
-		{
-			OnCurrencyChanged.Broadcast(Pair.Key, 0, Pair.Value);
-		}
-	}
-}
-
 FName UCAP_CurrencyComponent::GetRowNameFromGrade(EItemGrade Grade)
 {
 	switch (Grade)
@@ -142,3 +132,29 @@ FName UCAP_CurrencyComponent::GetRowNameFromGrade(EItemGrade Grade)
 	}
 }
 
+void UCAP_CurrencyComponent::TryRestoreSavedCurrency()
+{
+	if (UGameInstance* GI = UGameplayStatics::GetGameInstance(this))
+	{
+		if (UCAP_ProgressionSubsystem* Subsys = GI->GetSubsystem<UCAP_ProgressionSubsystem>())
+		{
+			FPlayerProgressionData SavedData;
+			if (Subsys->LoadPlayerProgression(SavedData) && SavedData.bIsValid)
+			{
+				RestoreFromSaveData(SavedData.CurrencyData);
+			}
+		}
+	}
+}
+
+void UCAP_CurrencyComponent::RestoreFromSaveData(const struct FCurrencySaveData& InData)
+{
+	CurrencyMap = InData.SavedCurrencies;
+	for (const TPair<ECurrencyType, int32>& Pair : CurrencyMap)
+	{
+		if (OnCurrencyChanged.IsBound())
+		{
+			OnCurrencyChanged.Broadcast(Pair.Key, 0, Pair.Value);
+		}
+	}
+}
