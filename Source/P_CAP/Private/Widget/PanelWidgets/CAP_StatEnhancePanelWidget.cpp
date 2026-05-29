@@ -8,6 +8,9 @@
 #include "Components/WrapBox.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_StatEnhanceTypes.h"
+#include "Framework/CAP_GameInstance.h"
+#include "Interactables/NPC/NPC_StatEnhance.h"
+#include "Kismet/GameplayStatics.h"
 #include "Widget/HUD/CAP_DialogueWidget.h"
 #include "Widget/SlotWidgets/CAP_StatEnhanceDetailWidget.h"
 #include "Widget/SlotWidgets/CAP_StatEnhanceSlotWidget.h"
@@ -15,6 +18,10 @@
 void UCAP_StatEnhancePanelWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	CachedPlayer = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
+	if (CachedPlayer)
+		OwnerNPC = Cast<ANPC_StatEnhance>(CachedPlayer->GetInteractionComponent()->GetNearbyInteractable());
+	
 	SetIsFocusable(true);
 	if (InnerEnhanceBtn)
 	{
@@ -34,12 +41,19 @@ void UCAP_StatEnhancePanelWidget::NativeConstruct()
 
 void UCAP_StatEnhancePanelWidget::NativeOpenMenu()
 {
-	if (!SlotWrapBox || !SlotWidgetClass || !EnhanceDataTable) return;
+	if (!SlotWrapBox || !SlotWidgetClass) return;
+
+	UDataTable* StatEnhanceDT = nullptr;
+	if (UCAP_GameInstance* GI = Cast<UCAP_GameInstance>(UGameplayStatics::GetGameInstance(this)))
+		StatEnhanceDT = GI->GetStatEnhanceTable();
+
+	if (!StatEnhanceDT)
+		return;
 
 	ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
 	if (!Player) return;
 	
-	TArray<FName> RowNames = EnhanceDataTable->GetRowNames();
+	TArray<FName> RowNames = StatEnhanceDT->GetRowNames();
 	int32 RequiredSlots = FMath::Min(RowNames.Num(), 15);
 
 	for (int32 i = 0; i < RequiredSlots; ++i)
@@ -63,7 +77,7 @@ void UCAP_StatEnhancePanelWidget::NativeOpenMenu()
 
 		if (CurrentSlot)
 		{
-			CurrentSlot->StatEnhanceDataTableRow.DataTable=EnhanceDataTable;
+			CurrentSlot->StatEnhanceDataTableRow.DataTable=StatEnhanceDT;
 			CurrentSlot->StatEnhanceDataTableRow.RowName=RowNames[i];
 			CurrentSlot->InitSlot(Player);
 		}
@@ -141,15 +155,14 @@ void UCAP_StatEnhancePanelWidget::HandleSlotFocused(UCAP_StatEnhanceSlotWidget* 
 		CurrentSelectedSlot = FocusedSlot;
 		CurrentSelectedSlot->SetSlotSelected(true);
 	}
-	if (DetailWidget)
+	if (DetailWidget && OwnerNPC)
 	{
 		FStatEnhanceTableRow* RowData = nullptr;
-		ACAP_PlayerCharacter* Player = nullptr;
 		FName RowName;
 		int32 CurrentLv = 0;
-		if (TryGetEnhanceData(FocusedSlot, RowData, Player, RowName, CurrentLv))
+		if (OwnerNPC->TryGetEnhanceData(FocusedSlot, CachedPlayer,RowData,RowName,CurrentLv))
 		{
-			FText FormattedDesc = GetFormattedDescription(RowData, CurrentLv);
+			FText FormattedDesc = OwnerNPC->GetFormattedDescription(RowData, CurrentLv);
 			DetailWidget->UpdateDetailInfo(RowData->DisplayName, FormattedDesc, RowData->MaxLevel, CurrentLv);
 		}
 	}
@@ -162,36 +175,25 @@ void UCAP_StatEnhancePanelWidget::OnInnerEnhanceClicked()
 	else
 	{
 		FStatEnhanceTableRow* RowData = nullptr;
-		ACAP_PlayerCharacter* Player = nullptr;
 		FName RowName;
 		int32 CurrentLv = 0;
 		
-		if (TryGetEnhanceData(CurrentSelectedSlot, RowData, Player, RowName, CurrentLv))
-		{	// 최대 레벨까지 찍지 않았으면 강화 진행
-			if (Player->GetStatEnhanceComponent()->UpgradeStatEnhance(RowName, RowData->MaxLevel))
+		if (OwnerNPC->TryGetEnhanceData(CurrentSelectedSlot, CachedPlayer,RowData,RowName,CurrentLv))
+		{
+			int32 RequiredCost = (CurrentLv+1) * RowData->CostIncreaseRate;
+			EEnhanceResult Result = OwnerNPC->TryEnhanceStat(CachedPlayer, RowName,RequiredCost,RowData->MaxLevel);
+
+			if (Result == EEnhanceResult::Success)
 			{
-				int32 RequiredCost = (CurrentLv + 1) * RowData->CostIncreaseRate;
-				if (UCAP_CurrencyComponent* CurrencyComp = Player->GetCurrencyComponent())
-				{	// 재화 충분한지 확인
-					if (CurrencyComp->ConsumeCurrency(ECurrencyType::MagicStone, RequiredCost))
-					{
-						CurrentSelectedSlot->InitSlot(Player);
-						HandleSlotFocused(CurrentSelectedSlot);
-						SetConfirmMode(false);
-						ApplyRandomDialogue(SuccessDialoguePool);
-					}
-					else
-					{
-						SetConfirmMode(false);
-						ApplyRandomDialogue(FailDialoguePool);
-					}
-				}
-			}
-			else
-			{	// 최대 레벨이 찍힌 상태라면 진행 취소 및 이미 만렙 대사
+				CurrentSelectedSlot->InitSlot(CachedPlayer);
+				HandleSlotFocused(CurrentSelectedSlot);
 				SetConfirmMode(false);
-				ApplyRandomDialogue(OnMaxLevelDialoguePool);
 			}
+			else if (Result == EEnhanceResult::InsufficientCurrency || Result == EEnhanceResult::MaxGradeReached)
+				SetConfirmMode(false);
+
+			if (DialogueText)
+				DialogueText->SetText(OwnerNPC->GetDialogueText(Result));
 		}
 	}
 }
@@ -253,26 +255,30 @@ void UCAP_StatEnhancePanelWidget::SetConfirmMode(bool bIsConfirm)
 
 		int32 RequiredCost = 0;
 		FStatEnhanceTableRow* RowData = nullptr;
-		ACAP_PlayerCharacter* Player = nullptr;
 		FName RowName;
 		int32 CurrentLv = 0;
 
-		if (TryGetEnhanceData(CurrentSelectedSlot, RowData, Player, RowName, CurrentLv))
-			RequiredCost = (CurrentLv + 1) * RowData->CostIncreaseRate;
-
-		if (CurrentLv >= RowData->MaxLevel)
+		if (OwnerNPC->TryGetEnhanceData(CurrentSelectedSlot, CachedPlayer,RowData,RowName,CurrentLv))
 		{
-			SetConfirmMode(false);
-			ApplyRandomDialogue(OnMaxLevelDialoguePool);
-			return;
+			if (CurrentLv >= RowData->MaxLevel)
+			{
+				SetConfirmMode(false);
+				if (DialogueText)
+					DialogueText->SetText(OwnerNPC->GetDialogueText(EEnhanceResult::MaxGradeReached));
+				return;
+			}
+			RequiredCost = (CurrentLv+1) * RowData->CostIncreaseRate;
 		}
-		ApplyRandomDialogue(ConfirmDialoguePool, RequiredCost);
+		if (DialogueText)
+			DialogueText->SetText(OwnerNPC->GetDialogueText(EEnhanceResult::ConfirmMode, RequiredCost));
 	}
 	else
 	{
-		if (InnerCloseText) InnerCloseText->SetText(FText::FromString(TEXT("닫기")));
+		if (InnerCloseText)
+			InnerCloseText->SetText(FText::FromString(TEXT("닫기")));
+		if (DialogueText)
+			DialogueText->SetText(OwnerNPC->GetDialogueText(EEnhanceResult::Default));
 		CurrentButtonIndex = -1;
-		ApplyRandomDialogue(BrowseDialoguePool);
 	}
 	RefreshButtonVisuals();
 }
@@ -286,87 +292,7 @@ void UCAP_StatEnhancePanelWidget::RefreshButtonVisuals()
 	{
 		if (!Buttons[i] || !Texts[i]) continue;
 		
-		FButtonStyle Style = Buttons[i]->GetStyle();
-		Style.Normal.OutlineSettings.Width = 0.f;
-		Style.Hovered.OutlineSettings.Width = 0.f;
-		Buttons[i]->SetStyle(Style);
-		
-		Buttons[i]->SetBackgroundColor(ButtonNormalColor);
-
-		FSlateFontInfo FontInfo = Texts[i]->GetFont();
-		FontInfo.Size = NormalFontSize;
-		Texts[i]->SetFont(FontInfo);
-
-		if (bIsConfirmMode && CurrentButtonIndex == i)
-		{
-			Buttons[i]->SetBackgroundColor(ButtonHoverColor);
-			
-			Style.Normal.OutlineSettings.Color = ButtonHoverOutlineColor;
-			Style.Normal.OutlineSettings.Width = ButtonHoverOutlineWidth;
-			Style.Hovered.OutlineSettings.Color = ButtonHoverOutlineColor;
-			Style.Hovered.OutlineSettings.Width = ButtonHoverOutlineWidth;
-			Buttons[i]->SetStyle(Style);
-
-			FontInfo.Size = HoverFontSize;
-			Texts[i]->SetFont(FontInfo);
-		}
-	}
-}
-
-bool UCAP_StatEnhancePanelWidget::TryGetEnhanceData(class UCAP_StatEnhanceSlotWidget* SlotWidget,
-	struct FStatEnhanceTableRow*& OutRowData, class ACAP_PlayerCharacter*& OutPlayer, FName& OutRowName,
-	int32& OutCurrentLevel)
-{
-	if (!SlotWidget || SlotWidget->StatEnhanceDataTableRow.IsNull())
-		return false;
-	OutPlayer = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
-	if (!OutPlayer || !OutPlayer->GetStatEnhanceComponent())
-		return false;
-	OutRowData = SlotWidget->StatEnhanceDataTableRow.GetRow<FStatEnhanceTableRow>("");
-	if (!OutRowData)
-		return false;
-	
-	OutRowName = SlotWidget->StatEnhanceDataTableRow.RowName;
-	OutCurrentLevel = OutPlayer->GetStatEnhanceComponent()->GetStatEnhanceLevel(OutRowName);
-	return true;
-}
-
-FText UCAP_StatEnhancePanelWidget::GetFormattedDescription(const struct FStatEnhanceTableRow* RowData,int32 CurrentLevel)
-{
-	if (!RowData)
-		return FText::GetEmpty();
-
-	FFormatNamedArguments Args;
-	for (int32 i = 0; i < RowData->Modifiers.Num(); ++i)
-	{
-		const FStatModifierInfo& ModInfo = RowData->Modifiers[i];
-		float CalcVal = CurrentLevel == 0 ? 0.f : ModInfo.bIsFixedValue ? ModInfo.Value : static_cast<float>(CurrentLevel) * ModInfo.Value;
-		
-		if (ModInfo.bIsPercentage)
-			CalcVal *= 100.f;
-
-		FString ArgName = FString::Printf(TEXT("Value%d"), i);
-		Args.Add(ArgName, FMath::RoundToInt(CalcVal));
-	}
-	return FText::Format(RowData->Description, Args);
-}
-
-void UCAP_StatEnhancePanelWidget::ApplyRandomDialogue(const TArray<FText>& DialoguePool, int32 Cost)
-{
-	if (DialoguePool.IsEmpty() || !DialogueText)
-		return;
-
-	int32 RandIdx = FMath::RandRange(0, DialoguePool.Num() - 1);
-	FText SelectedDialogue = DialoguePool[RandIdx];
-	if (Cost>=0)
-	{
-		FFormatNamedArguments Args;
-		Args.Add(TEXT("Cost"),Cost);
-		// {Cost} 로 입력한 자리에 숫자로 들어감
-		DialogueText->SetText(FText::Format(SelectedDialogue, Args));
-	}
-	else
-	{
-		DialogueText->SetText(SelectedDialogue);
+		bool bIsFocused = (CurrentButtonIndex == i); 
+		UCAP_WidgetHelper::ApplyCustomButtonStyle(Buttons[i], Texts[i], bIsFocused, ButtonSettings);
 	}
 }

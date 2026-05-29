@@ -6,16 +6,6 @@
 #include "Interactables/NPC/CAP_WorldNPC.h"
 #include "NPC_WeaponEnhance.generated.h"
 
-UENUM(BlueprintType)
-enum class EWeaponUpgradeResult : uint8
-{
-	Default,
-	Success,
-	InsufficientCurrency,
-	MaxGradeReached,
-	ConfirmMode,
-	Error,
-};
 
 /**
  * 
@@ -28,8 +18,8 @@ class ANPC_WeaponEnhance : public ACAP_WorldNPC
 public:
 	virtual ENPCActionResult ExecuteSpecialAction(AActor* Actor) override;
 
-	EWeaponUpgradeResult TryUpgradeWeapon(class ACAP_PlayerCharacter* Player);
-	FText GetDialogueText(EWeaponUpgradeResult Result, int32 Cost = -1) const;
+	EEnhanceResult TryUpgradeWeapon(class ACAP_PlayerCharacter* Player);
+	FText GetDialogueText(EEnhanceResult Result, int32 Cost = -1) const;
 
 	UPROPERTY(EditAnywhere, Category="Enhance|Data")
 	TMap<EItemGrade, int32> UpgradeCostMap;

@@ -11,6 +11,8 @@
 #include "AI/PlayerBehaviorLearner.h"
 #include "GameFramework/PlayerController.h"
 #include "EngineUtils.h"
+#include "Framework/Subsystem/CAP_ProgressionSubsystem.h"
+#include "Kismet/GameplayStatics.h"
 #include "Widget/Common/CAP_TargetEffectWidget.h"
 
 ACAP_EnemyCharacter::ACAP_EnemyCharacter()
@@ -84,6 +86,14 @@ void ACAP_EnemyCharacter::UpdateStackUI(const FGameplayTag& BehaviorTag, int32 C
 
 void ACAP_EnemyCharacter::OnDead()
 {
+	if (UGameInstance* GI = UGameplayStatics::GetGameInstance(this))
+	{
+		if (UCAP_ProgressionSubsystem* ProgressionSub = GI->GetSubsystem<UCAP_ProgressionSubsystem>())
+		{
+			ProgressionSub->AddEnemyDefeated();
+		}
+	}
+	
 	SetEnemyAIEnabled(false);
 
 	// AITESTMAP처럼 PlayerBehaviorLearner가 있는 맵에서만 카운트

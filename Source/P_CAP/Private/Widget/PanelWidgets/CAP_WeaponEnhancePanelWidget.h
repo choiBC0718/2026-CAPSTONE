@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Framework/Library/CAP_WidgetHelper.h"
 #include "Interface/CAP_MenuInterface.h"
 #include "CAP_WeaponEnhancePanelWidget.generated.h"
 
@@ -56,22 +57,7 @@ private:
 	int32 CurrentButtonIndex = -1;
 	
 	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	FLinearColor ButtonHoverColor = FLinearColor::White;
-
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	FLinearColor ButtonNormalColor = FLinearColor::White;
-
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	FLinearColor ButtonHoverOutlineColor = FLinearColor::White;
-
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	float ButtonHoverOutlineWidth = 4.f;
-
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	int32 NormalFontSize = 30;
-
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	int32 HoverFontSize = 38;
+	FButtonVisualSettings ButtonSettings;
 	
 	void SetConfirmMode(bool bIsConfirm);
 	void RefreshButtonVisuals();

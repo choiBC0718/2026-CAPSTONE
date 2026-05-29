@@ -15,6 +15,7 @@ class ACAP_StageGameMode : public ACAP_GameMode
 	GENERATED_BODY()
 
 public:
+	virtual void BeginPlay() override;
 	void OnPlayerDeathAnimationFinished(class APlayerController* PC);
 
 protected:

@@ -24,6 +24,7 @@ void UCAP_StatEnhanceComponent::BeginPlay()
 	{
 		TMap<FName, int32> SavedData = GI->GetSavedStatEnhancedLevels();
 		LoadEnhanceData(SavedData);
+		StatEnhanceDT = GI->GetStatEnhanceTable();
 	}
 }
 
@@ -60,8 +61,9 @@ void UCAP_StatEnhanceComponent::LoadEnhanceData(const TMap<FName, int32>& SavedD
 
 void UCAP_StatEnhanceComponent::ApplyStatEnhanceGE(FName RowName, int32 Level)
 {
-	if (Level <= 0 || !EnhanceDataTable)		return;
-	FStatEnhanceTableRow* RowData = EnhanceDataTable->FindRow<FStatEnhanceTableRow>(RowName, "");
+	if (Level <= 0 || !StatEnhanceDT)		return;
+
+	FStatEnhanceTableRow* RowData = StatEnhanceDT->FindRow<FStatEnhanceTableRow>(RowName, "");
 	if (!RowData) return;
 	
 	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner());

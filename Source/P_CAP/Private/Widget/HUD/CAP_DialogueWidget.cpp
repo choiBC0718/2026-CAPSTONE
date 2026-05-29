@@ -333,32 +333,12 @@ void UCAP_DialogueWidget::RefreshButtonVisuals()
 {
 	for (int32 i = 0; i < ActiveButtons.Num(); i++)
 	{
-		FButtonStyle Style = ActiveButtons[i]->GetStyle();
-		Style.Normal.OutlineSettings.Width = 0.f;
-		Style.Hovered.OutlineSettings.Width = 0.f;
-		ActiveButtons[i]->SetStyle(Style);
+		if (!ActiveButtons[i] || !ActiveTextBlocks[i]) continue;
 		
-		ActiveButtons[i]->SetBackgroundColor(ButtonNormalColor);
-
-		FSlateFontInfo NormalFont = ActiveTextBlocks[i]->GetFont();
-		NormalFont.Size=NormalFontSize;
-		ActiveTextBlocks[i]->SetFont(NormalFont);
-
-		if (CurrentSelectedIndex == i)
-		{
-			ActiveButtons[i]->SetBackgroundColor(ButtonHoverColor);
-			
-			Style.Normal.OutlineSettings.Color=ButtonHoverOutlineColor;
-			Style.Normal.OutlineSettings.Width=ButtonHoverOutlineWidth;
-			Style.Hovered.OutlineSettings.Color=ButtonHoverOutlineColor;
-			Style.Hovered.OutlineSettings.Width=ButtonHoverOutlineWidth;
-			ActiveButtons[i]->SetStyle(Style);
-
-			FSlateFontInfo HoveredFont = ActiveTextBlocks[i]->GetFont();
-			HoveredFont.Size=HoverFontSize;
-			ActiveTextBlocks[i]->SetFont(HoveredFont);
-		}
+		bool bIsFocused = (CurrentSelectedIndex == i); 
+		UCAP_WidgetHelper::ApplyCustomButtonStyle(ActiveButtons[i], ActiveTextBlocks[i], bIsFocused, ButtonSettings);
 	}
+	
 }
 
 void UCAP_DialogueWidget::ChangeToConfirmState(const FString& ConfirmText)

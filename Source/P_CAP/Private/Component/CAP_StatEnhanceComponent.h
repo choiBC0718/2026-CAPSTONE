@@ -23,13 +23,12 @@ public:
 	void LoadEnhanceData(const TMap<FName, int32>& SavedData);
 
 private:
-	UPROPERTY(EditDefaultsOnly, Category = "Data")
-	class UDataTable* EnhanceDataTable;
-	
 	UPROPERTY()
 	TMap<FName, int32> EnhancedStatLevels;
 	UPROPERTY()
 	TMap<FName, FActiveGameplayEffectHandle> ActiveGEHandles;
+	UPROPERTY()
+	UDataTable* StatEnhanceDT;
 
 	void ApplyStatEnhanceGE(FName RowName, int32 Level);
 };

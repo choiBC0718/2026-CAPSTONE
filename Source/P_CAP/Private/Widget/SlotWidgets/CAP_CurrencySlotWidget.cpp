@@ -25,7 +25,9 @@ void UCAP_CurrencySlotWidget::NativeConstruct()
 			}
 		}
 	}
-	if (CurrencyIcon && CurrencyIconTexture)
+	if (CurrencyIcon && !CurrencyIconTexture)
+		CurrencyIcon->SetVisibility(ESlateVisibility::Collapsed);
+	else if (CurrencyIcon && CurrencyIconTexture)
 		CurrencyIcon->SetBrushFromTexture(CurrencyIconTexture);
 }
 

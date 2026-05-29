@@ -18,6 +18,7 @@ class UCAP_CurrencySlotWidget : public UUserWidget
 public:
 	virtual void NativeConstruct() override;
 
+	void SetCurrencyText(int32 Amount);
 
 private:
 	UPROPERTY(meta = (BindWidget))
@@ -32,6 +33,4 @@ private:
 	
 	UFUNCTION()
 	void OnCurrencyChanged(ECurrencyType CurrencyType, int32 OldAmount, int32 NewAmount);
-
-	void SetCurrencyText(int32 Amount);
 };

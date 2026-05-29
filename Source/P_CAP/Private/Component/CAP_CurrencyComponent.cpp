@@ -66,6 +66,14 @@ void UCAP_CurrencyComponent::AddCurrency(ECurrencyType Type, int32 Amount)
 	
 	if (OnCurrencyChanged.IsBound())
 		OnCurrencyChanged.Broadcast(Type, OldAmount, CurrentAmount);
+	
+	if (UGameInstance* GI = UGameplayStatics::GetGameInstance(this))
+	{
+		if (UCAP_ProgressionSubsystem* ProgressionSubsystem = GI->GetSubsystem<UCAP_ProgressionSubsystem>())
+		{
+			ProgressionSubsystem->AddCurrencyCnt(Type, Amount);
+		}
+	}
 }
 
 bool UCAP_CurrencyComponent::ConsumeCurrency(ECurrencyType Type, int32 Amount)

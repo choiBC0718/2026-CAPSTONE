@@ -12,23 +12,23 @@ ENPCActionResult ANPC_WeaponEnhance::ExecuteSpecialAction(AActor* Actor)
 	return ENPCActionResult::OpenCustomWidget;
 }
 
-EWeaponUpgradeResult ANPC_WeaponEnhance::TryUpgradeWeapon(class ACAP_PlayerCharacter* Player)
+EEnhanceResult ANPC_WeaponEnhance::TryUpgradeWeapon(class ACAP_PlayerCharacter* Player)
 {
 	if (!Player)
-		return EWeaponUpgradeResult::Error;
+		return EEnhanceResult::Error;
 
 	UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent();
 	UCAP_CurrencyComponent* CurrComp = Player->GetCurrencyComponent();
 	if (!WeaponComp || !CurrComp)
-		return EWeaponUpgradeResult::Error;
+		return EEnhanceResult::Error;
 
 	UCAP_WeaponInstance* CurrentWeapon = WeaponComp->GetCurrentWeaponInstance();
 	if (!CurrentWeapon)
-		return EWeaponUpgradeResult::Error;
+		return EEnhanceResult::Error;
 
 	EItemGrade CurrentGrade = CurrentWeapon->GetCurrentGrade();
 	if (CurrentGrade>=EItemGrade::Legendary)
-		return EWeaponUpgradeResult::MaxGradeReached;
+		return EEnhanceResult::MaxGradeReached;
 
 	int32 RequiredCost = UpgradeCostMap.Contains(CurrentGrade) ? UpgradeCostMap[CurrentGrade] : 0;
 	if (CurrComp->ConsumeCurrency(ECurrencyType::WeaponMaterial, RequiredCost))
@@ -42,23 +42,23 @@ EWeaponUpgradeResult ANPC_WeaponEnhance::TryUpgradeWeapon(class ACAP_PlayerChara
 			}));
 			WeaponComp->ClearAbilities(CurrentWeapon);
 			WeaponComp->GrantAbilities(CurrentWeapon);
-			return EWeaponUpgradeResult::Success;
+			return EEnhanceResult::Success;
 		}
 	}
-	return EWeaponUpgradeResult::InsufficientCurrency;
+	return EEnhanceResult::InsufficientCurrency;
 }
 
-FText ANPC_WeaponEnhance::GetDialogueText(EWeaponUpgradeResult Result, int32 Cost) const
+FText ANPC_WeaponEnhance::GetDialogueText(EEnhanceResult Result, int32 Cost) const
 {
 	const TArray<FText>* TargetPool = nullptr;
 	
 	switch (Result)
 	{
-	case EWeaponUpgradeResult::Default: TargetPool = &DefaultDialoguePool; break;
-	case EWeaponUpgradeResult::Success: TargetPool = &SuccessDialoguePool; break;
-	case EWeaponUpgradeResult::InsufficientCurrency: TargetPool = &InsufficientDialoguePool; break;
-	case EWeaponUpgradeResult::MaxGradeReached: TargetPool = &OnMaxLevelDialoguePool; break;
-	case EWeaponUpgradeResult::ConfirmMode: TargetPool = &ConfirmDialoguePool; break;
+	case EEnhanceResult::Default: TargetPool = &DefaultDialoguePool; break;
+	case EEnhanceResult::Success: TargetPool = &SuccessDialoguePool; break;
+	case EEnhanceResult::InsufficientCurrency: TargetPool = &InsufficientDialoguePool; break;
+	case EEnhanceResult::MaxGradeReached: TargetPool = &OnMaxLevelDialoguePool; break;
+	case EEnhanceResult::ConfirmMode: TargetPool = &ConfirmDialoguePool; break;
 	default: return FText::FromString("에러 발생");
 	}
 
