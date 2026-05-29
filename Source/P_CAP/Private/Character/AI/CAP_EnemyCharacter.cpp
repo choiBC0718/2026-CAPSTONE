@@ -4,8 +4,12 @@
 #include "Character/AI/CAP_EnemyCharacter.h"
 
 #include "Character/AI/CAP_AIController.h"
+#include "Character/Player/Feedback/CAP_CoinRewardVFXActor.h"
 #include "Components/WidgetComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "NiagaraSystem.h"
+#include "UObject/ConstructorHelpers.h"
 #include "Widget/Common/CAP_OverheadStatsGauge.h"
 #include "AI/PlayerTrackerComponent.h"
 #include "AI/PlayerBehaviorLearner.h"
@@ -22,6 +26,13 @@ ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 	HealthBarWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
 	HealthBarWidgetComponent->SetDrawSize(FVector2D(120.f, 16.f));
 	HealthBarWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, 120.f));
+
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> CoinDropVFXFinder(
+		TEXT("/Game/_Workspace/7_Monster/CoinDrop/NS_CoinDrop.NS_CoinDrop"));
+	if (CoinDropVFXFinder.Succeeded())
+	{
+		CoinRewardVFX = CoinDropVFXFinder.Object;
+	}
 }
 
 void ACAP_EnemyCharacter::BeginPlay()
@@ -85,6 +96,7 @@ void ACAP_EnemyCharacter::UpdateStackUI(const FGameplayTag& BehaviorTag, int32 C
 void ACAP_EnemyCharacter::OnDead()
 {
 	SetEnemyAIEnabled(false);
+	SpawnCoinRewardVFX();
 
 	// AITESTMAP처럼 PlayerBehaviorLearner가 있는 맵에서만 카운트
 	bool bLearnerExists = false;
@@ -112,6 +124,68 @@ void ACAP_EnemyCharacter::OnDead()
 		Tracker->AddMonsterKill();
 		break;
 	}
+}
+
+void ACAP_EnemyCharacter::SpawnCoinRewardVFX()
+{
+	if (CoinRewardAmount <= 0)
+	{
+		UE_LOG(LogTemp, Verbose, TEXT("Coin reward VFX skipped: reward amount is zero for %s."), *GetName());
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Coin reward VFX skipped: world is missing for %s."), *GetName());
+		return;
+	}
+
+	AActor* TargetActor = UGameplayStatics::GetPlayerPawn(this, 0);
+	if (!IsValid(TargetActor))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Coin reward VFX skipped: player pawn is missing for %s."), *GetName());
+		return;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	TSubclassOf<ACAP_CoinRewardVFXActor> VFXActorClass = CoinRewardVFXActorClass;
+	if (!VFXActorClass)
+	{
+		VFXActorClass = ACAP_CoinRewardVFXActor::StaticClass();
+	}
+
+	const FVector CoinSpawnLocation = GetActorLocation() + CoinRewardSpawnOffset;
+
+	ACAP_CoinRewardVFXActor* VFXActor = World->SpawnActor<ACAP_CoinRewardVFXActor>(
+		VFXActorClass,
+		CoinSpawnLocation,
+		FRotator::ZeroRotator,
+		SpawnParams);
+
+	if (!VFXActor)
+	{
+		return;
+	}
+
+	if (!CoinRewardVFX)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Coin reward VFX actor spawned without Niagara system for %s."), *GetName());
+	}
+
+	FCAPCoinRewardFeedbackParams Params;
+	Params.RewardVFX = CoinRewardVFX;
+	Params.TargetActor = TargetActor;
+	Params.SourceLocation = CoinSpawnLocation;
+	Params.CoinAmount = CoinRewardAmount;
+	Params.AbsorbDelay = CoinRewardAbsorbDelay;
+	Params.KillRadius = CoinRewardKillRadius;
+	Params.AbsorbSpeed = CoinRewardAbsorbSpeed;
+	Params.FindRadius = CoinRewardFindRadius;
+	VFXActor->Play(Params);
 }
 
 void ACAP_EnemyCharacter::InitializeHealthBarWidget()

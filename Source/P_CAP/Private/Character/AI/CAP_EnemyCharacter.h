@@ -43,11 +43,36 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|UI")
 	TSubclassOf<class UCAP_OverheadStatsGauge> HealthBarWidgetClass;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Reward")
+	TSubclassOf<class ACAP_CoinRewardVFXActor> CoinRewardVFXActorClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Reward")
+	TObjectPtr<class UNiagaraSystem> CoinRewardVFX;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Reward", meta=(ClampMin="0"))
+	int32 CoinRewardAmount = 5;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Reward", meta=(ClampMin="0.0"))
+	float CoinRewardAbsorbDelay = 0.35f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Reward", meta=(ClampMin="0.0"))
+	float CoinRewardKillRadius = 8.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Reward", meta=(ClampMin="0.0"))
+	float CoinRewardAbsorbSpeed = 1000.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Reward", meta=(ClampMin="0.0"))
+	float CoinRewardFindRadius = 5000.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Reward")
+	FVector CoinRewardSpawnOffset = FVector(0.f, 0.f, 45.f);
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Enemy|AI")
 	bool bEnemyAIEnabled = false;
 
 private:
 	void InitializeHealthBarWidget();
+	void SpawnCoinRewardVFX();
 
 	UPROPERTY()
 	TObjectPtr<AActor> CurrentTargetActor;
