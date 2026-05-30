@@ -166,6 +166,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category="AI Learning")
 	FPlayerTendencyModifier GetCurrentPlayerTendency();
 
+	// Assessment 전용: K-Means 없이 단일 런 데이터를 직접 성향으로 변환
+	static FPlayerTendencyModifier ExtractTendencyFromSingleRun(const FPlayerBehaviorData& Data);
+
 protected:
 	virtual void BeginPlay() override;
 
