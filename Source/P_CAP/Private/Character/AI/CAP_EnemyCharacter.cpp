@@ -145,6 +145,10 @@ void ACAP_EnemyCharacter::UpdateStackUI(const FGameplayTag& BehaviorTag, int32 C
 void ACAP_EnemyCharacter::OnDead()
 {
 	SetEnemyAIEnabled(false);
+	if (HealthBarWidgetComponent)
+	{
+		HealthBarWidgetComponent->SetVisibility(false);
+	}
 	GiveDeathCurrencyReward();
 	SpawnCoinRewardVFX();
 
