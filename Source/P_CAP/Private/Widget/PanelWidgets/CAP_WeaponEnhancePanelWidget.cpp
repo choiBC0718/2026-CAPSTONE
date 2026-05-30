@@ -35,7 +35,7 @@ void UCAP_WeaponEnhancePanelWidget::NativeOpenMenu()
 	if (OpenAnim)
 		PlayAnimation(OpenAnim);
 	if (DialogueText && OwnerNPC)
-		DialogueText->SetText(OwnerNPC->GetDialogueText(EWeaponUpgradeResult::Default));
+		DialogueText->SetText(OwnerNPC->GetDialogueText(EEnhanceResult::Default));
 }
 
 void UCAP_WeaponEnhancePanelWidget::NativeCloseMenu()
@@ -80,8 +80,8 @@ void UCAP_WeaponEnhancePanelWidget::OnEnhanceClicked()
 		SetConfirmMode(true);
 	else
 	{
-		EWeaponUpgradeResult Result = OwnerNPC->TryUpgradeWeapon(CachedPlayer);
-		if (Result == EWeaponUpgradeResult::InsufficientCurrency || Result==EWeaponUpgradeResult::MaxGradeReached)
+		EEnhanceResult Result = OwnerNPC->TryUpgradeWeapon(CachedPlayer);
+		if (Result == EEnhanceResult::InsufficientCurrency || Result==EEnhanceResult::MaxGradeReached)
 			SetConfirmMode(false);
 		
 		FText DialogueToDisplay = OwnerNPC->GetDialogueText(Result);
@@ -125,7 +125,7 @@ void UCAP_WeaponEnhancePanelWidget::SetConfirmMode(bool bIsConfirm)
 			RequireCost = OwnerNPC->UpgradeCostMap[CurrentWeaponGrade];
 		}
 		
-		FText DialogueToDisplay = OwnerNPC->GetDialogueText(EWeaponUpgradeResult::ConfirmMode, RequireCost);
+		FText DialogueToDisplay = OwnerNPC->GetDialogueText(EEnhanceResult::ConfirmMode, RequireCost);
 		if (DialogueText)
 			DialogueText->SetText(DialogueToDisplay);
 	}
@@ -136,7 +136,7 @@ void UCAP_WeaponEnhancePanelWidget::SetConfirmMode(bool bIsConfirm)
 		if (InnerCloseText)
 			InnerCloseText->SetText(FText::FromString(TEXT("닫기")));
 		if (DialogueText && OwnerNPC)
-			DialogueText->SetText(OwnerNPC->GetDialogueText(EWeaponUpgradeResult::Default));
+			DialogueText->SetText(OwnerNPC->GetDialogueText(EEnhanceResult::Default));
 	}
 }
 
@@ -148,30 +148,8 @@ void UCAP_WeaponEnhancePanelWidget::RefreshButtonVisuals()
 	for (int32 i = 0; i < 2; ++i)
 	{
 		if (!Buttons[i] || !Texts[i]) continue;
-		
-		FButtonStyle Style = Buttons[i]->GetStyle();
-		Style.Normal.OutlineSettings.Width = 0.f;
-		Style.Hovered.OutlineSettings.Width = 0.f;
-		Buttons[i]->SetStyle(Style);
-		
-		Buttons[i]->SetBackgroundColor(ButtonNormalColor);
 
-		FSlateFontInfo FontInfo = Texts[i]->GetFont();
-		FontInfo.Size = NormalFontSize;
-		Texts[i]->SetFont(FontInfo);
-
-		if (CurrentButtonIndex == i)
-		{
-			Buttons[i]->SetBackgroundColor(ButtonHoverColor);
-			
-			Style.Normal.OutlineSettings.Color = ButtonHoverOutlineColor;
-			Style.Normal.OutlineSettings.Width = ButtonHoverOutlineWidth;
-			Style.Hovered.OutlineSettings.Color = ButtonHoverOutlineColor;
-			Style.Hovered.OutlineSettings.Width = ButtonHoverOutlineWidth;
-			Buttons[i]->SetStyle(Style);
-
-			FontInfo.Size = HoverFontSize;
-			Texts[i]->SetFont(FontInfo);
-		}
+		bool bIsFocused = (CurrentButtonIndex == i); 
+		UCAP_WidgetHelper::ApplyCustomButtonStyle(Buttons[i], Texts[i], bIsFocused, ButtonSettings);
 	}
 }

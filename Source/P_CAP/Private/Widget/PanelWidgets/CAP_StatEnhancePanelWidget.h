@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Framework/Library/CAP_WidgetHelper.h"
 #include "Interface/CAP_MenuInterface.h"
 #include "CAP_StatEnhancePanelWidget.generated.h"
 
@@ -53,8 +54,6 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category="Setup")
 	TSubclassOf<class UCAP_StatEnhanceSlotWidget> SlotWidgetClass;
-	UPROPERTY(EditDefaultsOnly, Category="Setup")
-	class UDataTable* EnhanceDataTable;
 
 	// 동적으로 생성된 슬롯 넣을 배열
 	UPROPERTY()
@@ -74,46 +73,16 @@ private:
 	void InitNearbySlot(int32 ActiveSlotCount);
 	void SetConfirmMode(bool bIsConfirm);
 	void RefreshButtonVisuals();
-
-	bool TryGetEnhanceData(class UCAP_StatEnhanceSlotWidget* SlotWidget, struct FStatEnhanceTableRow*& OutRowData, class ACAP_PlayerCharacter*& OutPlayer, FName& OutRowName, int32& OutCurrentLevel);
-	FText GetFormattedDescription(const struct FStatEnhanceTableRow* RowData, int32 CurrentLevel);
 	
 	bool bIsConfirmMode = false;
 	int32 CurrentButtonIndex = -1;
 
 	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	FLinearColor ButtonHoverColor = FLinearColor::White;
+	FButtonVisualSettings ButtonSettings;
+	
 
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	FLinearColor ButtonNormalColor = FLinearColor::White;
-
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	FLinearColor ButtonHoverOutlineColor = FLinearColor::White;
-
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	float ButtonHoverOutlineWidth = 4.f;
-
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	int32 NormalFontSize = 30;
-
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	int32 HoverFontSize = 38;
-
-	// 탐색 모드 대사
-	UPROPERTY(EditDefaultsOnly, Category="Dialogue", meta=(MultiLine="true"))
-	TArray<FText> BrowseDialoguePool;
-	// 결정 상태 시 대사
-	UPROPERTY(EditDefaultsOnly, Category="Dialogue", meta=(MultiLine="true"))
-	TArray<FText> ConfirmDialoguePool;
-	// 강화 성공 시 대사
-	UPROPERTY(EditDefaultsOnly, Category="Dialogue", meta=(MultiLine="true"))
-	TArray<FText> SuccessDialoguePool;
-	// 강화 실패 시 대사
-	UPROPERTY(EditDefaultsOnly, Category="Dialogue", meta=(MultiLine="true"))
-	TArray<FText> FailDialoguePool;
-	// 이미 최대일때 대사
-	UPROPERTY(EditDefaultsOnly, Category="Dialogue", meta=(MultiLine="true"))
-	TArray<FText> OnMaxLevelDialoguePool;
-
-	void ApplyRandomDialogue(const TArray<FText>& DialoguePool, int32 Cost = -1);
+	UPROPERTY()
+	class ANPC_StatEnhance* OwnerNPC;
+	UPROPERTY()
+	class ACAP_PlayerCharacter* CachedPlayer;
 };

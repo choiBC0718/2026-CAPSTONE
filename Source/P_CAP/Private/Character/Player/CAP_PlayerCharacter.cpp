@@ -16,8 +16,10 @@
 #include "Component/CAP_WeaponComponent.h"
 #include "AI/BaseMonster.h"         // 몬스터 타격 판별을 위해 추가
 #include "Components/WidgetComponent.h"
+#include "Framework/GameMode/CAP_StageGameMode.h"
 #include "Framework/Subsystem/CAP_ProgressionSubsystem.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
+#include "Kismet/GameplayStatics.h"
 #include "Widget/Common/CAP_TargetEffectWidget.h"
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
@@ -92,6 +94,7 @@ void ACAP_PlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		EnhancedInputComp->BindAction(MoveIA, ETriggerEvent::Triggered, this, &ACAP_PlayerCharacter::MoveInputHandle);
 		EnhancedInputComp->BindAction(MoveIA, ETriggerEvent::Completed, this, &ACAP_PlayerCharacter::MoveInputHandle);
 		EnhancedInputComp->BindAction(MoveIA, ETriggerEvent::Canceled, this, &ACAP_PlayerCharacter::MoveInputHandle);
+		EnhancedInputComp->BindAction(LookIA, ETriggerEvent::Triggered, this, &ACAP_PlayerCharacter::LookInputHandle);
 		EnhancedInputComp->BindAction(SwapIA, ETriggerEvent::Started, this, &ACAP_PlayerCharacter::SwapWeapon);
 		
 		EnhancedInputComp->BindAction(InteractIA, ETriggerEvent::Ongoing, this, &ACAP_PlayerCharacter::InteractInputHandle);
@@ -134,9 +137,56 @@ FString ACAP_PlayerCharacter::GetInteractKeyName() const
 	return CurrentKeyName;
 }
 
-void ACAP_PlayerCharacter::AddCurrency(ECurrencyType Type, int32 Amount)
+void ACAP_PlayerCharacter::ShowMeTheMoney()
 {
-	CurrencyComponent->AddCurrency(Type,Amount);
+	CurrencyComponent->AddCurrency(ECurrencyType::Gold, 50000);
+	CurrencyComponent->AddCurrency(ECurrencyType::WeaponMaterial, 50000);
+}
+
+void ACAP_PlayerCharacter::SetCameraMode(bool bIsTPS)
+{
+	bIsTPSMode = bIsTPS;
+	if (bIsTPS)
+	{
+		SpringArm->bUsePawnControlRotation=true;
+		SpringArm->bInheritYaw=true;
+		SpringArm->bInheritPitch=true;
+		SpringArm->TargetArmLength=300.f;
+		
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
+		{
+			PC->SetControlRotation(GetActorRotation());
+		}
+	}
+	else
+	{
+		SpringArm->bUsePawnControlRotation = false;
+		SpringArm->bInheritYaw = false;
+		SpringArm->bInheritPitch = false;
+		SpringArm->SetRelativeRotation(FRotator(-45.f, 0.f, 0.f)); 
+		SpringArm->TargetArmLength = 750.f;
+	}
+	RestoreGameplayInputState();
+}
+
+void ACAP_PlayerCharacter::RestoreGameplayInputState()
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC) return;
+
+	if (bIsTPSMode)
+	{
+		PC->bShowMouseCursor = false;
+		PC->SetInputMode(FInputModeGameOnly());
+	}
+	else
+	{
+		PC->bShowMouseCursor = true;
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetHideCursorDuringCapture(false);
+		PC->SetInputMode(InputMode);
+	}
 }
 
 void ACAP_PlayerCharacter::UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack)
@@ -175,6 +225,13 @@ void ACAP_PlayerCharacter::MoveInputHandle(const FInputActionValue& InputActionV
     InputVal.Normalize();
 
     AddMovementInput(GetMoveForwardDir() * InputVal.Y + GetMoveRightDir() * InputVal.X);
+}
+
+void ACAP_PlayerCharacter::LookInputHandle(const FInputActionValue& InputActionValue)
+{
+	FVector2D InputVal = InputActionValue.Get<FVector2D>();
+	AddControllerYawInput(InputVal.X);
+	AddControllerPitchInput(InputVal.Y);
 }
 
 void ACAP_PlayerCharacter::AbilityInputHandle(const FInputActionValue& InputActionValue, EAbilityInputID AbilityInputID)
@@ -266,14 +323,18 @@ void ACAP_PlayerCharacter::TryLoadProgressionData()
 		{
 			if (UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent()))
 				ASC->RestoreHealthFromSave(Data.CurrentHealth);
-			if (WeaponComponent)
-				WeaponComponent->RestoreFromSaveData(Data.WeaponData);
-			if (InventoryComponent)
-				InventoryComponent->RestoreFromSaveData(Data.InventoryData);
-			if (CurrencyComponent)
-				CurrencyComponent->RestoreFromSaveData(Data.CurrencyData);
 
 			Subsys->ClearProgression();
 		}
 	}
+}
+
+void ACAP_PlayerCharacter::DeathMontageFinished()
+{
+	Super::DeathMontageFinished();
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC)
+		return;
+	if (ACAP_StageGameMode* StageGM = Cast<ACAP_StageGameMode>(UGameplayStatics::GetGameMode(this)))
+		StageGM->OnPlayerDeathAnimationFinished(PC);
 }

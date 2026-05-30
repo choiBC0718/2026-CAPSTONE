@@ -13,6 +13,7 @@
 #include "Framework/Subsystem/CAP_ProgressionSubsystem.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Ability/CAP_ItemGameplayAbility.h"
+#include "Kismet/GameplayStatics.h"
 
 
 UCAP_InventoryComponent::UCAP_InventoryComponent()
@@ -24,8 +25,8 @@ void UCAP_InventoryComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	Player = Cast<ACAP_PlayerCharacter>(GetOwner());
-	OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
+	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner()))
+		OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
 
 	if (SynergyDataTable)
 	{
@@ -43,6 +44,8 @@ void UCAP_InventoryComponent::BeginPlay()
 	}
 	FGameplayTag ParentTag = FGameplayTag::RequestGameplayTag(FName("Data.ItemStat"));
 	CachedItemDataTags = UGameplayTagsManager::Get().RequestGameplayTagChildren(ParentTag);
+
+	TryRestoreSavedInventory();
 }
 
 bool UCAP_InventoryComponent::AddItem(class UCAP_ItemInstance* NewItem)
@@ -67,16 +70,8 @@ bool UCAP_InventoryComponent::AddItem(class UCAP_ItemInstance* NewItem)
 	
 	if (TargetIndex != INDEX_NONE)
 		InventoryItems[TargetIndex] = NewItem;
-	else
-		InventoryItems.Add(NewItem);
 	
-	ApplyItemStatEffects(NewItem);
-	RefreshSynergies();
-	GiveItemAbility(NewItem);
-	
-	if (OnInventoryChanged.IsBound())
-		OnInventoryChanged.Broadcast(NewItem, true);
-	
+	OnItemEquipped(NewItem);
 	return true;
 }
 
@@ -89,36 +84,22 @@ bool UCAP_InventoryComponent::SwapItem(class UCAP_ItemInstance* OldItem, class U
 	if (Index != INDEX_NONE)
 	{
 		//UE_LOG(LogTemp, Warning, TEXT("아이템 스왑 로직 - 적용되어 있던 아이템 제거(효과 제거)"));
-		RemoveItemEffect(OldItem);
+		OnItemUnequipped(OldItem);
 		
 		//UE_LOG(LogTemp, Warning, TEXT("새로운 아이템 효과 적용"));
 		InventoryItems[Index] = NewItem;
-		ApplyItemStatEffects(NewItem);
-		RefreshSynergies();
-		GiveItemAbility(NewItem);
-		
-		if (OnInventoryChanged.IsBound())
-			OnInventoryChanged.Broadcast(NewItem, true);
+		OnItemEquipped(NewItem);
 		return true;
 	}
 	return false;
-}
-
-void UCAP_InventoryComponent::RemoveItemEffect(UCAP_ItemInstance* ItemInst)
-{
-	//UE_LOG(LogTemp,Warning, TEXT("인벤토리에서 아이템 제거"));
-	RemoveItemStatEffects(ItemInst);
-	RemoveItemAbility(ItemInst);
 }
 
 void UCAP_InventoryComponent::RemoveItem(class UCAP_ItemInstance* ItemInst)
 {
 	if (!ItemInst) return;
 
-	RemoveItemEffect(ItemInst);
+	OnItemUnequipped(ItemInst);
 	InventoryItems.Remove(ItemInst);
-	
-	RefreshSynergies();
 	
 	if (OnInventoryChanged.IsBound())
 		OnInventoryChanged.Broadcast(ItemInst, false);
@@ -135,118 +116,46 @@ struct FInventorySaveData UCAP_InventoryComponent::CreateSaveData() const
 	return SaveData;
 }
 
-void UCAP_InventoryComponent::RestoreFromSaveData(const struct FInventorySaveData& InData)
+void UCAP_InventoryComponent::UpdateItemSynergies(class UCAP_ItemDataBase* ItemDA, bool bIsAdded)
 {
-	// 초기화
-	for (UCAP_ItemInstance* Item : InventoryItems)
-		if (Item)
-			RemoveItemEffect(Item);
-	InventoryItems.Empty();
+	if (!ItemDA || SynergyDataCache.IsEmpty())
+		return;
 
-	for (UCAP_ItemDataBase* ItemDA : InData.HeldItemDAs)
-		if (ItemDA)
-		{
-			UCAP_ItemInstance* NewItem = NewObject<UCAP_ItemInstance>(this);
-			NewItem->Initialize(ItemDA);
-			AddItem(NewItem);
-		}
+	const TArray<FGameplayTag>& Synergies = ItemDA->GetSynergyTags();
+	for (const FGameplayTag& Tag : Synergies)
+	{
+		int32& Count = CurrentSynergyCounts.FindOrAdd(Tag,0);
+		Count += (bIsAdded ? 1 : -1);
+		UpdateSingleSynergyEffect(Tag, Count);
+	}
 }
 
-
-void UCAP_InventoryComponent::RefreshSynergies()
+void UCAP_InventoryComponent::UpdateSingleSynergyEffect(FGameplayTag Tag, int32 NewCount)
 {
-	if (SynergyDataCache.IsEmpty())
+	if (!OwnerASC)
+		return;
+	int32 LastCount = CachedSynergyCounts.Contains(Tag) ? CachedSynergyCounts[Tag] : 0;
+	if (NewCount == LastCount)
+		return;
+
+	ClearSynergyEffects(Tag);
+	if (NewCount <= 0)
 	{
-		UE_LOG(LogTemp,Warning, TEXT("인벤토리 컴포넌트에 시너지 데이터 테이블 넣어 - RefreshSynergies"));
+		CachedSynergyCounts.Remove(Tag);
+		AppliedSynergyHandles.Remove(Tag);
 		return;
 	}
 
-	// 일단 비워
-	CurrentSynergyCounts.Empty(InventoryItems.Num());
-	
-	for (UCAP_ItemInstance* ItemInst : InventoryItems)
+	if (FSynergyDataTable** RowPtr = SynergyDataCache.Find(Tag))
 	{
-		if (!ItemInst)
-			continue;
-		if (UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA())
+		FSynergyDataTable* Row = *RowPtr;
+		for (const FSynergyLevelData& SynergyLevel : Row->SynergyLevels)
 		{
-			const TArray<FGameplayTag> Synergies = ItemDA->GetSynergyTags();
-			for (const FGameplayTag& Tag : Synergies)
-			{
-				CurrentSynergyCounts.FindOrAdd(Tag)++;
-			}
+			if (NewCount>=SynergyLevel.RequiredCount)
+				ApplySynergyEffect(Tag, SynergyLevel.SynergyEffect);
 		}
 	}
-	// 시너지 Effect 새로고침
-	UpdateSynergyEffects();
-}
-
-void UCAP_InventoryComponent::UpdateSynergyEffects()
-{
-	if (!OwnerASC || SynergyDataCache.IsEmpty())
-	{
-		UE_LOG(LogTemp,Warning, TEXT("인벤토리 컴포넌트에 시너지 데이터 테이블 넣어 - UpdateSynergyEffects"));
-		return;
-	}
-
-	for (const TPair<FGameplayTag, FSynergyDataTable*>& Pair : SynergyDataCache )
-	{
-		FSynergyDataTable* Row = Pair.Value;
-		FGameplayTag TargetTag = Pair.Key;
-		
-		const int32* FoundCurrent = CurrentSynergyCounts.Find(TargetTag);
-		int32 CurrentCount = FoundCurrent ? *FoundCurrent : 0;
-
-		const int32* FoundLast = CachedSynergyCounts.Find(TargetTag);
-		int32 LastCount = FoundLast ? *FoundLast : -1;
-
-		// 태그 개수 변화 없다면 패스
-		if (CurrentCount == LastCount)	continue;
-
-		// 개수 변했다면 이전의 시너지 버프 일단 모두 제거
-		if (AppliedSynergyHandles.Contains(TargetTag))
-		{
-			for (FActiveGameplayEffectHandle& Handle : AppliedSynergyHandles[TargetTag])
-			{
-				OwnerASC->RemoveActiveGameplayEffect(Handle);
-			}
-			AppliedSynergyHandles[TargetTag].Empty();
-		}
-		else
-		{
-			AppliedSynergyHandles.Add(TargetTag, TArray<FActiveGameplayEffectHandle>());
-		}
-
-		// 현재 개수에 맞게 모든 버프 다시 제공
-		if (CurrentCount > 0)
-		{
-			for (int i=0 ; i<Row->SynergyLevels.Num() ; i++)
-			{
-				if (CurrentCount >= Row->SynergyLevels[i].RequiredCount)
-				{
-					TSubclassOf<UGameplayEffect> EffectToApply = Row->SynergyLevels[i].SynergyEffect;
-					if (EffectToApply)
-					{
-						FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
-						FGameplayEffectSpecHandle Spec = OwnerASC->MakeOutgoingSpec(EffectToApply, 1.f, Context);
-						if (Spec.IsValid())
-						{
-							FActiveGameplayEffectHandle ActiveHandle = OwnerASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
-							AppliedSynergyHandles[TargetTag].Add(ActiveHandle);
-						}
-					}
-				}
-			}
-			// 현재 개수 저장
-			CachedSynergyCounts.Add(TargetTag, CurrentCount);
-		}
-		// 아이템 모두 제거 시 완전 삭제
-		else
-		{
-			CachedSynergyCounts.Remove(TargetTag);
-			AppliedSynergyHandles.Remove(TargetTag);
-		}
-	}
+	CachedSynergyCounts.Add(Tag, NewCount);
 }
 
 void UCAP_InventoryComponent::ApplyItemStatEffects(UCAP_ItemInstance* ItemInst)
@@ -291,7 +200,7 @@ void UCAP_InventoryComponent::ApplyItemStatEffects(UCAP_ItemInstance* ItemInst)
 		{
 			// 에디터 에러 로그 방지용 모든 태그에 대해 0으로 초기화
 			for (const FGameplayTag& Tag : CachedItemDataTags)
-				SpecHandle.Data->SetSetByCallerMagnitude(Tag, 0.f);
+				SpecHandle.Data->SetSetByCallerMagnitude(Tag, bIsMul ? 1.f : 0.f);
 			// 실제 설정한 값에는 정상적인 값 전달
 			for (const TPair<FGameplayTag, float>& StatMod : Modifiers)
 				SpecHandle.Data->SetSetByCallerMagnitude(StatMod.Key, StatMod.Value);
@@ -317,7 +226,6 @@ void UCAP_InventoryComponent::RemoveItemStatEffects(UCAP_ItemInstance* ItemInst)
 	if (!ItemInst || !OwnerASC)
 		return;
 	
-	//UE_LOG(LogTemp, Warning, TEXT("아이템 보너스 스탯 적용된 것 삭제"));
 	if (FActiveGEHandleArray* HandlesWrapper = ItemStatHandleMap.Find(ItemInst))
 	{
 		for (const FActiveGameplayEffectHandle& Handle : HandlesWrapper->Handles)
@@ -333,8 +241,7 @@ void UCAP_InventoryComponent::GiveItemAbility(class UCAP_ItemInstance* ItemInst)
 	UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA();
 	if (!ItemDA)
 		return;
-
-	//UE_LOG(LogTemp, Warning, TEXT("아이템 스킬 활성화"));
+	
 	if (UCAP_ItemDataAsset* PassiveItemDA = Cast<UCAP_ItemDataAsset>(ItemDA))
 	{
 		if (PassiveItemDA->ItemBehaviors.Num() > 0)
@@ -354,10 +261,87 @@ void UCAP_InventoryComponent::RemoveItemAbility(class UCAP_ItemInstance* ItemIns
 	if (!ItemInst || !OwnerASC)
 		return;
 	
-	//UE_LOG(LogTemp, Warning, TEXT("아이템 스킬 제거"));
 	if (FGameplayAbilitySpecHandle* HandlePtr = GrantedItemAbilityMap.Find(ItemInst))
 	{
 		OwnerASC->ClearAbility(*HandlePtr);
 		GrantedItemAbilityMap.Remove(ItemInst);
 	}
+}
+
+void UCAP_InventoryComponent::ClearSynergyEffects(FGameplayTag Tag)
+{
+	if (!Tag.IsValid())	return;
+
+	if (AppliedSynergyHandles.Contains(Tag))
+	{
+		for (FActiveGameplayEffectHandle& Handle : AppliedSynergyHandles[Tag])
+		{
+			OwnerASC->RemoveActiveGameplayEffect(Handle);
+		}
+		AppliedSynergyHandles[Tag].Empty();
+	}
+	else
+		AppliedSynergyHandles.Add(Tag, TArray<FActiveGameplayEffectHandle>());
+}
+
+void UCAP_InventoryComponent::ApplySynergyEffect(FGameplayTag Tag, TSubclassOf<UGameplayEffect> GE)
+{
+	if (!Tag.IsValid() || !GE)
+		return;
+
+	FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
+	FGameplayEffectSpecHandle Spec = OwnerASC->MakeOutgoingSpec(GE, 1.f, Context);
+	if (Spec.IsValid())
+	{
+		FActiveGameplayEffectHandle ActiveHandle = OwnerASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+		AppliedSynergyHandles[Tag].Add(ActiveHandle);
+	}
+}
+
+void UCAP_InventoryComponent::TryRestoreSavedInventory()
+{
+	if (UGameInstance* GI = UGameplayStatics::GetGameInstance(this))
+	{
+		if (UCAP_ProgressionSubsystem* Subsys = GI->GetSubsystem<UCAP_ProgressionSubsystem>())
+		{
+			FPlayerProgressionData SavedData;
+			if (Subsys->LoadPlayerProgression(SavedData) && SavedData.bIsValid)
+			{
+				RestoreFromSaveData(SavedData.InventoryData);
+			}
+		}
+	}
+}
+
+void UCAP_InventoryComponent::RestoreFromSaveData(const struct FInventorySaveData& InData)
+{
+	// 초기화
+	for (UCAP_ItemInstance* Item : InventoryItems)
+		if (Item)
+			OnItemUnequipped(Item);
+	InventoryItems.Empty();
+
+	for (UCAP_ItemDataBase* ItemDA : InData.HeldItemDAs)
+		if (ItemDA)
+		{
+			UCAP_ItemInstance* NewItem = NewObject<UCAP_ItemInstance>(this);
+			NewItem->Initialize(ItemDA);
+			AddItem(NewItem);
+		}
+}
+
+void UCAP_InventoryComponent::OnItemEquipped(UCAP_ItemInstance* ItemInst)
+{
+	ApplyItemStatEffects(ItemInst);
+	GiveItemAbility(ItemInst);
+	UpdateItemSynergies(ItemInst->GetItemDA(), true);
+	if (OnInventoryChanged.IsBound())
+		OnInventoryChanged.Broadcast(ItemInst,true);
+}
+
+void UCAP_InventoryComponent::OnItemUnequipped(UCAP_ItemInstance* ItemInst)
+{
+	RemoveItemStatEffects(ItemInst);
+	RemoveItemAbility(ItemInst);
+	UpdateItemSynergies(ItemInst->GetItemDA(), false);
 }

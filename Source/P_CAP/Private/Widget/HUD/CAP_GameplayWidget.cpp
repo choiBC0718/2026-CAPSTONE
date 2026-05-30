@@ -7,6 +7,7 @@
 #include "AbilitySystemComponent.h"
 #include "CAP_CharacterMenuWidget.h"
 #include "CAP_DialogueWidget.h"
+#include "CAP_StatisticDashboardWidget.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Components/WidgetSwitcher.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
@@ -96,6 +97,12 @@ void UCAP_GameplayWidget::RouteUIConfirmInput(ETriggerEvent TriggerEvent, float 
 			Interface->HandleUIConfirmInput(TriggerEvent, ElapsedTime);
 		}
 	}
+}
+
+void UCAP_GameplayWidget::ShowStatisticDashboard()
+{
+	if (StatDashboardWidget)
+		ShowMenu(StatDashboardWidget);
 }
 
 bool UCAP_GameplayWidget::CanProcessUINavigation()

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
+#include "Framework/Library/CAP_WidgetHelper.h"
 #include "Interactables/NPC/CAP_WorldNPC.h"
 #include "CAP_DialogueWidget.generated.h"
 
@@ -97,24 +98,8 @@ private:
 	UPROPERTY()
 	TArray<class UButton*> ActiveButtons;
 	
-
-	// 포커스 상태의 버튼 색
 	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	FLinearColor ButtonHoverColor = FLinearColor::White;
-	// 일반 상태의 버튼 색
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	FLinearColor ButtonNormalColor = FLinearColor::White;
-	// 포커스 상태의 버튼 경계선 색
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	FLinearColor ButtonHoverOutlineColor = FLinearColor::White;
-	// 포커스 상태의 버튼 경계선 두께
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	float ButtonHoverOutlineWidth = 4.f;
-
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	int32 NormalFontSize = 20;
-	UPROPERTY(EditDefaultsOnly, Category="Visuals")
-	int32 HoverFontSize = 26;
+	FButtonVisualSettings ButtonSettings;
 
 	UPROPERTY()
 	class ACAP_PlayerCharacter* Player;

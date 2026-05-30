@@ -51,9 +51,6 @@ private:
 
 	UPROPERTY()
 	class UMaterialInstanceDynamic* ProgressMID;
-	
-	UPROPERTY(EditDefaultsOnly, Category="Data")
-	class UDataTable* KeyIconDataTable;
 
 	UFUNCTION()
 	void UpdateInteractProgress(float Progress);

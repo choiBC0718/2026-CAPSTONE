@@ -33,6 +33,15 @@ public:
 	UFUNCTION()
 	void UpdateSavedStatEnhanceLevel(FName RowName, int32 Level);
 
+	UDataTable* GetKeyIconTable() const {return KeyIconTable;}
+	UDataTable*	GetStatEnhanceTable() const {return StatEnhanceDataTable;}
+	
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "GlobalData")
+	class UDataTable* KeyIconTable;
+	UPROPERTY(EditDefaultsOnly, Category = "GlobalData")
+	class UDataTable* StatEnhanceDataTable;
+	
 private:
 	UPROPERTY()
 	class UCAP_SaveGame* CurrentSaveGame;

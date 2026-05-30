@@ -29,6 +29,7 @@ public:
 	void HideMenu();
 	void UINavigationHandle(FVector2D InputVal);	// UI 내부 WASD로 슬롯 포커스 변경
 	void RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime);
+	void ShowStatisticDashboard();
 
 protected:
 	// Hp 바
@@ -49,6 +50,9 @@ protected:
 	// 인벤토리 꽉 찬 경우 띄울 아이템 교체 위젯
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_ItemSwapWidget* ItemSwapWidget;
+	// 게임 종료 시 나타낼 대시보드
+	UPROPERTY(meta = (BindWidget))
+	class UCAP_StatisticDashboardWidget* StatDashboardWidget;
 
 	// 아이템 버프 리스트 위젯
 	UPROPERTY(meta = (BindWidget))

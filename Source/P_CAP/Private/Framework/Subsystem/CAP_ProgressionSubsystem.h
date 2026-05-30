@@ -7,6 +7,36 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "CAP_ProgressionSubsystem.generated.h"
 
+// 이번판 통계 데이터
+USTRUCT(BlueprintType)
+struct FRunStatistics
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly)
+	float RunStartTime = 0.f;
+	UPROPERTY(BlueprintReadOnly)
+	float TotalPlayTime = 0.f;
+
+	UPROPERTY(BlueprintReadOnly)
+	int32 EnemiesDefeated=0;
+	UPROPERTY(BlueprintReadOnly)
+	float TotalDamageDeal = 0.f;
+	UPROPERTY(BlueprintReadOnly)
+	float MaxDamageDeal=0.f;
+	UPROPERTY(BlueprintReadOnly)
+	float TotalDamageTaken=0.f;
+	UPROPERTY(BlueprintReadOnly)
+	float TotalHealing = 0.f;
+
+	UPROPERTY(BlueprintReadOnly)
+	int32 TotalGetMagicStone=0;
+	UPROPERTY(BlueprintReadOnly)
+	int32 TotalGetGold=0;
+	UPROPERTY(BlueprintReadOnly)
+	int32 TotalGetWeaponMaterial=0;
+};
+
 // 무기 Instance 1개 데이터
 USTRUCT(BlueprintType)
 struct FWeaponSaveData
@@ -82,10 +112,24 @@ public:
 	void SavePlayerProgression(const FPlayerProgressionData& InData);
 	// 레벨 이동 후 CurrenRunData에서 꺼내가 데이터 덮어씌움
 	bool LoadPlayerProgression(FPlayerProgressionData& OutData);
-	// 캐릭터 죽었을 때 정보 폐기
+	// 캐릭터 장비, 아이템 정보 초기화 (레벨 변환 후 호출용)
 	void ClearProgression();
 
+	const FRunStatistics& GetRunStatistics() const {return CurrentRunStats;}
+
+	void StartRunTimer(float CurrentTime);
+	void EndRunTimer(float CurrentTime);
+
+	void AddDamageDeal(float Damage);
+	void AddDamageTaken(float Damage);
+	void AddHealing(float Healing);
+	void AddEnemyDefeated();
+	void AddCurrencyCnt(ECurrencyType Type, int32 Amount);
+	// 통계 데이터 초기화 (마을로 돌아가는 경우에 호출)
+	void ClearRunStats();
 private:
 	UPROPERTY()
 	FPlayerProgressionData CurrentRunData;
+	UPROPERTY()
+	FRunStatistics CurrentRunStats;
 };

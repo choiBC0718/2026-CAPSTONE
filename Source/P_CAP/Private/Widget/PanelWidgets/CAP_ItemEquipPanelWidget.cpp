@@ -13,7 +13,9 @@
 #include "Component/CAP_InventoryComponent.h"
 #include "Interactables/Item/CAP_ItemInstance.h"
 #include "Component/CAP_WeaponComponent.h"
+#include "Framework/CAP_GameInstance.h"
 #include "Interactables/Weapon/CAP_WeaponInstance.h"
+#include "Kismet/GameplayStatics.h"
 #include "Widget/Common/CAP_ItemInteraction.h"
 
 class ACAP_PlayerController;
@@ -114,14 +116,17 @@ void UCAP_ItemEquipPanelWidget::UpdateInteractProgress(float Progress)
 
 void UCAP_ItemEquipPanelWidget::SetInteractKeyText(const FString& KeyName)
 {
-	if (KeyIconDataTable)
+	if (UCAP_GameInstance* GI = Cast<UCAP_GameInstance>(UGameplayStatics::GetGameInstance(this)))
 	{
-		FName RowName = FName(*KeyName);
-		FKeyIconRow* Row = KeyIconDataTable->FindRow<FKeyIconRow>(RowName,"");
-		if (Row && Row->Icon)
+		if (UDataTable* KeyTable = GI->GetKeyIconTable())
 		{
-			SwapKeyIconImg->SetBrushFromTexture(Row->Icon);
-			DisassembleKeyIconImg->SetBrushFromTexture(Row->Icon);
+			FName RowName = FName(*KeyName);
+			FKeyIconRow* Row = KeyTable->FindRow<FKeyIconRow>(RowName,"");
+			if (Row && Row->Icon)
+			{
+				SwapKeyIconImg->SetBrushFromTexture(Row->Icon);
+				DisassembleKeyIconImg->SetBrushFromTexture(Row->Icon);
+			}
 		}
 	}
 }

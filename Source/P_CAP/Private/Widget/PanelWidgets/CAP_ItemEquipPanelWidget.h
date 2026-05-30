@@ -54,7 +54,9 @@ private:
 	UPROPERTY()
 	class UCAP_ItemSlotWidget* CurrentSelectedSlot;
 
+	UPROPERTY()
 	TArray<UCAP_ItemSlotWidget*> WeaponSlots;
+	UPROPERTY()
 	TArray<UCAP_ItemSlotWidget*> ItemSlots;
 
 	UFUNCTION()
@@ -64,7 +66,4 @@ private:
 
 	void CreateAndAddSlot(UWrapBox* TargetBox, TArray<UCAP_ItemSlotWidget*>& TargetArray, ESlotItemType SlotType, int32 Index, UObject* ItemData, UTexture2D* Icon);
 	void InitNearbySlot();
-
-	UPROPERTY(EditDefaultsOnly, Category="Data")
-	class UDataTable* KeyIconDataTable;
 };

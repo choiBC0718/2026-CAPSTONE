@@ -21,6 +21,8 @@
 #include "AI/PlayerBehaviorLearner.h"
 #include "GameFramework/PlayerController.h"
 #include "EngineUtils.h"
+#include "Framework/Subsystem/CAP_ProgressionSubsystem.h"
+#include "Kismet/GameplayStatics.h"
 #include "Widget/Common/CAP_TargetEffectWidget.h"
 
 namespace
@@ -144,6 +146,14 @@ void ACAP_EnemyCharacter::UpdateStackUI(const FGameplayTag& BehaviorTag, int32 C
 
 void ACAP_EnemyCharacter::OnDead()
 {
+	if (UGameInstance* GI = UGameplayStatics::GetGameInstance(this))
+	{
+		if (UCAP_ProgressionSubsystem* ProgressionSub = GI->GetSubsystem<UCAP_ProgressionSubsystem>())
+		{
+			ProgressionSub->AddEnemyDefeated();
+		}
+	}
+	
 	SetEnemyAIEnabled(false);
 	if (HealthBarWidgetComponent)
 	{

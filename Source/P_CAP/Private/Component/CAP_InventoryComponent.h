@@ -48,14 +48,12 @@ public:
 	FOnItemEffectTriggered OnItemEffectTriggered;
 	
 	bool SwapItem(class UCAP_ItemInstance* OldItem, class UCAP_ItemInstance* NewItem);
-	void RemoveItemEffect(class UCAP_ItemInstance* ItemInst);
 	void RemoveItem(class UCAP_ItemInstance* ItemInst);
 
 	const TMap<FGameplayTag, int32> & GetCurrentSynergyCounts() const {return CurrentSynergyCounts;}
 	const TMap<FGameplayTag, FSynergyDataTable*>& GetSynergyDataCache() const {return SynergyDataCache;}
 
 	struct FInventorySaveData CreateSaveData() const;
-	void RestoreFromSaveData(const struct FInventorySaveData& InData);
 	
 private:
 	// 아이템 장착 가능 수
@@ -64,16 +62,13 @@ private:
 	// 참조할 시너지 데이터 테이블
 	UPROPERTY(EditDefaultsOnly, Category="Synergy")
 	UDataTable* SynergyDataTable;
-	// 아이템 장착 최대 누름 지속 시간
 	
-	UPROPERTY()
-	class ACAP_PlayerCharacter* Player;
 	UPROPERTY()
 	class UAbilitySystemComponent* OwnerASC;
 	UPROPERTY()
 	TArray<class UCAP_ItemInstance*> InventoryItems;
 	
-	// 현재 모인 시너지 개수
+	// 현재 Tag로 활성화 중인 시너지 총합
 	TMap<FGameplayTag, int32> CurrentSynergyCounts;
 	// 저장됐던 태그에 대한 개수
 	TMap<FGameplayTag, int32> CachedSynergyCounts;
@@ -83,10 +78,6 @@ private:
 	// 데이터 테이블 캐시
 	TMap<FGameplayTag, FSynergyDataTable*> SynergyDataCache;
 
-	// 시너지 재계산
-	void RefreshSynergies();
-	// 시너지 효과 재계산
-	void UpdateSynergyEffects();
 	
 	FGameplayTagContainer CachedItemDataTags;
 
@@ -105,4 +96,16 @@ private:
 	void GiveItemAbility(class UCAP_ItemInstance* ItemInst);
 	// 아이템 스킬 해제
 	void RemoveItemAbility(class UCAP_ItemInstance* ItemInst);
+
+	void UpdateItemSynergies(class UCAP_ItemDataBase* ItemDA, bool bIsAdded);
+	void UpdateSingleSynergyEffect(FGameplayTag Tag, int32 NewCount);
+
+	void ClearSynergyEffects(FGameplayTag Tag);
+	void ApplySynergyEffect(FGameplayTag Tag, TSubclassOf<UGameplayEffect> GE);
+	
+	void TryRestoreSavedInventory();
+	void RestoreFromSaveData(const struct FInventorySaveData& InData);
+
+	void OnItemEquipped(UCAP_ItemInstance* ItemInst);
+	void OnItemUnequipped(class UCAP_ItemInstance* ItemInst);
 };

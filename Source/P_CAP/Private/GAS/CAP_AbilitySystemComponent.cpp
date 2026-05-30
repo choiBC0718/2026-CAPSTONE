@@ -148,6 +148,15 @@ void UCAP_AbilitySystemComponent::HealthUpdated(const FOnAttributeChangeData& Ch
 
 	if (ChangeData.NewValue <= 0.f)
 	{
+		float CurrentReviveCount = GetNumericAttribute(UCAP_AttributeSet::GetReviveCountAttribute());
+		if (CurrentReviveCount < GetNumericAttribute(UCAP_AttributeSet::GetMaxReviveCountAttribute()))
+		{
+			ApplyModToAttributeUnsafe(UCAP_AttributeSet::GetReviveCountAttribute(), EGameplayModOp::Additive,1);
+			float ReviveHP = GetNumericAttribute(UCAP_AttributeSet::GetReviveHealthRatioAttribute()) * MaxHealth;
+			ApplyModToAttributeUnsafe(UCAP_AttributeSet::GetHealthAttribute(), EGameplayModOp::Additive, ReviveHP);
+			return;
+		}
+		
 		if (!HasMatchingGameplayTag(UCAP_AbilitySystemStatics::GetHealthEmptyStatTag()))
 			AddLooseGameplayTag(UCAP_AbilitySystemStatics::GetHealthEmptyStatTag());
 		

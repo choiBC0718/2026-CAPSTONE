@@ -79,4 +79,10 @@ private:
 	UPROPERTY()	FGameplayAttributeData Shield;
 	UPROPERTY()	FGameplayAttributeData Damage;
 	UPROPERTY()	FGameplayAttributeData DisassembleBonusMultiplier;
+
+	UPROPERTY()
+	class UCAP_ProgressionSubsystem* CachedProgressionSubsystem;
+
+	bool bIsPlayerOwner = false;
+	bool bIsOwnerCached = false;
 };

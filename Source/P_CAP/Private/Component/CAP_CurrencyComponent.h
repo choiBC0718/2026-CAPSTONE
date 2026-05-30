@@ -40,7 +40,6 @@ public:
 	FOnCurrencyChanged OnCurrencyChanged;
 
 	struct FCurrencySaveData CreateSaveData() const;
-	void RestoreFromSaveData(const struct FCurrencySaveData& InData);
 	
 private:
 	UPROPERTY(VisibleAnywhere)
@@ -50,4 +49,7 @@ private:
 	const UDataTable* LoadedRewardDisassembleDT;
 
 	static FName GetRowNameFromGrade(EItemGrade Grade);
+
+	void TryRestoreSavedCurrency();
+	void RestoreFromSaveData(const struct FCurrencySaveData& InData);
 };

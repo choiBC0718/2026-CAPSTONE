@@ -11,7 +11,9 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/WidgetComponent.h"
+#include "Framework/CAP_GameInstance.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
+#include "Kismet/GameplayStatics.h"
 
 
 void UCAP_ItemInteraction::NativeConstruct()
@@ -48,21 +50,24 @@ void UCAP_ItemInteraction::UpdateInteractProgress(float Progress)
 
 void UCAP_ItemInteraction::SetInteractKeyText(const FString& KeyName)
 {
-	if (KeyIconDataTable)
+	if (UCAP_GameInstance* GI = Cast<UCAP_GameInstance>(UGameplayStatics::GetGameInstance(this)))
 	{
-		FName RowName = FName(*KeyName);
-		FKeyIconRow* Row = KeyIconDataTable->FindRow<FKeyIconRow>(RowName,"");
-		if (Row && Row->Icon)
+		if (UDataTable* KeyTable = GI->GetKeyIconTable())
 		{
-			if (EquipIconImg)
+			FName RowName = FName(*KeyName);
+			FKeyIconRow* Row = KeyTable->FindRow<FKeyIconRow>(RowName,"");
+			if (Row && Row->Icon)
 			{
-				EquipIconImg->SetBrushFromTexture(Row->Icon);
-				EquipIconImg->SetVisibility(ESlateVisibility::Visible);
-			}
-			if (DisassembleIconImg)
-			{
-				DisassembleIconImg->SetBrushFromTexture(Row->Icon);
-				DisassembleIconImg->SetVisibility(ESlateVisibility::Visible);
+				if (EquipIconImg)
+				{
+					EquipIconImg->SetBrushFromTexture(Row->Icon);
+					EquipIconImg->SetVisibility(ESlateVisibility::Visible);
+				}
+				if (DisassembleIconImg)
+				{
+					DisassembleIconImg->SetBrushFromTexture(Row->Icon);
+					DisassembleIconImg->SetVisibility(ESlateVisibility::Visible);
+				}
 			}
 		}
 	}

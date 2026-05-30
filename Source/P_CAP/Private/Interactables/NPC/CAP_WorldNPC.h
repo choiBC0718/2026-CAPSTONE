@@ -8,6 +8,17 @@
 #include "CAP_WorldNPC.generated.h"
 
 
+UENUM(BlueprintType)
+enum class EEnhanceResult : uint8
+{
+	Default,
+	Success,
+	InsufficientCurrency,
+	MaxGradeReached,
+	ConfirmMode,
+	Error,
+};
+
 /**
  * 
  */

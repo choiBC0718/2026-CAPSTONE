@@ -11,6 +11,7 @@
 #include "GAS/Ability/CAP_GameplayAbility.h"
 #include "GAS/Ability/Flow/GA_FlowBase.h"
 #include "GAS/Ability/Payload/GA_PayloadBase.h"
+#include "Kismet/GameplayStatics.h"
 
 UCAP_WeaponComponent::UCAP_WeaponComponent()
 {
@@ -21,38 +22,17 @@ void UCAP_WeaponComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
-	if (OwnerCharacter && OwnerCharacter->GetMesh())
-	{
-		WeaponMesh_R = NewObject<USkeletalMeshComponent>(OwnerCharacter, TEXT("WeaponMesh_R"));
-		WeaponMesh_R->SetupAttachment(OwnerCharacter->GetMesh());
-		WeaponMesh_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		WeaponMesh_R->ComponentTags.Add("RightHand");
-		WeaponMesh_R->RegisterComponent();
+	InitializeWeaponMeshes();
 
-		WeaponMesh_L = NewObject<USkeletalMeshComponent>(OwnerCharacter, TEXT("WeaponMesh_L"));
-		WeaponMesh_L->SetupAttachment(OwnerCharacter->GetMesh());
-		WeaponMesh_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		WeaponMesh_L->ComponentTags.Add("LeftHand");
-		WeaponMesh_L->RegisterComponent();
-	}
 	MaxWeaponCount = FMath::Max(1, MaxWeaponCount);
 	EquippedWeapons.SetNum(MaxWeaponCount);
-	
-	if (DefaultBasicWeapon)
-	{
-		UCAP_WeaponInstance* BasicWeapon = NewObject<UCAP_WeaponInstance>(this);
-		BasicWeapon->Initialize(DefaultBasicWeapon);
-		EquippedWeapons[0] = BasicWeapon;
-		
-		BasicWeapon->LoadWeaponAssets(FStreamableDelegate::CreateWeakLambda(this,[this, BasicWeapon]()
-		{
-			ApplyWeaponData(BasicWeapon);
-		}));
-	}
 	CurrentWeaponIndex =0;
+	
+	if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
+		ASC=OwnerChar->GetComponentByClass<UCAP_AbilitySystemComponent>();
 
-	ASC = OwnerCharacter ? OwnerCharacter->GetComponentByClass<UCAP_AbilitySystemComponent>() : nullptr;
+	if (!TryRestoreSavedWeapons())
+		EquipDefaultWeapon();
 }
 
 void UCAP_WeaponComponent::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst)
@@ -206,6 +186,57 @@ void UCAP_WeaponComponent::AttachWeaponMesh(class UCAP_WeaponDataAsset* WeaponDA
 			TargetMesh->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TargetCharacterBone);
 			TargetMesh->SetRelativeTransform(FinalTransform);
 		}
+	}
+}
+
+void UCAP_WeaponComponent::InitializeWeaponMeshes()
+{
+	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
+	if (OwnerCharacter && OwnerCharacter->GetMesh())
+	{
+		WeaponMesh_R = NewObject<USkeletalMeshComponent>(OwnerCharacter, TEXT("WeaponMesh_R"));
+		WeaponMesh_R->SetupAttachment(OwnerCharacter->GetMesh());
+		WeaponMesh_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		WeaponMesh_R->ComponentTags.Add("RightHand");
+		WeaponMesh_R->RegisterComponent();
+
+		WeaponMesh_L = NewObject<USkeletalMeshComponent>(OwnerCharacter, TEXT("WeaponMesh_L"));
+		WeaponMesh_L->SetupAttachment(OwnerCharacter->GetMesh());
+		WeaponMesh_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		WeaponMesh_L->ComponentTags.Add("LeftHand");
+		WeaponMesh_L->RegisterComponent();
+	}
+}
+
+bool UCAP_WeaponComponent::TryRestoreSavedWeapons()
+{
+	if (UGameInstance* GI = UGameplayStatics::GetGameInstance(this))
+	{
+		if (UCAP_ProgressionSubsystem* Subsys = GI->GetSubsystem<UCAP_ProgressionSubsystem>())
+		{
+			FPlayerProgressionData Data;
+			if (Subsys->LoadPlayerProgression(Data) && Data.bIsValid)
+			{
+				RestoreFromSaveData(Data.WeaponData);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+void UCAP_WeaponComponent::EquipDefaultWeapon()
+{
+	if (DefaultBasicWeapon)
+	{
+		UCAP_WeaponInstance* BasicWeapon = NewObject<UCAP_WeaponInstance>(this);
+		BasicWeapon->Initialize(DefaultBasicWeapon);
+		EquippedWeapons[0] = BasicWeapon;
+		
+		BasicWeapon->LoadWeaponAssets(FStreamableDelegate::CreateWeakLambda(this,[this, BasicWeapon]()
+		{
+			ApplyWeaponData(BasicWeapon);
+		}));
 	}
 }
 

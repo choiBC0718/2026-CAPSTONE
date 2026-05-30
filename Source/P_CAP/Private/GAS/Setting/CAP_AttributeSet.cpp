@@ -4,6 +4,9 @@
 #include "GAS/Setting/CAP_AttributeSet.h"
 
 #include "GameplayEffectExtension.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
+#include "Framework/Subsystem/CAP_ProgressionSubsystem.h"
+#include "Kismet/GameplayStatics.h"
 
 void UCAP_AttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
@@ -26,12 +29,33 @@ void UCAP_AttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMo
 {
 	Super::PostGameplayEffectExecute(Data);
 
+	AActor* Target = GetOwningActor();
+	AActor* Instigator = Data.EffectSpec.GetContext().GetInstigator();
+	if (!bIsOwnerCached && Target)
+	{
+		bIsPlayerOwner = (Cast<ACAP_PlayerCharacter>(Target) != nullptr);
+		bIsOwnerCached = true;
+	}
+	if (!CachedProgressionSubsystem && Target)
+	{
+		if (UGameInstance* GI = UGameplayStatics::GetGameInstance(Target))
+			CachedProgressionSubsystem = GI->GetSubsystem<UCAP_ProgressionSubsystem>();
+	}
+	
 	if (Data.EvaluatedData.Attribute == GetDamageAttribute())
 	{
 		float LocalDamage = GetDamage();
 		SetDamage(0.f);
 		if (LocalDamage > 0.f)
 		{
+			if (CachedProgressionSubsystem)
+			{
+				if (bIsPlayerOwner)	// 플레이어가 맞은경우 (Target == Player)
+					CachedProgressionSubsystem->AddDamageTaken(LocalDamage);
+				else if (Instigator && Instigator->IsA<ACAP_PlayerCharacter>())	// 플레이어가 때린 경우 (Instigator == Player)
+					CachedProgressionSubsystem->AddDamageDeal(LocalDamage);
+			}
+			
 			if (GetShield() > 0.f)
 			{
 				float ShieldDamage = FMath::Min(GetShield(), LocalDamage);
@@ -48,6 +72,10 @@ void UCAP_AttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMo
 	
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
+		float DeltaValue = Data.EvaluatedData.Magnitude;
+		if (DeltaValue > 0.f && CachedProgressionSubsystem && bIsPlayerOwner)
+			CachedProgressionSubsystem->AddHealing(DeltaValue);
+		
 		SetHealth(FMath::Clamp(GetHealth(), 0, GetMaxHealth()));
 	}
 }
