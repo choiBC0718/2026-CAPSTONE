@@ -246,6 +246,12 @@ void UCAP_DialogueWidget::OnNPCDialogueStarted(const FNPCData& NPCData)
 	StartDialogue();
 	UpdateDialogueUI(NPCData);	// 상호작용 한 NPC의 설정에 맞게 텍스트, 이미지 설정
 
+	if (APlayerController* PC = Player->GetController<APlayerController>())
+	{
+		PC->bShowMouseCursor = true;
+		PC->SetInputMode(FInputModeGameAndUI()); 
+	}
+	
 	if (UCAP_InteractionComponent* InteractComp = Player->GetInteractionComponent())
 	{
 		// 대화 종료 시점 구독후 기다림 (카메라 시점 전환 및 InputMode 변경)

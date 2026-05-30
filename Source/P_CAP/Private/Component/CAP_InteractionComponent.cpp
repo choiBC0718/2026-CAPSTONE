@@ -113,16 +113,20 @@ bool UCAP_InteractionComponent::GetNPCSpecialActionCost(int32& OutCost)
 void UCAP_InteractionComponent::EndDialogueCamera()
 {	
 	if (NearbyInteractable)
+	{
+		if (UCAP_DialogueComponent* DialogueComp = NearbyInteractable->FindComponentByClass<UCAP_DialogueComponent>())
 		{
-			if (UCAP_DialogueComponent* DialogueComp = NearbyInteractable->FindComponentByClass<UCAP_DialogueComponent>())
-			{
-				DialogueComp->EndDialogue();
-			}
+			DialogueComp->EndDialogue();
 		}
+	}
 		
-		bIsInDialogue = false;
-		SetNearbyInteractable(nullptr);
-		UpdateNearbyInteractable();
+	bIsInDialogue = false;
+	SetNearbyInteractable(nullptr);
+	UpdateNearbyInteractable();
+	if (ACAP_PlayerCharacter* PlayerChar = Cast<ACAP_PlayerCharacter>(GetOwner()))
+	{
+		PlayerChar->RestoreGameplayInputState();
+	}
 }
 
 void UCAP_InteractionComponent::HandleInventoryFull(class UCAP_ItemInstance* OverflowItem)

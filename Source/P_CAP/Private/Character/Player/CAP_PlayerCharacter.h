@@ -41,6 +41,11 @@ public:
 
 	UFUNCTION(Exec)
 	void ShowMeTheMoney();
+	
+	UFUNCTION(BlueprintCallable)
+	void SetCameraMode(bool bIsTPS);
+	UFUNCTION(BlueprintCallable)
+	void RestoreGameplayInputState();
 
 	virtual void UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack) override;
 private:
@@ -72,6 +77,8 @@ private:
 	class UInputAction* SwapIA;
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	class UInputAction* InteractIA;
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	class UInputAction* LookIA;
 
 	UPROPERTY(EditDefaultsOnly, Category="Input|Ability")
 	TMap<EAbilityInputID, class UInputAction*> AbilityInputActions;
@@ -79,6 +86,7 @@ private:
 	FVector GetMoveForwardDir();
 	FVector GetMoveRightDir();
 	void MoveInputHandle(const FInputActionValue& InputActionValue);
+	void LookInputHandle(const FInputActionValue& InputActionValue);
 	void AbilityInputHandle(const FInputActionValue& InputActionValue, EAbilityInputID AbilityInputID);
 	void InteractInputHandle(const FInputActionInstance& Instance);
 	void SwapWeapon();
@@ -96,4 +104,6 @@ public:
 protected:
 	void TryLoadProgressionData();
 	virtual void DeathMontageFinished() override;
+
+	bool bIsTPSMode = false;
 };

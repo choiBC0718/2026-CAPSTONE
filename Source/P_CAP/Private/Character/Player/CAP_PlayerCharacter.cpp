@@ -94,6 +94,7 @@ void ACAP_PlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		EnhancedInputComp->BindAction(MoveIA, ETriggerEvent::Triggered, this, &ACAP_PlayerCharacter::MoveInputHandle);
 		EnhancedInputComp->BindAction(MoveIA, ETriggerEvent::Completed, this, &ACAP_PlayerCharacter::MoveInputHandle);
 		EnhancedInputComp->BindAction(MoveIA, ETriggerEvent::Canceled, this, &ACAP_PlayerCharacter::MoveInputHandle);
+		EnhancedInputComp->BindAction(LookIA, ETriggerEvent::Triggered, this, &ACAP_PlayerCharacter::LookInputHandle);
 		EnhancedInputComp->BindAction(SwapIA, ETriggerEvent::Started, this, &ACAP_PlayerCharacter::SwapWeapon);
 		
 		EnhancedInputComp->BindAction(InteractIA, ETriggerEvent::Ongoing, this, &ACAP_PlayerCharacter::InteractInputHandle);
@@ -142,6 +143,52 @@ void ACAP_PlayerCharacter::ShowMeTheMoney()
 	CurrencyComponent->AddCurrency(ECurrencyType::WeaponMaterial, 50000);
 }
 
+void ACAP_PlayerCharacter::SetCameraMode(bool bIsTPS)
+{
+	bIsTPSMode = bIsTPS;
+	if (bIsTPS)
+	{
+		SpringArm->bUsePawnControlRotation=true;
+		SpringArm->bInheritYaw=true;
+		SpringArm->bInheritPitch=true;
+		SpringArm->TargetArmLength=300.f;
+		
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
+		{
+			PC->SetControlRotation(GetActorRotation());
+		}
+	}
+	else
+	{
+		SpringArm->bUsePawnControlRotation = false;
+		SpringArm->bInheritYaw = false;
+		SpringArm->bInheritPitch = false;
+		SpringArm->SetRelativeRotation(FRotator(-45.f, 0.f, 0.f)); 
+		SpringArm->TargetArmLength = 750.f;
+	}
+	RestoreGameplayInputState();
+}
+
+void ACAP_PlayerCharacter::RestoreGameplayInputState()
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC) return;
+
+	if (bIsTPSMode)
+	{
+		PC->bShowMouseCursor = false;
+		PC->SetInputMode(FInputModeGameOnly());
+	}
+	else
+	{
+		PC->bShowMouseCursor = true;
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetHideCursorDuringCapture(false);
+		PC->SetInputMode(InputMode);
+	}
+}
+
 void ACAP_PlayerCharacter::UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack)
 {
 	if (TargetEffectWidgetComp)
@@ -178,6 +225,13 @@ void ACAP_PlayerCharacter::MoveInputHandle(const FInputActionValue& InputActionV
     InputVal.Normalize();
 
     AddMovementInput(GetMoveForwardDir() * InputVal.Y + GetMoveRightDir() * InputVal.X);
+}
+
+void ACAP_PlayerCharacter::LookInputHandle(const FInputActionValue& InputActionValue)
+{
+	FVector2D InputVal = InputActionValue.Get<FVector2D>();
+	AddControllerYawInput(InputVal.X);
+	AddControllerPitchInput(InputVal.Y);
 }
 
 void ACAP_PlayerCharacter::AbilityInputHandle(const FInputActionValue& InputActionValue, EAbilityInputID AbilityInputID)
