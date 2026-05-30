@@ -7,11 +7,16 @@
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Component/CAP_CurrencyComponent.h"
 #include "Character/Player/Feedback/CAP_CoinRewardVFXActor.h"
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystemComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Data/CAP_AbilitySystemGenerics.h"
 #include "Data/CAP_MonsterRewardDataAsset.h"
 #include "Framework/CAP_RewardSettings.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
+#include "GAS/Setting/CAP_AbilitySystemStatics.h"
+#include "GAS/Setting/CAP_AttributeSet.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "NiagaraSystem.h"
@@ -74,9 +79,11 @@ void ACAP_EnemyCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	UpdateAttack(DeltaSeconds);
+
 	if (!bPlayingDeathDissolve)
 	{
-		SetActorTickEnabled(false);
+		SetActorTickEnabled(bEnemyAIEnabled);
 		return;
 	}
 
@@ -104,6 +111,8 @@ void ACAP_EnemyCharacter::SetEnemyAIEnabled(bool bEnabled, AActor* TargetActor)
 {
 	bEnemyAIEnabled = bEnabled;
 	CurrentTargetActor = bEnabled ? TargetActor : nullptr;
+	AttackCooldownRemaining = 0.f;
+	SetActorTickEnabled(bEnabled || bPlayingDeathDissolve);
 
 	ACAP_AIController* CAPAIController = Cast<ACAP_AIController>(GetController());
 	if (!CAPAIController)
@@ -358,6 +367,85 @@ void ACAP_EnemyCharacter::FinishDeathDissolve()
 	DeathDissolveDynamicMaterials.Empty();
 	SetActorTickEnabled(false);
 	Destroy();
+}
+
+void ACAP_EnemyCharacter::UpdateAttack(float DeltaSeconds)
+{
+	if (!bEnemyAIEnabled || IsDead())
+	{
+		return;
+	}
+
+	if (AttackCooldownRemaining > 0.f)
+	{
+		AttackCooldownRemaining -= DeltaSeconds;
+	}
+
+	if (AttackCooldownRemaining <= 0.f && CanAttackTarget())
+	{
+		PerformAttack();
+		AttackCooldownRemaining = AttackCooldown;
+	}
+}
+
+bool ACAP_EnemyCharacter::CanAttackTarget() const
+{
+	if (!IsValid(CurrentTargetActor))
+	{
+		return false;
+	}
+
+	const ACAP_Character* TargetCharacter = Cast<ACAP_Character>(CurrentTargetActor);
+	if (TargetCharacter && TargetCharacter->IsDead())
+	{
+		return false;
+	}
+
+	return FVector::DistSquared2D(GetActorLocation(), CurrentTargetActor->GetActorLocation()) <= FMath::Square(AttackRange);
+}
+
+void ACAP_EnemyCharacter::PerformAttack()
+{
+	if (!IsValid(CurrentTargetActor))
+	{
+		return;
+	}
+
+	if (AttackMontage)
+	{
+		PlayAnimMontage(AttackMontage);
+	}
+
+	UCAP_AbilitySystemComponent* SourceASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent());
+	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(CurrentTargetActor);
+	if (!SourceASC || !TargetASC)
+	{
+		return;
+	}
+
+	TSubclassOf<UGameplayEffect> DamageGE = SourceASC->GetGenerics()
+		? SourceASC->GetGenerics()->GetInstantDamageGE(ESkillDamageType::Physical)
+		: nullptr;
+	if (!DamageGE)
+	{
+		TargetASC->ApplyModToAttributeUnsafe(UCAP_AttributeSet::GetHealthAttribute(), EGameplayModOp::Additive, -AttackDamage);
+		return;
+	}
+
+	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
+	Context.AddInstigator(this, this);
+
+	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(DamageGE, 1.f, Context);
+	if (!SpecHandle.IsValid())
+	{
+		return;
+	}
+
+	SpecHandle.Data->SetSetByCallerMagnitude(UCAP_AbilitySystemStatics::GetDataDamageBaseTag(), AttackDamage);
+	SpecHandle.Data->SetSetByCallerMagnitude(UCAP_AbilitySystemStatics::GetDataDamageMultiplierTag(), 1.f);
+	SpecHandle.Data->SetSetByCallerMagnitude(UCAP_AbilitySystemStatics::GetAbilityChargeTimeTag(), 1.f);
+
+	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 }
 
 void ACAP_EnemyCharacter::InitializeHealthBarWidget()
