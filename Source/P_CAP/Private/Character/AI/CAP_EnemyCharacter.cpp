@@ -189,21 +189,18 @@ void ACAP_EnemyCharacter::SpawnCoinRewardVFX()
 {
 	if (CoinRewardAmount <= 0)
 	{
-		UE_LOG(LogTemp, Verbose, TEXT("Coin reward VFX skipped: reward amount is zero for %s."), *GetName());
 		return;
 	}
 
 	UWorld* World = GetWorld();
 	if (!World)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Coin reward VFX skipped: world is missing for %s."), *GetName());
 		return;
 	}
 
 	AActor* TargetActor = UGameplayStatics::GetPlayerPawn(this, 0);
 	if (!IsValid(TargetActor))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Coin reward VFX skipped: player pawn is missing for %s."), *GetName());
 		return;
 	}
 
@@ -228,11 +225,6 @@ void ACAP_EnemyCharacter::SpawnCoinRewardVFX()
 	if (!VFXActor)
 	{
 		return;
-	}
-
-	if (!CoinRewardVFX)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Coin reward VFX actor spawned without Niagara system for %s."), *GetName());
 	}
 
 	FCAPCoinRewardFeedbackParams Params;
