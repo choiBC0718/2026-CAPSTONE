@@ -62,3 +62,9 @@ void UCAP_GameInstance::UpdateSavedStatEnhanceLevel(FName RowName, int32 Level)
 		SaveGameData();
 	}
 }
+
+void UCAP_GameInstance::SetAssessmentTendency(const FPlayerTendencyModifier& Tendency)
+{
+	AssessmentTendency = Tendency;
+	bHasAssessmentTendency = true;
+}
