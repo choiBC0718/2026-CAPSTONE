@@ -54,6 +54,7 @@ private:
 	void StartDeathSequence();
 	virtual void OnDead() {};
 	void PlayDeathAnimation();
+protected:
 	virtual void DeathMontageFinished();
 	virtual void OnDeathMontageFinished() {};
 	void SetRagdollEnabled(bool bIsEnable);
