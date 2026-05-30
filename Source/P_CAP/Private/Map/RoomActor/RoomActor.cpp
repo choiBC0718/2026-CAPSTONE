@@ -216,8 +216,7 @@ void ARoomActor::SpawnRoomMonsters()
 		CachedInteriorLayout,
 		CachedMapSeed,
 		GetActorTransform(),
-		CachedTendency,
-		CachedZone);
+		CachedTendency);
 }
 
 void ARoomActor::OnRoomEnterTriggerBeginOverlap(
@@ -592,7 +591,6 @@ void ARoomActor::GenerateAndSpawnInterior()
 	SpawnLargeStructureMeshes(Layout);
 	SpawnObstaclesByTendency(CachedTendency);
 	DrawInteriorCellDebug(Layout);
-	DrawZoneDebug();
 }
 
 void ARoomActor::SpawnGuaranteedPaths(const FRoomInteriorLayout& Layout)
@@ -909,29 +907,13 @@ void ARoomActor::SpawnObstaclesByTendency(const FPlayerTendencyModifier& Tendenc
 		return;
 	}
 
-	// 구역 가중치: ExplorationRate 낮은 플레이어는 Core에 집중, 높은 플레이어는 Outer에 집중
-	float ZoneMultiplier = 1.0f;
-	switch (CachedZone)
-	{
-	case ERoomZone::Core:
-		ZoneMultiplier = FMath::Lerp(1.5f, 0.5f, Tendency.ExplorationRate);
-		break;
-	case ERoomZone::Outer:
-		ZoneMultiplier = FMath::Lerp(0.5f, 1.5f, Tendency.ExplorationRate);
-		break;
-	default:
-		break;
-	}
+	// ObstacleBypass로 최종 장애물 수 결정
+	const float BaseCount = FMath::Lerp(1.f, static_cast<float>(MaxObstaclesPerRoom), Tendency.ObstacleBypass);
+	const int32 ObstacleCount = FMath::RoundToInt(BaseCount);
 
-	// ObstacleBypass × ZoneMultiplier 로 최종 장애물 수 결정
-	const float BaseCount = FMath::Lerp(0.f, static_cast<float>(MaxObstaclesPerRoom), Tendency.ObstacleBypass);
-	const int32 ObstacleCount = FMath::RoundToInt(BaseCount * ZoneMultiplier);
-
-	UE_LOG(LogTemp, Log, TEXT("[Zone] Room(%d,%d) Zone=%s | Explore=%.2f ZoneMult=%.2f | Bypass=%.2f Base=%.1f → 장애물 %d개"),
+	UE_LOG(LogTemp, Log, TEXT("[Obstacle] Room(%d,%d) | Bypass=%.2f → 장애물 %d개"),
 		CachedRoomData.GridPos.X, CachedRoomData.GridPos.Y,
-		CachedZone == ERoomZone::Core ? TEXT("Core") : CachedZone == ERoomZone::Mid ? TEXT("Mid") : TEXT("Outer"),
-		Tendency.ExplorationRate, ZoneMultiplier,
-		Tendency.ObstacleBypass, BaseCount, ObstacleCount);
+		Tendency.ObstacleBypass, ObstacleCount);
 
 	if (ObstacleCount <= 0)
 	{
@@ -950,27 +932,90 @@ void ARoomActor::SpawnObstaclesByTendency(const FPlayerTendencyModifier& Tendenc
 	Seed = HashCombineFast(Seed, 0xF1A20B3C);
 	FRandomStream RandomStream(Seed);
 
-	// 방 중앙 60% 영역에 배치 (문 주변 제외)
-	const float SafeZone = RoomHalfExtent * 0.6f;
-	const float MinSeparation = 400.f;
+	// 문(ReservedDoor) 셀 위치 수집
+	TArray<FIntPoint> DoorCoords;
+	for (const FRoomInteriorCell& Cell : CachedInteriorLayout.Cells)
+	{
+		if (Cell.Type == ERoomInteriorCellType::ReservedDoor)
+		{
+			DoorCoords.Add(Cell.Coord);
+		}
+	}
 
+	// 스폰 가능 셀 수집 (Empty, 벽 1칸 제외)
+	const int32 EdgeMargin = 1;
+	TArray<FIntPoint> SpawnableCells;
+	for (const FRoomInteriorCell& Cell : CachedInteriorLayout.Cells)
+	{
+		if (Cell.Type != ERoomInteriorCellType::Empty)
+		{
+			continue;
+		}
+		if (Cell.Coord.X < EdgeMargin || Cell.Coord.Y < EdgeMargin ||
+			Cell.Coord.X >= CachedInteriorLayout.GridWidth - EdgeMargin ||
+			Cell.Coord.Y >= CachedInteriorLayout.GridHeight - EdgeMargin)
+		{
+			continue;
+		}
+		SpawnableCells.Add(Cell.Coord);
+	}
+
+	// 문까지 최단 거리 계산 후 정규화
+	float MaxDoorDist = KINDA_SMALL_NUMBER;
+	TMap<FIntPoint, float> DoorDistMap;
+	for (const FIntPoint& CellCoord : SpawnableCells)
+	{
+		float MinDist = TNumericLimits<float>::Max();
+		for (const FIntPoint& Door : DoorCoords)
+		{
+			MinDist = FMath::Min(MinDist, FVector2D::Distance(FVector2D(CellCoord), FVector2D(Door)));
+		}
+		DoorDistMap.Add(CellCoord, MinDist);
+		MaxDoorDist = FMath::Max(MaxDoorDist, MinDist);
+	}
+
+	// ObstacleBypass=1 → 문 근처 셀 우선 (점수 낮음)
+	// ObstacleBypass=0 → 문에서 먼 셀 우선 (점수 낮음)
+	TMap<FIntPoint, float> CellScores;
+	for (const FIntPoint& CellCoord : SpawnableCells)
+	{
+		const float NormalizedDist = DoorDistMap.FindRef(CellCoord) / MaxDoorDist;
+		// ExplorationRate 낮음 → 문 근처, 높음 → 구석
+		const float DirectionScore = FMath::Lerp(NormalizedDist, 1.f - NormalizedDist, Tendency.ExplorationRate);
+		CellScores.Add(CellCoord, DirectionScore + RandomStream.FRandRange(-0.05f, 0.05f));
+	}
+
+	SpawnableCells.Sort([&](const FIntPoint& A, const FIntPoint& B)
+	{
+		return CellScores.FindRef(A) < CellScores.FindRef(B);
+	});
+
+	// 셀 로컬 중심 좌표 계산 헬퍼
+	const float GridWorldSizeX = CachedInteriorLayout.GridWidth * CachedInteriorLayout.CellSize;
+	const float GridWorldSizeY = CachedInteriorLayout.GridHeight * CachedInteriorLayout.CellSize;
+	const FVector GridMin(-GridWorldSizeX * 0.5f, -GridWorldSizeY * 0.5f, 0.f);
+	const float SpawnJitter = CachedInteriorLayout.CellSize * 0.2f;
+
+	int32 CellIndex = 0;
 	for (int32 i = 0; i < ObstacleCount; i++)
 	{
+		// 배치할 셀 탐색 (이미 장애물 있는 셀 건너뜀)
 		FVector LocalPos;
 		bool bFound = false;
 
-		for (int32 Try = 0; Try < 15; Try++)
+		while (CellIndex < SpawnableCells.Num())
 		{
+			const FIntPoint& Coord = SpawnableCells[CellIndex++];
 			LocalPos = FVector(
-				RandomStream.FRandRange(-SafeZone, SafeZone),
-				RandomStream.FRandRange(-SafeZone, SafeZone),
+				GridMin.X + Coord.X * CachedInteriorLayout.CellSize + CachedInteriorLayout.CellSize * 0.5f + RandomStream.FRandRange(-SpawnJitter, SpawnJitter),
+				GridMin.Y + Coord.Y * CachedInteriorLayout.CellSize + CachedInteriorLayout.CellSize * 0.5f + RandomStream.FRandRange(-SpawnJitter, SpawnJitter),
 				0.f);
 
 			bool bTooClose = false;
 			for (const TObjectPtr<AAnalysisObstacle>& Existing : SpawnedObstacles)
 			{
 				if (IsValid(Existing) &&
-					FVector::Dist(GetActorTransform().TransformPosition(LocalPos), Existing->GetActorLocation()) < MinSeparation)
+					FVector::Dist(GetActorTransform().TransformPosition(LocalPos), Existing->GetActorLocation()) < CachedInteriorLayout.CellSize)
 				{
 					bTooClose = true;
 					break;
@@ -986,7 +1031,7 @@ void ARoomActor::SpawnObstaclesByTendency(const FPlayerTendencyModifier& Tendenc
 
 		if (!bFound)
 		{
-			continue;
+			break;
 		}
 
 		FActorSpawnParameters SpawnParams;
@@ -999,40 +1044,15 @@ void ARoomActor::SpawnObstaclesByTendency(const FPlayerTendencyModifier& Tendenc
 		AAnalysisObstacle* Spawned = World->SpawnActor<AAnalysisObstacle>(ObstacleClass, WorldPos, WorldRot, SpawnParams);
 		if (Spawned)
 		{
+			Spawned->BypassMonsterClass = BypassMonsterClass;
 			SpawnedObstacles.Add(Spawned);
-			UE_LOG(LogTemp, Log, TEXT("RoomActor: 장애물 스폰 (ObstacleBypass=%.2f, %d/%d)"),
-				Tendency.ObstacleBypass, SpawnedObstacles.Num(), ObstacleCount);
+
+			// 문 근처(빨강) vs 구석(파랑) 색상으로 구분
+			const float NormalizedScore = CellScores.IsEmpty() ? 0.5f : CellIndex / FMath::Max(1.f, (float)SpawnableCells.Num());
+			const FColor DebugColor = NormalizedScore < 0.5f ? FColor::Red : FColor::Blue;
+			DrawDebugSphere(World, WorldPos + FVector(0, 0, 150), 80.f, 8, DebugColor, false, 15.f, 0, 3.f);
 		}
 	}
 }
 
-void ARoomActor::DrawZoneDebug() const
-{
-	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return;
-	}
 
-	const FVector TextBase = GetActorLocation() + FVector(0.f, 0.f, 600.f);
-
-	// 구역별 색상
-	FColor ZoneColor = FColor::White;
-	FString ZoneName;
-	switch (CachedZone)
-	{
-	case ERoomZone::Core:  ZoneColor = FColor::Red;    ZoneName = TEXT("CORE");  break;
-	case ERoomZone::Mid:   ZoneColor = FColor::Yellow; ZoneName = TEXT("MID");   break;
-	case ERoomZone::Outer: ZoneColor = FColor::Cyan;   ZoneName = TEXT("OUTER"); break;
-	}
-
-	const int32 MonsterCount = MonsterSpawnerComponent ? MonsterSpawnerComponent->GetNumSpawnedMonsters() : 0;
-
-	const FString Line1 = FString::Printf(TEXT("[%s] Dist=%d"), *ZoneName, CachedRoomData.DistanceFromStart);
-	const FString Line2 = FString::Printf(TEXT("Monster:%d  Obstacle:%d"), MonsterCount, SpawnedObstacles.Num());
-	const FString Line3 = FString::Printf(TEXT("Explore:%.2f Combat:%.2f"), CachedTendency.ExplorationRate, CachedTendency.CombatAggression);
-
-	DrawDebugString(World, TextBase,                        Line1, nullptr, ZoneColor,  -1.f, true, 1.5f);
-	DrawDebugString(World, TextBase - FVector(0,0,60),      Line2, nullptr, FColor::White, -1.f, true, 1.2f);
-	DrawDebugString(World, TextBase - FVector(0,0,110),     Line3, nullptr, FColor::Green, -1.f, true, 1.0f);
-}

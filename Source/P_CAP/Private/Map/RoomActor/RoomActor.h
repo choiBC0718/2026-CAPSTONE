@@ -121,6 +121,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Obstacle")
 	TSubclassOf<AAnalysisObstacle> ObstacleClass;
 
+	/* 장애물 돌파 시 소환할 몬스터 클래스 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Obstacle")
+	TSubclassOf<ACharacter> BypassMonsterClass;
+
 	/* ObstacleBypass=1.0일 때 배치할 최대 장애물 수 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Obstacle", meta=(ClampMin="0", ClampMax="5"))
 	int32 MaxObstaclesPerRoom = 3;
@@ -214,8 +218,8 @@ private:
 	void SpawnLargeStructureMeshes(const FRoomInteriorLayout& Layout);
 	/* 셀 기반 구조 결과를 디버그 박스로 시각화 */
 	void DrawInteriorCellDebug(const FRoomInteriorLayout& Layout) const;
+	void DrawPathDebug(const FRoomInteriorLayout& Layout) const;
 	/* 방 위에 구역/장애물/몬스터 수치를 텍스트로 표시 */
-	void DrawZoneDebug() const;
 	
 	FTransform GetDoorTransform(EDoorDirection Direction) const;
 	FIntPoint GetNeighborGridPos(EDoorDirection Direction) const;

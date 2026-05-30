@@ -24,6 +24,7 @@ AAnalysisObstacle::AAnalysisObstacle()
 
 	bHasPassedThrough = false;
 	bIsTracking = false;
+	bMonsterSpawned = false;
 }
 
 void AAnalysisObstacle::BeginPlay()
@@ -61,13 +62,41 @@ void AAnalysisObstacle::OnInnerOverlapBegin(UPrimitiveComponent* OverlappedComp,
 	if (bIsTracking && OtherActor && OtherActor->FindComponentByClass<UPlayerTrackerComponent>())
 	{
 		bHasPassedThrough = true;
-		
+
 		UPlayerTrackerComponent* Tracker = OtherActor->FindComponentByClass<UPlayerTrackerComponent>();
 		if (Tracker)
 		{
 			Tracker->PassedObstacleCount++;
 		}
-		
+
+		// 돌파 시 몬스터 소환 — 장애물당 한 번만
+		if (!bMonsterSpawned && BypassMonsterClass)
+		{
+			bMonsterSpawned = true;
+
+			UWorld* World = GetWorld();
+			if (World)
+			{
+				// 장애물 중심에서 랜덤 수평 방향으로 BypassSpawnRadius 거리에 소환
+				const float Angle = FMath::FRandRange(0.f, 360.f);
+				const FVector Offset = FVector(
+					FMath::Cos(FMath::DegreesToRadians(Angle)) * BypassSpawnRadius,
+					FMath::Sin(FMath::DegreesToRadians(Angle)) * BypassSpawnRadius,
+					0.f);
+				const FVector SpawnLocation = GetActorLocation() + Offset;
+
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+				ACharacter* Spawned = World->SpawnActor<ACharacter>(BypassMonsterClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
+				if (Spawned)
+				{
+					Spawned->SpawnDefaultController();
+					UE_LOG(LogTemp, Warning, TEXT("장애물 돌파 → 몬스터 소환: %s"), *Spawned->GetName());
+				}
+			}
+		}
+
 		UE_LOG(LogTemp, Warning, TEXT("장애물 돌파(PassThrough) 감지"));
 	}
 }

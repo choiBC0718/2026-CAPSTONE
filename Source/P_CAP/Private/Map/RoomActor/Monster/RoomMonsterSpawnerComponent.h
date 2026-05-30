@@ -35,8 +35,7 @@ public:
 		const FRoomInteriorLayout& InteriorLayout,
 		int32 MapSeed,
 		const FTransform& RoomTransform,
-		const FPlayerTendencyModifier& Tendency = FPlayerTendencyModifier{},
-		ERoomZone Zone = ERoomZone::Mid);
+		const FPlayerTendencyModifier& Tendency = FPlayerTendencyModifier{});
 
 	void ClearSpawnedMonsters();
 
@@ -81,7 +80,7 @@ private:
 	TArray<FIntPoint> CollectSpawnableCells(const FRoomInteriorLayout& InteriorLayout) const;
 	bool IsNearReservedDoorCell(const FRoomInteriorLayout& InteriorLayout, const FIntPoint& CellCoord) const;
 	bool IsNearRoomEdge(const FRoomInteriorLayout& InteriorLayout, const FIntPoint& CellCoord) const;
-	void SortCellsByCenterBias(TArray<FIntPoint>& SpawnableCells, const FRoomInteriorLayout& InteriorLayout, FRandomStream& RandomStream) const;
+	void SortCellsByCenterBias(TArray<FIntPoint>& SpawnableCells, const FRoomInteriorLayout& InteriorLayout, FRandomStream& RandomStream, float ExplorationRate) const;
 	FVector GetCellLocalCenter(const FRoomInteriorLayout& InteriorLayout, const FIntPoint& CellCoord) const;
 	FVector GetFormationOffset(int32 MonsterIndexInCell, int32 MonsterCountInCell, float CellSize) const;
 	FRandomStream MakeRoomRandomStream(const FRoomData& RoomData, int32 MapSeed) const;

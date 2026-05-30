@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/Character.h"
 #include "AnalysisObstacle.generated.h"
 
 class UBoxComponent;
@@ -14,6 +15,14 @@ class P_CAP_API AAnalysisObstacle : public AActor
 
 public:
 	AAnalysisObstacle();
+
+	// 돌파 시 소환할 몬스터 클래스 (RoomActor에서 스폰 후 SetBypassMonsterClass로 주입)
+	UPROPERTY(EditAnywhere, Category = "Bypass")
+	TSubclassOf<ACharacter> BypassMonsterClass;
+
+	// 장애물 중심에서 몬스터를 소환할 반경
+	UPROPERTY(EditAnywhere, Category = "Bypass")
+	float BypassSpawnRadius = 500.f;
 
 protected:
 	virtual void BeginPlay() override;
@@ -45,4 +54,5 @@ protected:
 private:
 	bool bHasPassedThrough;
 	bool bIsTracking;
+	bool bMonsterSpawned;  // 장애물당 한 번만 소환
 };
