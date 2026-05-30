@@ -141,6 +141,24 @@ TArray<FCombatRewardChoiceOption> ANextRoomChoiceManager::BuildCombatRewardChoic
 			break;
 		}
 
+		switch (RewardType)
+		{
+		case ECombatRoomRewardType::Gold:
+			Option.Description = FText::FromString(TEXT("방 클리어 시 골드를 획득합니다."));
+			break;
+
+		case ECombatRoomRewardType::Item:
+			Option.Description = FText::FromString(TEXT("방 클리어 시 아이템을 획득합니다."));
+			break;
+
+		case ECombatRoomRewardType::Weapon:
+			Option.Description = FText::FromString(TEXT("방 클리어 시 무기를 획득합니다."));
+			break;
+
+		default:
+			break;
+		}
+
 		return Option;
 	};
 

@@ -62,6 +62,10 @@ private:
 
 	bool bIsRangedAttack;
 
+	// 전투/장애물로 중단된 웨이포인트 재개용
+	FVector CurrentWaypointTarget;
+	bool bHasActiveWaypoint;
+
 	float IdleTimer;
 	float MonsterCheckTimer;
 	float ObstacleCheckTimer;
@@ -73,6 +77,7 @@ private:
 
 	void RandomizeParameters();
 	void DecideNextAction();
+	void ResumeCurrentWaypoint();  // 중단된 웨이포인트 재개 → 불가 시 DecideNextAction
 	void PickNewTarget();          // 랜덤/쿼드트리 기반 웨이포인트
 	void PickGoalAsTarget();       // 마지막 웨이포인트 = 골 위치
 	void CheckAndEngageMonsters();

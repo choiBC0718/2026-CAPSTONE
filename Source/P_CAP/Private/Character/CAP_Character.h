@@ -50,12 +50,12 @@ private:
 	void MoveSpeedUpdated(const FOnAttributeChangeData& OnAttributeChangeData);
 
 	FTransform MeshRelativeTransform;
-
-protected:
+	
 	void StartDeathSequence();
 	virtual void OnDead() {};
 	void PlayDeathAnimation();
 	virtual void DeathMontageFinished();
+	virtual void OnDeathMontageFinished() {};
 	void SetRagdollEnabled(bool bIsEnable);
 
 	UPROPERTY(EditDefaultsOnly, Category="Death")

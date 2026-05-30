@@ -83,6 +83,8 @@ ABotPlayController::ABotPlayController()
 	ObstacleCheckTimer = 0.f;
 	LastHandledMonster = nullptr;
 	bIsRangedAttack = false;
+	CurrentWaypointTarget = FVector::ZeroVector;
+	bHasActiveWaypoint = false;
 	RunTimer = 0.f;
 	MaxRunTime = 90.f;
 	bReloadScheduled = false;
@@ -210,8 +212,12 @@ void ABotPlayController::Tick(float DeltaTime)
 				CurrentState == EBotState::PassingObstacle)
 			{
 				CurrentState = EBotState::Roaming;
+				ResumeCurrentWaypoint();
 			}
-			DecideNextAction();
+			else
+			{
+				DecideNextAction();
+			}
 		}
 	}
 	else
@@ -234,7 +240,7 @@ void ABotPlayController::OnMoveCompleted(FAIRequestID RequestID, const FPathFoll
 	if (!Result.IsSuccess())
 		return;
 
-	// 몬스터 접근(or 원거리 대기) 완료 → 처치 → 복귀
+	// 몬스터 접근(or 원거리 대기) 완료 → 처치 → 원래 웨이포인트 재개
 	if (CurrentState == EBotState::ApproachingMonster)
 	{
 		APawn* MyPawn = GetPawn();
@@ -251,24 +257,24 @@ void ABotPlayController::OnMoveCompleted(FAIRequestID RequestID, const FPathFoll
 		}
 		bIsRangedAttack = false;
 		CurrentState = EBotState::Roaming;
-		DecideNextAction();
+		ResumeCurrentWaypoint();
 		return;
 	}
 
-	// 몬스터 회피 완료 → 복귀
+	// 몬스터 회피 완료 → 원래 웨이포인트 재개
 	if (CurrentState == EBotState::AvoidingMonster)
 	{
 		LastHandledMonster = nullptr;
 		CurrentState = EBotState::Roaming;
-		DecideNextAction();
+		ResumeCurrentWaypoint();
 		return;
 	}
 
-	// 장애물 회피 완료 → 복귀 (웨이포인트 카운트에 포함하지 않음)
+	// 장애물 처리 완료 → 원래 웨이포인트 재개 (웨이포인트 카운트에 포함하지 않음)
 	if (CurrentState == EBotState::PassingObstacle || CurrentState == EBotState::AvoidingObstacle)
 	{
 		CurrentState = EBotState::Roaming;
-		DecideNextAction();
+		ResumeCurrentWaypoint();
 		return;
 	}
 
@@ -297,6 +303,7 @@ void ABotPlayController::OnMoveCompleted(FAIRequestID RequestID, const FPathFoll
 		}
 
 		WaypointsVisited++;
+		bHasActiveWaypoint = false;
 		DecideNextAction();
 	}
 }
@@ -469,6 +476,32 @@ void ABotPlayController::CheckAndHandleObstacles()
 }
 
 // =============================================
+// 전투/장애물로 중단된 웨이포인트 재개
+// =============================================
+void ABotPlayController::ResumeCurrentWaypoint()
+{
+	if (bHasActiveWaypoint && !bGoalIsNextTarget)
+	{
+		EPathFollowingRequestResult::Type Result = MoveToLocation(CurrentWaypointTarget, 100.f);
+		if (Result == EPathFollowingRequestResult::RequestSuccessful)
+			return;
+		if (Result == EPathFollowingRequestResult::AlreadyAtGoal)
+		{
+			WaypointsVisited++;
+			bHasActiveWaypoint = false;
+			FTimerHandle NextTimer;
+			GetWorld()->GetTimerManager().SetTimer(NextTimer, [this]()
+			{
+				if (CurrentState != EBotState::Finished)
+					DecideNextAction();
+			}, 0.1f, false);
+			return;
+		}
+	}
+	DecideNextAction();
+}
+
+// =============================================
 // 웨이포인트: 쿼드트리 기반
 // =============================================
 void ABotPlayController::PickNewTarget()
@@ -477,11 +510,14 @@ void ABotPlayController::PickNewTarget()
 
 	bGoalIsNextTarget = false;
 	FVector Target = GenerateSmartWaypoint();
+	CurrentWaypointTarget = Target;
+	bHasActiveWaypoint = true;
 	EPathFollowingRequestResult::Type Result = MoveToLocation(Target, 100.f);
 
 	if (Result == EPathFollowingRequestResult::AlreadyAtGoal)
 	{
 		WaypointsVisited++;
+		bHasActiveWaypoint = false;
 		FTimerHandle NextTimer;
 		GetWorld()->GetTimerManager().SetTimer(NextTimer, [this]()
 		{
@@ -491,6 +527,7 @@ void ABotPlayController::PickNewTarget()
 	}
 	else if (Result == EPathFollowingRequestResult::Failed)
 	{
+		bHasActiveWaypoint = false;
 		FTimerHandle RetryTimer;
 		GetWorld()->GetTimerManager().SetTimer(RetryTimer, [this]()
 		{
@@ -512,6 +549,7 @@ void ABotPlayController::PickGoalAsTarget()
 		return;
 	}
 
+	bHasActiveWaypoint = false;
 	bGoalIsNextTarget = true;
 	FVector GoalLoc = GoalActor->GetActorLocation();
 

@@ -49,22 +49,28 @@ void AMonsterDirector::SpawnMonstersByTendency(const FPlayerTendencyModifier& Pl
 
     SpawnedMonsters.Empty();
 
-    for (int32 i = 0; i < MonsterCount; i++)
+    // CombatAggression 기반 동적 몬스터 수 계산
+    // 전투 회피형(0.0) → MonsterCount × 0.5 / 전투형(1.0) → MonsterCount × 1.5
+    CachedDynamicMonsterCount = FMath::Max(1, FMath::RoundToInt(
+        MonsterCount * FMath::Lerp(MinMonsterMultiplier, MaxMonsterMultiplier, PlayerTendency.CombatAggression)));
+
+    for (int32 i = 0; i < CachedDynamicMonsterCount; i++)
     {
         ACharacter* Spawned = SpawnOneMonster(PlayerTendency);
         if (Spawned)
             SpawnedMonsters.Add(Spawned);
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("=== 스폰 완료! %d마리 (탐험율:%.2f 기반 배치) ==="),
-           SpawnedMonsters.Num(), PlayerTendency.ExplorationRate);
+    UE_LOG(LogTemp, Warning, TEXT("=== 스폰 완료! %d마리 (탐험율:%.2f / 전투성:%.2f → 기본%d × %.1f배) ==="),
+           SpawnedMonsters.Num(), PlayerTendency.ExplorationRate, PlayerTendency.CombatAggression,
+           MonsterCount, FMath::Lerp(MinMonsterMultiplier, MaxMonsterMultiplier, PlayerTendency.CombatAggression));
 
-    // TotalSpawnedMonsters를 실제 배치 수가 아닌 MonsterCount 기준으로 고정
+    // TotalSpawnedMonsters를 동적 목표 수 기준으로 고정
     // (배치 실패로 인한 분모 불일치 방지 → KillRatio 정확도 확보)
     for (TActorIterator<APawn> It(GetWorld()); It; ++It)
     {
         UPlayerTrackerComponent* Tracker = It->FindComponentByClass<UPlayerTrackerComponent>();
-        if (Tracker) { Tracker->TotalSpawnedMonsters = MonsterCount; break; }
+        if (Tracker) { Tracker->TotalSpawnedMonsters = CachedDynamicMonsterCount; break; }
     }
 
     if (RespawnInterval > 0.f)
@@ -120,7 +126,7 @@ void AMonsterDirector::CheckAndRespawn()
     for (auto& Weak : SpawnedMonsters)
         if (Weak.IsValid()) AliveCount++;
 
-    int32 ToSpawn = MonsterCount - AliveCount;
+    int32 ToSpawn = CachedDynamicMonsterCount - AliveCount;
     if (ToSpawn <= 0) return;
 
     FPlayerTendencyModifier DefaultTendency;

@@ -130,7 +130,10 @@ void ACAP_Character::PlayDeathAnimation()
 void ACAP_Character::DeathMontageFinished()
 {
 	if (IsDead())
+	{
 		SetRagdollEnabled(true);
+		OnDeathMontageFinished();
+	}
 }
 
 void ACAP_Character::SetRagdollEnabled(bool bIsEnable)

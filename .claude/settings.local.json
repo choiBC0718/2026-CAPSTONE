@@ -16,7 +16,10 @@
       "PowerShell(pip install *)",
       "PowerShell(Get-Command *)",
       "Bash(Sort-Object FullName)",
-      "Bash(grep -E \"\\\\.\\(cpp|h\\)$\")"
+      "Bash(grep -E \"\\\\.\\(cpp|h\\)$\")",
+      "Bash(Select-String -Pattern \"\\(BotPlayController|AutoPlayManager\\)\")",
+      "Read(//mnt/c/Users/Beom/Documents/2026-CAPSTONE/Source/**)",
+      "Bash(find . -type f \\\\\\( -name \"BotPlayController*\" -o -name \"AutoPlayManager*\" \\\\\\))"
     ]
   }
 }
