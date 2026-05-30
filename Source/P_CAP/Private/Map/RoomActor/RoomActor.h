@@ -218,8 +218,6 @@ private:
 	void SpawnLargeStructureMeshes(const FRoomInteriorLayout& Layout);
 	/* 셀 기반 구조 결과를 디버그 박스로 시각화 */
 	void DrawInteriorCellDebug(const FRoomInteriorLayout& Layout) const;
-	void DrawPathDebug(const FRoomInteriorLayout& Layout) const;
-	/* 방 위에 구역/장애물/몬스터 수치를 텍스트로 표시 */
 	
 	FTransform GetDoorTransform(EDoorDirection Direction) const;
 	FIntPoint GetNeighborGridPos(EDoorDirection Direction) const;
