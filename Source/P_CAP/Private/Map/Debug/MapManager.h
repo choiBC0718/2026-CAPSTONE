@@ -92,6 +92,15 @@ private:
 	UPROPERTY(EditAnywhere, Category="Stage Exit")
 	FVector StageExitLocalOffset = FVector(0.f, 0.f, 120.f);
 
+	UPROPERTY(EditAnywhere, Category="Stage Exit|Temporary")
+	bool bSpawnStageExitActor = true;
+
+	UPROPERTY(EditAnywhere, Category="Stage Exit|Temporary")
+	TSubclassOf<AActor> BossRoomTemporaryActorClass;
+
+	UPROPERTY(EditAnywhere, Category="Stage Exit|Temporary")
+	FVector BossRoomTemporaryActorLocalOffset = FVector::ZeroVector;
+
 	UPROPERTY(EditAnywhere, Category="Room Choice")
 	TSubclassOf<ANextRoomChoiceManager> NextRoomChoiceManagerClass;
 
@@ -106,6 +115,9 @@ private:
 
 	UPROPERTY()
 	TArray<TObjectPtr<AStageExitActor>> SpawnedStageExits;
+
+	UPROPERTY()
+	TArray<TObjectPtr<AActor>> SpawnedBossRoomTemporaryActors;
 
 	UPROPERTY()
 	TObjectPtr<URoomMonsterSpawnDataAsset> CurrentMonsterSpawnDataAsset;
@@ -124,6 +136,7 @@ private:
 	void GenerateMapAndSpawnRooms();
 	void SpawnRooms(const FMapLayout& Layout);
 	void SpawnStageExitInRoom(ARoomActor* RoomActor, const FRoomData& RoomData);
+	void SpawnBossRoomTemporaryActor(ARoomActor* RoomActor);
 	void MovePlayerToStartRoom();
 	void ClearSpawnedStageExits();
 	void ClearSpawnedRooms();

@@ -277,7 +277,14 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 
 		if (RoomData.RoomType == ERoomType::Boss)
 		{
-			SpawnStageExitInRoom(SpawnedRoom, RoomData);
+			if (bSpawnStageExitActor)
+			{
+				SpawnStageExitInRoom(SpawnedRoom, RoomData);
+			}
+			else
+			{
+				SpawnBossRoomTemporaryActor(SpawnedRoom);
+			}
 		}
 	}
 }
@@ -295,7 +302,7 @@ void AMapManager::SpawnStageExitInRoom(ARoomActor* RoomActor, const FRoomData& R
 		return;
 	}
 
-	const FVector SpawnLocation = RoomActor->GetActorTransform().TransformPosition(StageExitLocalOffset);
+	const FTransform SpawnTransform = RoomActor->GetStageExitSpawnTransform();
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = RoomActor;
@@ -303,8 +310,8 @@ void AMapManager::SpawnStageExitInRoom(ARoomActor* RoomActor, const FRoomData& R
 
 	AStageExitActor* SpawnedStageExit = World->SpawnActor<AStageExitActor>(
 		StageExitActorClass,
-		SpawnLocation,
-		RoomActor->GetActorRotation(),
+		SpawnTransform.GetLocation(),
+		SpawnTransform.GetRotation().Rotator(),
 		SpawnParams
 	);
 
@@ -315,6 +322,40 @@ void AMapManager::SpawnStageExitInRoom(ARoomActor* RoomActor, const FRoomData& R
 
 	SpawnedStageExit->AttachToActor(RoomActor, FAttachmentTransformRules::KeepWorldTransform);
 	SpawnedStageExits.Add(SpawnedStageExit);
+}
+
+void AMapManager::SpawnBossRoomTemporaryActor(ARoomActor* RoomActor)
+{
+	if (!RoomActor || !BossRoomTemporaryActorClass)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const FVector SpawnLocation = RoomActor->GetActorTransform().TransformPosition(BossRoomTemporaryActorLocalOffset);
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = RoomActor;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	AActor* SpawnedActor = World->SpawnActor<AActor>(
+		BossRoomTemporaryActorClass,
+		SpawnLocation,
+		RoomActor->GetActorRotation(),
+		SpawnParams);
+
+	if (!SpawnedActor)
+	{
+		return;
+	}
+
+	SpawnedActor->AttachToActor(RoomActor, FAttachmentTransformRules::KeepWorldTransform);
+	SpawnedBossRoomTemporaryActors.Add(SpawnedActor);
 }
 
 void AMapManager::MovePlayerToStartRoom()
@@ -346,6 +387,16 @@ void AMapManager::ClearSpawnedStageExits()
 	}
 
 	SpawnedStageExits.Empty();
+
+	for (AActor* TemporaryActor : SpawnedBossRoomTemporaryActors)
+	{
+		if (IsValid(TemporaryActor))
+		{
+			TemporaryActor->Destroy();
+		}
+	}
+
+	SpawnedBossRoomTemporaryActors.Empty();
 }
 
 void AMapManager::ClearSpawnedRooms()

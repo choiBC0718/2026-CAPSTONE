@@ -3,6 +3,7 @@
 #include "Stage/StageExitActor.h"
 
 #include "Components/BoxComponent.h"
+#include "Components/ChildActorComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
@@ -21,7 +22,7 @@ AStageExitActor::AStageExitActor()
 
 	TriggerBox = CreateDefaultSubobject<UBoxComponent>(TEXT("TriggerBox"));
 	TriggerBox->SetupAttachment(Root);
-	TriggerBox->SetBoxExtent(FVector(120.f, 120.f, 120.f));
+	TriggerBox->SetBoxExtent(TriggerExtent);
 	TriggerBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	TriggerBox->SetGenerateOverlapEvents(true);
 	TriggerBox->SetCollisionResponseToAllChannels(ECR_Ignore);
@@ -32,6 +33,9 @@ AStageExitActor::AStageExitActor()
 	PortalMesh->SetupAttachment(Root);
 	PortalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PortalMesh->SetRelativeScale3D(FVector(1.5f, 1.5f, 0.25f));
+
+	PortalVisual = CreateDefaultSubobject<UChildActorComponent>(TEXT("PortalVisual"));
+	PortalVisual->SetupAttachment(Root);
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> DefaultPortalMesh(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	if (DefaultPortalMesh.Succeeded())
@@ -51,7 +55,15 @@ void AStageExitActor::BeginPlay()
 
 	if (TriggerBox)
 	{
+		TriggerBox->SetBoxExtent(TriggerExtent);
 		TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &AStageExitActor::OnTriggerBeginOverlap);
+	}
+
+	if (PortalVisual)
+	{
+		PortalVisual->SetChildActorClass(PortalVisualClass);
+		PortalVisual->SetVisibility(bEnabled, true);
+		PortalVisual->SetHiddenInGame(!bEnabled, true);
 	}
 
 	SetExitEnabled(bEnabled);
@@ -69,8 +81,16 @@ void AStageExitActor::SetExitEnabled(bool bNewEnabled)
 
 	if (PortalMesh)
 	{
-		PortalMesh->SetVisibility(bEnabled, true);
-		PortalMesh->SetHiddenInGame(!bEnabled, true);
+		const bool bShowDefaultMesh = bEnabled && bUseDefaultPortalMesh;
+		PortalMesh->SetVisibility(bShowDefaultMesh, true);
+		PortalMesh->SetHiddenInGame(!bShowDefaultMesh, true);
+	}
+
+	if (PortalVisual)
+	{
+		const bool bShowVisual = bEnabled && PortalVisualClass != nullptr;
+		PortalVisual->SetVisibility(bShowVisual, true);
+		PortalVisual->SetHiddenInGame(!bShowVisual, true);
 	}
 }
 

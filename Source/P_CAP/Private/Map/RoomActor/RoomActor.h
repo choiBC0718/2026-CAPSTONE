@@ -39,6 +39,7 @@ public:
 		URoomSizeSettings* InRoomSizeSettings = nullptr);
 	void SetCombatRewardType(ECombatRoomRewardType NewRewardType);
 	FVector GetEntrancePoint(EDoorDirection Direction) const;
+	FTransform GetStageExitSpawnTransform() const;
 	virtual void Destroyed() override;
 
 	UFUNCTION(BlueprintCallable, Category="Room")
@@ -69,6 +70,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Room|Monster")
 	TObjectPtr<URoomMonsterSpawnerComponent> MonsterSpawnerComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Room|Stage Exit")
+	TObjectPtr<USceneComponent> StageExitSpawnPoint;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Door")
 	TSubclassOf<ADoorActor> DoorActorClass;

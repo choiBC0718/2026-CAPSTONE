@@ -8,6 +8,7 @@
 
 class AStageManager;
 class UBoxComponent;
+class UChildActorComponent;
 class UPrimitiveComponent;
 class USceneComponent;
 class UStaticMeshComponent;
@@ -35,6 +36,18 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Stage Exit", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UStaticMeshComponent> PortalMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Stage Exit|Visual", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UChildActorComponent> PortalVisual;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage Exit|Visual", meta=(AllowPrivateAccess="true"))
+	TSubclassOf<AActor> PortalVisualClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage Exit|Visual", meta=(AllowPrivateAccess="true"))
+	bool bUseDefaultPortalMesh = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage Exit|Trigger", meta=(AllowPrivateAccess="true", ClampMin="0.0"))
+	FVector TriggerExtent = FVector(120.f, 120.f, 120.f);
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage Exit", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<AStageManager> StageManager;

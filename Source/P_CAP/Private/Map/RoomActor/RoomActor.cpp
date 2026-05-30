@@ -29,6 +29,10 @@ ARoomActor::ARoomActor()
 	FloorMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FloorMesh"));
 	FloorMesh->SetupAttachment(Root);
 
+	StageExitSpawnPoint = CreateDefaultSubobject<USceneComponent>(TEXT("StageExitSpawnPoint"));
+	StageExitSpawnPoint->SetupAttachment(Root);
+	StageExitSpawnPoint->SetRelativeLocation(FVector(0.f, 0.f, 120.f));
+
 	RoomEnterTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("RoomEnterTrigger"));
 	RoomEnterTrigger->SetupAttachment(Root);
 	RoomEnterTrigger->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
@@ -446,6 +450,11 @@ FVector ARoomActor::GetEntrancePoint(EDoorDirection Direction) const
 	}
 
 	return GetActorTransform().TransformPosition(LocalLocation);
+}
+
+FTransform ARoomActor::GetStageExitSpawnTransform() const
+{
+	return StageExitSpawnPoint ? StageExitSpawnPoint->GetComponentTransform() : GetActorTransform();
 }
 
 void ARoomActor::Destroyed()
