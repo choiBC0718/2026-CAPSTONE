@@ -37,8 +37,7 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 	const FRoomInteriorLayout& InteriorLayout,
 	int32 MapSeed,
 	const FTransform& RoomTransform,
-	const FPlayerTendencyModifier& Tendency,
-	ERoomZone Zone)
+	const FPlayerTendencyModifier& Tendency)
 {
 	ClearSpawnedMonsters();
 
@@ -60,32 +59,15 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 	}
 
 	// CombatAggression에 따라 ScoreRange 스케일 (0.5x ~ 1.5x)
-	// 공격적 플레이어 → 몬스터 더 많이, 회피형 → 적게
 	const float AggressionScale = FMath::Lerp(0.5f, 1.5f, Tendency.CombatAggression);
 
-	// 구역 가중치: ExplorationRate 낮은 플레이어는 Core에 몬스터 집중, 높은 플레이어는 Outer에 집중
-	float ZoneMultiplier = 1.0f;
-	switch (Zone)
-	{
-	case ERoomZone::Core:
-		ZoneMultiplier = FMath::Lerp(1.5f, 0.5f, Tendency.ExplorationRate);
-		break;
-	case ERoomZone::Outer:
-		ZoneMultiplier = FMath::Lerp(0.5f, 1.5f, Tendency.ExplorationRate);
-		break;
-	default:
-		break;
-	}
-	const float FinalScale = AggressionScale * ZoneMultiplier;
-
 	FRoomMonsterSpawnRule AdjustedRule = *SpawnRule;
-	AdjustedRule.ScoreRange.X = FMath::Max(1, FMath::RoundToInt(SpawnRule->ScoreRange.X * FinalScale));
-	AdjustedRule.ScoreRange.Y = FMath::Max(1, FMath::RoundToInt(SpawnRule->ScoreRange.Y * FinalScale));
+	AdjustedRule.ScoreRange.X = FMath::Max(1, FMath::RoundToInt(SpawnRule->ScoreRange.X * AggressionScale));
+	AdjustedRule.ScoreRange.Y = FMath::Max(1, FMath::RoundToInt(SpawnRule->ScoreRange.Y * AggressionScale));
 
-	UE_LOG(LogTemp, Log, TEXT("[Zone] Room(%d,%d) Zone=%s | Combat=%.2f Aggr=%.2f × ZoneMult=%.2f = FinalScale=%.2f | Score %d~%d → %d~%d"),
+	UE_LOG(LogTemp, Log, TEXT("[Spawn] Room(%d,%d) | Combat=%.2f AggrScale=%.2f | Score %d~%d → %d~%d"),
 		RoomData.GridPos.X, RoomData.GridPos.Y,
-		Zone == ERoomZone::Core ? TEXT("Core") : Zone == ERoomZone::Mid ? TEXT("Mid") : TEXT("Outer"),
-		Tendency.CombatAggression, AggressionScale, ZoneMultiplier, FinalScale,
+		Tendency.CombatAggression, AggressionScale,
 		SpawnRule->ScoreRange.X, SpawnRule->ScoreRange.Y,
 		AdjustedRule.ScoreRange.X, AdjustedRule.ScoreRange.Y);
 
@@ -102,13 +84,8 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 		return;
 	}
 
-	// ExplorationRate에 따라 배치 편향 조정
-	// 직진형(0.0) → 편향 약하게(0.2) → NormalizedDistance 지배 → 중앙 고정
-	// 탐험형(1.0) → 편향 강하게(1.0) → 랜덤 노이즈 커져 외곽까지 분산
-	const float SavedBias = CenterSpawnBias;
-	CenterSpawnBias = CenterSpawnBias * FMath::Lerp(0.2f, 1.0f, Tendency.ExplorationRate);
-	SortCellsByCenterBias(SpawnableCells, InteriorLayout, RandomStream);
-	CenterSpawnBias = SavedBias;
+	// ExplorationRate=0 → 중앙 셀 우선, ExplorationRate=1 → 외곽 셀 우선
+	SortCellsByCenterBias(SpawnableCells, InteriorLayout, RandomStream, Tendency.ExplorationRate);
 
 	TArray<TMap<TSubclassOf<ACharacter>, int32>> CellMonsterCounts;
 	CellMonsterCounts.SetNum(SpawnableCells.Num());
@@ -426,7 +403,8 @@ bool URoomMonsterSpawnerComponent::IsNearRoomEdge(
 void URoomMonsterSpawnerComponent::SortCellsByCenterBias(
 	TArray<FIntPoint>& SpawnableCells,
 	const FRoomInteriorLayout& InteriorLayout,
-	FRandomStream& RandomStream) const
+	FRandomStream& RandomStream,
+	float ExplorationRate) const
 {
 	if (SpawnableCells.Num() <= 1)
 	{
@@ -438,7 +416,7 @@ void URoomMonsterSpawnerComponent::SortCellsByCenterBias(
 		(InteriorLayout.GridHeight - 1) * 0.5f);
 	const float MaxDistance = FVector2D(GridCenter).Size();
 	const float SafeMaxDistance = FMath::Max(KINDA_SMALL_NUMBER, MaxDistance);
-	const float BiasStrength = FMath::Max(0.f, CenterSpawnBias);
+	const float Jitter = 0.1f;
 
 	TMap<FIntPoint, float> CellScores;
 	CellScores.Reserve(SpawnableCells.Num());
@@ -446,7 +424,9 @@ void URoomMonsterSpawnerComponent::SortCellsByCenterBias(
 	{
 		const FVector2D CellPoint(CellCoord.X, CellCoord.Y);
 		const float NormalizedDistance = (CellPoint - GridCenter).Size() / SafeMaxDistance;
-		CellScores.Add(CellCoord, NormalizedDistance - RandomStream.FRandRange(0.f, BiasStrength));
+		// ExplorationRate=0 → 중앙(낮은 거리) 우선, ExplorationRate=1 → 외곽(높은 거리) 우선
+		const float DirectionScore = FMath::Lerp(NormalizedDistance, 1.f - NormalizedDistance, ExplorationRate);
+		CellScores.Add(CellCoord, DirectionScore + RandomStream.FRandRange(-Jitter, Jitter));
 	}
 
 	SpawnableCells.Sort(
