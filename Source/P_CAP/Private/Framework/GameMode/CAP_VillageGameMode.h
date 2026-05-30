@@ -13,5 +13,7 @@ UCLASS()
 class ACAP_VillageGameMode : public ACAP_GameMode
 {
 	GENERATED_BODY()
-	
+
+public:
+	virtual void BeginPlay() override;
 };
