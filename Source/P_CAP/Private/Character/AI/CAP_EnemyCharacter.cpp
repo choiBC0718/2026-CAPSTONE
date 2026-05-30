@@ -13,6 +13,7 @@
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "Kismet/GameplayStatics.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "NiagaraSystem.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Widget/Common/CAP_OverheadStatsGauge.h"
@@ -34,6 +35,9 @@ int32 RollRewardAmount(const FIntPoint& AmountRange)
 
 ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 {
+	PrimaryActorTick.bCanEverTick = true;
+	SetActorTickEnabled(false);
+
 	bCanRespawn = false;
 
 	HealthBarWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("Health Bar Widget Component"));
@@ -64,6 +68,36 @@ void ACAP_EnemyCharacter::BeginPlay()
 	InitializeHealthBarWidget();
 }
 
+void ACAP_EnemyCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if (!bPlayingSpawnDissolve)
+	{
+		SetActorTickEnabled(false);
+		return;
+	}
+
+	SpawnDissolveElapsedTime += DeltaSeconds;
+	const float Alpha = SpawnDissolveDuration > 0.f
+		? FMath::Clamp(SpawnDissolveElapsedTime / SpawnDissolveDuration, 0.f, 1.f)
+		: 1.f;
+	const float DissolveValue = FMath::Lerp(SpawnDissolveStartValue, SpawnDissolveEndValue, Alpha);
+
+	for (UMaterialInstanceDynamic* DynamicMaterial : SpawnDissolveDynamicMaterials)
+	{
+		if (DynamicMaterial)
+		{
+			DynamicMaterial->SetScalarParameterValue(SpawnDissolveParameterName, DissolveValue);
+		}
+	}
+
+	if (Alpha >= 1.f)
+	{
+		FinishSpawnDissolve();
+	}
+}
+
 void ACAP_EnemyCharacter::SetEnemyAIEnabled(bool bEnabled, AActor* TargetActor)
 {
 	bEnemyAIEnabled = bEnabled;
@@ -91,11 +125,26 @@ void ACAP_EnemyCharacter::PossessedBy(AController* NewController)
 
 void ACAP_EnemyCharacter::OnRoomActivated_Implementation(AActor* TargetActor)
 {
+	if (SpawnDissolveMaterial && SpawnDissolveDuration > 0.f)
+	{
+		StartSpawnDissolve(TargetActor);
+		return;
+	}
+
 	SetEnemyAIEnabled(true, TargetActor);
 }
 
 void ACAP_EnemyCharacter::OnRoomDeactivated_Implementation()
 {
+	if (bPlayingSpawnDissolve)
+	{
+		bPlayingSpawnDissolve = false;
+		RestoreOriginalMeshMaterials();
+		SpawnDissolveDynamicMaterials.Empty();
+		PendingSpawnDissolveTargetActor = nullptr;
+		SetActorTickEnabled(false);
+	}
+
 	SetEnemyAIEnabled(false);
 }
 
@@ -266,6 +315,85 @@ void ACAP_EnemyCharacter::GiveDeathCurrencyReward()
 			}
 		}
 	}
+}
+
+void ACAP_EnemyCharacter::StartSpawnDissolve(AActor* TargetActor)
+{
+	USkeletalMeshComponent* MeshComponent = GetMesh();
+	if (!MeshComponent || !SpawnDissolveMaterial)
+	{
+		SetEnemyAIEnabled(true, TargetActor);
+		return;
+	}
+
+	SetEnemyAIEnabled(false);
+	PendingSpawnDissolveTargetActor = TargetActor;
+	OriginalMeshMaterials.Empty();
+	SpawnDissolveDynamicMaterials.Empty();
+
+	const int32 MaterialCount = MeshComponent->GetNumMaterials();
+	OriginalMeshMaterials.Reserve(MaterialCount);
+	SpawnDissolveDynamicMaterials.Reserve(MaterialCount);
+
+	for (int32 MaterialIndex = 0; MaterialIndex < MaterialCount; ++MaterialIndex)
+	{
+		OriginalMeshMaterials.Add(MeshComponent->GetMaterial(MaterialIndex));
+
+		UMaterialInstanceDynamic* DynamicMaterial = MeshComponent->CreateDynamicMaterialInstance(
+			MaterialIndex,
+			SpawnDissolveMaterial);
+		if (DynamicMaterial)
+		{
+			DynamicMaterial->SetScalarParameterValue(SpawnDissolveParameterName, SpawnDissolveStartValue);
+		}
+		SpawnDissolveDynamicMaterials.Add(DynamicMaterial);
+	}
+
+	bPlayingSpawnDissolve = true;
+	SpawnDissolveElapsedTime = 0.f;
+	SetActorTickEnabled(true);
+}
+
+void ACAP_EnemyCharacter::FinishSpawnDissolve()
+{
+	bPlayingSpawnDissolve = false;
+
+	for (UMaterialInstanceDynamic* DynamicMaterial : SpawnDissolveDynamicMaterials)
+	{
+		if (DynamicMaterial)
+		{
+			DynamicMaterial->SetScalarParameterValue(SpawnDissolveParameterName, SpawnDissolveEndValue);
+		}
+	}
+
+	if (bRestoreOriginalMaterialsAfterSpawnDissolve)
+	{
+		RestoreOriginalMeshMaterials();
+	}
+
+	SpawnDissolveDynamicMaterials.Empty();
+	SetEnemyAIEnabled(true, PendingSpawnDissolveTargetActor);
+	PendingSpawnDissolveTargetActor = nullptr;
+	SetActorTickEnabled(false);
+}
+
+void ACAP_EnemyCharacter::RestoreOriginalMeshMaterials()
+{
+	USkeletalMeshComponent* MeshComponent = GetMesh();
+	if (!MeshComponent)
+	{
+		return;
+	}
+
+	for (int32 MaterialIndex = 0; MaterialIndex < OriginalMeshMaterials.Num(); ++MaterialIndex)
+	{
+		if (OriginalMeshMaterials[MaterialIndex])
+		{
+			MeshComponent->SetMaterial(MaterialIndex, OriginalMeshMaterials[MaterialIndex]);
+		}
+	}
+
+	OriginalMeshMaterials.Empty();
 }
 
 void ACAP_EnemyCharacter::InitializeHealthBarWidget()

@@ -18,6 +18,7 @@ class ACAP_EnemyCharacter : public ACAP_Character
 public:
 	ACAP_EnemyCharacter();
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 
 	UFUNCTION(BlueprintCallable, Category="Enemy|AI")
 	void SetEnemyAIEnabled(bool bEnabled, AActor* TargetActor = nullptr);
@@ -71,6 +72,24 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Reward|Currency")
 	ECAPMonsterRewardGroup RewardGroup = ECAPMonsterRewardGroup::Normal;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Spawn Dissolve")
+	TObjectPtr<class UMaterialInterface> SpawnDissolveMaterial;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Spawn Dissolve")
+	FName SpawnDissolveParameterName = TEXT("DissolveAmount");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Spawn Dissolve", meta=(ClampMin="0.0"))
+	float SpawnDissolveDuration = 0.6f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Spawn Dissolve")
+	float SpawnDissolveStartValue = 1.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Spawn Dissolve")
+	float SpawnDissolveEndValue = 0.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Spawn Dissolve")
+	bool bRestoreOriginalMaterialsAfterSpawnDissolve = true;
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Enemy|AI")
 	bool bEnemyAIEnabled = false;
 
@@ -78,9 +97,24 @@ private:
 	void InitializeHealthBarWidget();
 	void SpawnCoinRewardVFX();
 	void GiveDeathCurrencyReward();
+	void StartSpawnDissolve(AActor* TargetActor);
+	void FinishSpawnDissolve();
+	void RestoreOriginalMeshMaterials();
 
 	UPROPERTY()
 	TObjectPtr<AActor> CurrentTargetActor;
 
 	bool bDeathCurrencyRewardGranted = false;
+
+	UPROPERTY()
+	TObjectPtr<AActor> PendingSpawnDissolveTargetActor;
+
+	UPROPERTY()
+	TArray<TObjectPtr<class UMaterialInterface>> OriginalMeshMaterials;
+
+	UPROPERTY()
+	TArray<TObjectPtr<class UMaterialInstanceDynamic>> SpawnDissolveDynamicMaterials;
+
+	bool bPlayingSpawnDissolve = false;
+	float SpawnDissolveElapsedTime = 0.f;
 };
