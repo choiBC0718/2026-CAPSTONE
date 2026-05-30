@@ -33,6 +33,7 @@ void UCAP_WeaponInstance::Initialize(UCAP_ItemDataBase* InWeaponDA)
 		if (FWeaponSkillData* SkillRow = AvailableHandles[RandomIdx].GetRow<FWeaponSkillData>(""))
 		{	// 캐싱
 			GrantedActiveSkills.Add(*SkillRow);
+			ActiveSkillRowNames.Add(AvailableHandles[RandomIdx].RowName);
 		}
 		// 중복 스킬 부여하지 않도록
 		AvailableHandles.RemoveAt(RandomIdx);
@@ -95,7 +96,10 @@ void UCAP_WeaponInstance::UnloadWeaponAssets()
 void UCAP_WeaponInstance::SwapSkillOrder()
 {
 	if (GrantedActiveSkills.Num() >= 2)
+	{
 		GrantedActiveSkills.Swap(0,1);
+		ActiveSkillRowNames.Swap(0,1);
+	}
 }
 
 FBuffDisplayData UCAP_WeaponInstance::GetBuffDisplayData(const FGameplayTag& EffectTag) const
@@ -139,9 +143,8 @@ FWeaponSaveData UCAP_WeaponInstance::CreateSaveData() const
 	FWeaponSaveData SaveData;
 	SaveData.WeaponDA = GetWeaponDA();
 	SaveData.CurrentGrade = GetCurrentGrade();
-
-	for (const FWeaponSkillData& Skill : GrantedActiveSkills)
-		SaveData.GrantedSkillRowNames.Add(Skill.SkillName);
+	SaveData.GrantedSkillRowNames = ActiveSkillRowNames;
+	
 	return SaveData;
 }
 
@@ -149,15 +152,17 @@ void UCAP_WeaponInstance::RestoreFromSaveData(const FWeaponSaveData& InData)
 {
 	CurrentGrade = InData.CurrentGrade;
 	GrantedActiveSkills.Empty();
+	ActiveSkillRowNames.Empty();
 	
 	if (UCAP_WeaponDataAsset* DA = GetWeaponDA())
 	{
 		for (const FName& SavedSkillName : InData.GrantedSkillRowNames)
 			for (const FDataTableRowHandle& Handle : DA->ActiveAbilityArray)
-				if (FWeaponSkillData* SkillRow = Handle.GetRow<FWeaponSkillData>(""))
-					if (SkillRow->SkillName == SavedSkillName)
+				if (Handle.RowName == SavedSkillName)
+					if (FWeaponSkillData* SkillRow = Handle.GetRow<FWeaponSkillData>(""))
 					{
 						GrantedActiveSkills.Add(*SkillRow);
+						ActiveSkillRowNames.Add(SavedSkillName);
 						break;
 					}
 	}
@@ -185,15 +190,9 @@ bool UCAP_WeaponInstance::TryAppendRandomNewSkill()
 	TArray<FDataTableRowHandle> AvailableHandles = GetWeaponDA()->ActiveAbilityArray;
 	for (int32 i= AvailableHandles.Num()-1; i >= 0; --i)
 	{
-		if (FWeaponSkillData* SkillRow = AvailableHandles[i].GetRow<FWeaponSkillData>(""))
+		if (ActiveSkillRowNames.Contains(AvailableHandles[i].RowName))
 		{
-			const bool bAlreadyHas = GrantedActiveSkills.ContainsByPredicate([SkillRow](const FWeaponSkillData& HasSkill)
-			{
-				return HasSkill.SkillName == SkillRow->SkillName;
-			});
-
-			if (bAlreadyHas)
-				AvailableHandles.RemoveAt(i);
+			AvailableHandles.RemoveAt(i);
 		}
 	}
 	if (AvailableHandles.Num() <= 0)
@@ -203,6 +202,7 @@ bool UCAP_WeaponInstance::TryAppendRandomNewSkill()
 	if (FWeaponSkillData* NewSkill = AvailableHandles[RandIdx].GetRow<FWeaponSkillData>(""))
 	{
 		GrantedActiveSkills.Add(*NewSkill);
+		ActiveSkillRowNames.Add(AvailableHandles[RandIdx].RowName);
 		return true;
 	}
 	return false;

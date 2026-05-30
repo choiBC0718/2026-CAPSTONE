@@ -62,14 +62,22 @@ bool UCAP_InventoryComponent::AddItem(class UCAP_ItemInstance* NewItem)
 			break;
 		}
 	}
-	if (TargetIndex == INDEX_NONE && InventoryItems.Num() >= Capacity)
-	{
-		OnInventoryFull.Broadcast(NewItem);
-		return false;
-	}
-	
 	if (TargetIndex != INDEX_NONE)
+	{
 		InventoryItems[TargetIndex] = NewItem;
+	}
+	else
+	{
+		if (InventoryItems.Num() < Capacity)
+		{
+			InventoryItems.Add(NewItem);
+		}
+		else
+		{
+			OnInventoryFull.Broadcast(NewItem);
+			return false;
+		}
+	}
 	
 	OnItemEquipped(NewItem);
 	return true;

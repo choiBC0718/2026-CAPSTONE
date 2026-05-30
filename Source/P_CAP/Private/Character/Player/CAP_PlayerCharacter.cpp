@@ -152,11 +152,6 @@ void ACAP_PlayerCharacter::SetCameraMode(bool bIsTPS)
 		SpringArm->bInheritYaw=true;
 		SpringArm->bInheritPitch=true;
 		SpringArm->TargetArmLength=300.f;
-		
-		if (APlayerController* PC = Cast<APlayerController>(GetController()))
-		{
-			PC->SetControlRotation(GetActorRotation());
-		}
 	}
 	else
 	{
