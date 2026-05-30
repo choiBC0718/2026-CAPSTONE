@@ -120,6 +120,7 @@ void ARoomActor::InitializeRoom(
 	CachedRoomSizeSettings = InRoomSizeSettings;
 	bRoomActivated = false;
 	bRoomCleared = false;
+	bMonstersSpawned = false;
 	ApplyFloorMeshScale();
 	UpdateRoomEnterTriggerExtent();
 
@@ -168,6 +169,7 @@ void ARoomActor::ActivateRoom(AActor* TargetActor)
 	}
 
 	bRoomActivated = true;
+	SpawnRoomMonsters();
 	if (MonsterSpawnerComponent)
 	{
 		MonsterSpawnerComponent->ActivateSpawnedMonsters(TargetActor);
@@ -199,6 +201,23 @@ void ARoomActor::DeactivateRoom()
 	}
 
 	SetSpawnedDoorsPortalEnabled(true);
+}
+
+void ARoomActor::SpawnRoomMonsters()
+{
+	if (bMonstersSpawned || !MonsterSpawnerComponent)
+	{
+		return;
+	}
+
+	bMonstersSpawned = true;
+	MonsterSpawnerComponent->SpawnMonsters(
+		CachedRoomData,
+		CachedInteriorLayout,
+		CachedMapSeed,
+		GetActorTransform(),
+		CachedTendency,
+		CachedZone);
 }
 
 void ARoomActor::OnRoomEnterTriggerBeginOverlap(
@@ -571,10 +590,6 @@ void ARoomActor::GenerateAndSpawnInterior()
 	/* 생성된 경로 데이터로 실제 path actor를 생성 */
 	SpawnGuaranteedPaths(Layout);
 	SpawnLargeStructureMeshes(Layout);
-	if (MonsterSpawnerComponent)
-	{
-		MonsterSpawnerComponent->SpawnMonsters(CachedRoomData, CachedInteriorLayout, CachedMapSeed, GetActorTransform(), CachedTendency, CachedZone);
-	}
 	SpawnObstaclesByTendency(CachedTendency);
 	DrawInteriorCellDebug(Layout);
 	DrawZoneDebug();

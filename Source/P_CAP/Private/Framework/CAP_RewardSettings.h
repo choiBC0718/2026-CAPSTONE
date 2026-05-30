@@ -8,6 +8,8 @@
 #include "Map/RoomTypes.h"
 #include "CAP_RewardSettings.generated.h"
 
+class UCAP_MonsterRewardDataAsset;
+
 USTRUCT(BlueprintType)
 struct FRoomRewardChance
 {
@@ -35,6 +37,9 @@ public:
 	// 아이템, 무기 분해 시 획득할 재화 테이블
 	UPROPERTY(EditAnywhere, Config, Category="Reward")
 	TSoftObjectPtr<UDataTable> DisassembleRewardDT;
+
+	UPROPERTY(EditAnywhere, Config, Category="Reward")
+	TSoftObjectPtr<UCAP_MonsterRewardDataAsset> MonsterRewardDataAsset;
 
 	static FName GetRowNameFromGrade(EItemGrade Grade);
 

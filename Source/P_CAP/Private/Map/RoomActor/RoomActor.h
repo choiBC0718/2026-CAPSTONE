@@ -167,6 +167,8 @@ private:
 	bool bRoomActivated = false;
 	UPROPERTY()
 	bool bRoomCleared = false;
+	UPROPERTY()
+	bool bMonstersSpawned = false;
 
 	UFUNCTION()
 	void OnRoomEnterTriggerBeginOverlap(
@@ -190,6 +192,7 @@ private:
 	bool ShouldLockPortalsForCombat() const;
 	void HandleCombatRoomCleared();
 	void SetSpawnedDoorsPortalEnabled(bool bEnabled);
+	void SpawnRoomMonsters();
 
 	void ClearSpawnedDoors();
 	/* 이 방이 소유하는 경로 액터들을 정리 */
