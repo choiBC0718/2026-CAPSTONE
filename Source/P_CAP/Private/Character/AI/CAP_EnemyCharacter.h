@@ -91,33 +91,17 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Enemy|AI")
 	bool bEnemyAIEnabled = false;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Attack", meta=(ClampMin="0.0"))
-	float AttackRange = 180.f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Attack", meta=(ClampMin="0.0"))
-	float AttackDamage = 10.f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Attack", meta=(ClampMin="0.01"))
-	float AttackCooldown = 1.5f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Attack")
-	TObjectPtr<UAnimMontage> AttackMontage;
-
 private:
 	void InitializeHealthBarWidget();
 	void SpawnCoinRewardVFX();
 	void GiveDeathCurrencyReward();
 	void StartDeathDissolve();
 	void FinishDeathDissolve();
-	void UpdateAttack(float DeltaSeconds);
-	bool CanAttackTarget() const;
-	void PerformAttack();
 
 	UPROPERTY()
 	TObjectPtr<AActor> CurrentTargetActor;
 
 	bool bDeathCurrencyRewardGranted = false;
-	float AttackCooldownRemaining = 0.f;
 
 	UPROPERTY()
 	TArray<TObjectPtr<class UMaterialInstanceDynamic>> DeathDissolveDynamicMaterials;
