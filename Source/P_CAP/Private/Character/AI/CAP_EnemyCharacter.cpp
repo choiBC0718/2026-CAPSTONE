@@ -72,29 +72,29 @@ void ACAP_EnemyCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	if (!bPlayingSpawnDissolve)
+	if (!bPlayingDeathDissolve)
 	{
 		SetActorTickEnabled(false);
 		return;
 	}
 
-	SpawnDissolveElapsedTime += DeltaSeconds;
-	const float Alpha = SpawnDissolveDuration > 0.f
-		? FMath::Clamp(SpawnDissolveElapsedTime / SpawnDissolveDuration, 0.f, 1.f)
+	DeathDissolveElapsedTime += DeltaSeconds;
+	const float Alpha = DeathDissolveDuration > 0.f
+		? FMath::Clamp(DeathDissolveElapsedTime / DeathDissolveDuration, 0.f, 1.f)
 		: 1.f;
-	const float DissolveValue = FMath::Lerp(SpawnDissolveStartValue, SpawnDissolveEndValue, Alpha);
+	const float DissolveValue = FMath::Lerp(DeathDissolveStartValue, DeathDissolveEndValue, Alpha);
 
-	for (UMaterialInstanceDynamic* DynamicMaterial : SpawnDissolveDynamicMaterials)
+	for (UMaterialInstanceDynamic* DynamicMaterial : DeathDissolveDynamicMaterials)
 	{
 		if (DynamicMaterial)
 		{
-			DynamicMaterial->SetScalarParameterValue(SpawnDissolveParameterName, DissolveValue);
+			DynamicMaterial->SetScalarParameterValue(DeathDissolveParameterName, DissolveValue);
 		}
 	}
 
 	if (Alpha >= 1.f)
 	{
-		FinishSpawnDissolve();
+		FinishDeathDissolve();
 	}
 }
 
@@ -125,26 +125,11 @@ void ACAP_EnemyCharacter::PossessedBy(AController* NewController)
 
 void ACAP_EnemyCharacter::OnRoomActivated_Implementation(AActor* TargetActor)
 {
-	if (SpawnDissolveMaterial && SpawnDissolveDuration > 0.f)
-	{
-		StartSpawnDissolve(TargetActor);
-		return;
-	}
-
 	SetEnemyAIEnabled(true, TargetActor);
 }
 
 void ACAP_EnemyCharacter::OnRoomDeactivated_Implementation()
 {
-	if (bPlayingSpawnDissolve)
-	{
-		bPlayingSpawnDissolve = false;
-		RestoreOriginalMeshMaterials();
-		SpawnDissolveDynamicMaterials.Empty();
-		PendingSpawnDissolveTargetActor = nullptr;
-		SetActorTickEnabled(false);
-	}
-
 	SetEnemyAIEnabled(false);
 }
 
@@ -189,6 +174,11 @@ void ACAP_EnemyCharacter::OnDead()
 		Tracker->AddMonsterKill();
 		break;
 	}
+}
+
+void ACAP_EnemyCharacter::OnDeathMontageFinished()
+{
+	StartDeathDissolve();
 }
 
 void ACAP_EnemyCharacter::SpawnCoinRewardVFX()
@@ -317,83 +307,51 @@ void ACAP_EnemyCharacter::GiveDeathCurrencyReward()
 	}
 }
 
-void ACAP_EnemyCharacter::StartSpawnDissolve(AActor* TargetActor)
+void ACAP_EnemyCharacter::StartDeathDissolve()
 {
 	USkeletalMeshComponent* MeshComponent = GetMesh();
-	if (!MeshComponent || !SpawnDissolveMaterial)
+	if (!MeshComponent || !DeathDissolveMaterial || DeathDissolveDuration <= 0.f)
 	{
-		SetEnemyAIEnabled(true, TargetActor);
 		return;
 	}
 
-	SetEnemyAIEnabled(false);
-	PendingSpawnDissolveTargetActor = TargetActor;
-	OriginalMeshMaterials.Empty();
-	SpawnDissolveDynamicMaterials.Empty();
+	DeathDissolveDynamicMaterials.Empty();
 
 	const int32 MaterialCount = MeshComponent->GetNumMaterials();
-	OriginalMeshMaterials.Reserve(MaterialCount);
-	SpawnDissolveDynamicMaterials.Reserve(MaterialCount);
+	DeathDissolveDynamicMaterials.Reserve(MaterialCount);
 
 	for (int32 MaterialIndex = 0; MaterialIndex < MaterialCount; ++MaterialIndex)
 	{
-		OriginalMeshMaterials.Add(MeshComponent->GetMaterial(MaterialIndex));
-
 		UMaterialInstanceDynamic* DynamicMaterial = MeshComponent->CreateDynamicMaterialInstance(
 			MaterialIndex,
-			SpawnDissolveMaterial);
+			DeathDissolveMaterial);
 		if (DynamicMaterial)
 		{
-			DynamicMaterial->SetScalarParameterValue(SpawnDissolveParameterName, SpawnDissolveStartValue);
+			DynamicMaterial->SetScalarParameterValue(DeathDissolveParameterName, DeathDissolveStartValue);
 		}
-		SpawnDissolveDynamicMaterials.Add(DynamicMaterial);
+		DeathDissolveDynamicMaterials.Add(DynamicMaterial);
 	}
 
-	bPlayingSpawnDissolve = true;
-	SpawnDissolveElapsedTime = 0.f;
+	bPlayingDeathDissolve = true;
+	DeathDissolveElapsedTime = 0.f;
 	SetActorTickEnabled(true);
 }
 
-void ACAP_EnemyCharacter::FinishSpawnDissolve()
+void ACAP_EnemyCharacter::FinishDeathDissolve()
 {
-	bPlayingSpawnDissolve = false;
+	bPlayingDeathDissolve = false;
 
-	for (UMaterialInstanceDynamic* DynamicMaterial : SpawnDissolveDynamicMaterials)
+	for (UMaterialInstanceDynamic* DynamicMaterial : DeathDissolveDynamicMaterials)
 	{
 		if (DynamicMaterial)
 		{
-			DynamicMaterial->SetScalarParameterValue(SpawnDissolveParameterName, SpawnDissolveEndValue);
+			DynamicMaterial->SetScalarParameterValue(DeathDissolveParameterName, DeathDissolveEndValue);
 		}
 	}
 
-	if (bRestoreOriginalMaterialsAfterSpawnDissolve)
-	{
-		RestoreOriginalMeshMaterials();
-	}
-
-	SpawnDissolveDynamicMaterials.Empty();
-	SetEnemyAIEnabled(true, PendingSpawnDissolveTargetActor);
-	PendingSpawnDissolveTargetActor = nullptr;
+	DeathDissolveDynamicMaterials.Empty();
 	SetActorTickEnabled(false);
-}
-
-void ACAP_EnemyCharacter::RestoreOriginalMeshMaterials()
-{
-	USkeletalMeshComponent* MeshComponent = GetMesh();
-	if (!MeshComponent)
-	{
-		return;
-	}
-
-	for (int32 MaterialIndex = 0; MaterialIndex < OriginalMeshMaterials.Num(); ++MaterialIndex)
-	{
-		if (OriginalMeshMaterials[MaterialIndex])
-		{
-			MeshComponent->SetMaterial(MaterialIndex, OriginalMeshMaterials[MaterialIndex]);
-		}
-	}
-
-	OriginalMeshMaterials.Empty();
+	Destroy();
 }
 
 void ACAP_EnemyCharacter::InitializeHealthBarWidget()

@@ -38,6 +38,7 @@ public:
 protected:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnDead() override;
+	virtual void OnDeathMontageFinished() override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Enemy|UI")
 	TObjectPtr<class UWidgetComponent> HealthBarWidgetComponent;
@@ -72,23 +73,20 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Reward|Currency")
 	ECAPMonsterRewardGroup RewardGroup = ECAPMonsterRewardGroup::Normal;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Spawn Dissolve")
-	TObjectPtr<class UMaterialInterface> SpawnDissolveMaterial;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Death Dissolve")
+	TObjectPtr<class UMaterialInterface> DeathDissolveMaterial;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Spawn Dissolve")
-	FName SpawnDissolveParameterName = TEXT("DissolveAmount");
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Death Dissolve")
+	FName DeathDissolveParameterName = TEXT("DissolveAmount");
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Spawn Dissolve", meta=(ClampMin="0.0"))
-	float SpawnDissolveDuration = 0.6f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Death Dissolve", meta=(ClampMin="0.0"))
+	float DeathDissolveDuration = 0.8f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Spawn Dissolve")
-	float SpawnDissolveStartValue = 1.f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Death Dissolve")
+	float DeathDissolveStartValue = 0.f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Spawn Dissolve")
-	float SpawnDissolveEndValue = 0.f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Spawn Dissolve")
-	bool bRestoreOriginalMaterialsAfterSpawnDissolve = true;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Death Dissolve")
+	float DeathDissolveEndValue = 1.f;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Enemy|AI")
 	bool bEnemyAIEnabled = false;
@@ -97,9 +95,8 @@ private:
 	void InitializeHealthBarWidget();
 	void SpawnCoinRewardVFX();
 	void GiveDeathCurrencyReward();
-	void StartSpawnDissolve(AActor* TargetActor);
-	void FinishSpawnDissolve();
-	void RestoreOriginalMeshMaterials();
+	void StartDeathDissolve();
+	void FinishDeathDissolve();
 
 	UPROPERTY()
 	TObjectPtr<AActor> CurrentTargetActor;
@@ -107,14 +104,8 @@ private:
 	bool bDeathCurrencyRewardGranted = false;
 
 	UPROPERTY()
-	TObjectPtr<AActor> PendingSpawnDissolveTargetActor;
+	TArray<TObjectPtr<class UMaterialInstanceDynamic>> DeathDissolveDynamicMaterials;
 
-	UPROPERTY()
-	TArray<TObjectPtr<class UMaterialInterface>> OriginalMeshMaterials;
-
-	UPROPERTY()
-	TArray<TObjectPtr<class UMaterialInstanceDynamic>> SpawnDissolveDynamicMaterials;
-
-	bool bPlayingSpawnDissolve = false;
-	float SpawnDissolveElapsedTime = 0.f;
+	bool bPlayingDeathDissolve = false;
+	float DeathDissolveElapsedTime = 0.f;
 };

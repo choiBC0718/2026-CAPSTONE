@@ -55,6 +55,7 @@ private:
 	virtual void OnDead() {};
 	void PlayDeathAnimation();
 	void DeathMontageFinished();
+	virtual void OnDeathMontageFinished() {};
 	void SetRagdollEnabled(bool bIsEnable);
 
 	UPROPERTY(EditDefaultsOnly, Category="Death")
