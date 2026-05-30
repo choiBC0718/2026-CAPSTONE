@@ -5,6 +5,7 @@
 #include "AI/PlayerBehaviorLearner.h"
 #include "AI/PlayerTrackerComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Framework/CAP_GameInstance.h"
 
 AStageGoalTrigger::AStageGoalTrigger()
 {
@@ -58,6 +59,12 @@ void AStageGoalTrigger::ProcessGoalForActor(AActor* OtherActor)
     // 중복 처리 방지 (물리 overlap + 봇 직접 호출 동시에 올 경우)
     GoalZone->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
+    // Assessment 모드: 에디터에서 지정한 몬스터 수로 TotalSpawnedMonsters 오버라이드
+    if (bIsAssessmentMode && TotalAssessmentMonsters > 0)
+    {
+        Tracker->TotalSpawnedMonsters = TotalAssessmentMonsters;
+    }
+
     UE_LOG(LogTemp, Warning, TEXT("5차원 정규화 데이터 정산을 시작합니다."));
 
     float TimeDilation = GetWorld()->GetWorldSettings()->TimeDilation;
@@ -108,51 +115,86 @@ void AStageGoalTrigger::ProcessGoalForActor(AActor* OtherActor)
         FinalData.KillRatio = NormalizedKill;
         FinalData.MeleeRatio = NormalizedMelee;
 
-        Learner->ProcessPlayerData(FinalData);
-
-        // 플레이어 성향 분석 결과 상세 로그
-        FPlayerTendencyModifier T = Learner->GetCurrentPlayerTendency();
-
-        auto TendencyLabel = [](float V, const TCHAR* Low, const TCHAR* Mid, const TCHAR* High) -> const TCHAR*
+        if (bIsAssessmentMode)
         {
-            return V >= 0.66f ? High : V >= 0.33f ? Mid : Low;
-        };
+            // K-Means 없이 단일 런으로 직접 성향 추출 → GameInstance 저장
+            FPlayerTendencyModifier T = APlayerBehaviorLearner::ExtractTendencyFromSingleRun(FinalData);
 
-        UE_LOG(LogTemp, Warning, TEXT("========== 플레이어 성향 분석 결과 =========="));
-        UE_LOG(LogTemp, Warning, TEXT("  [원시 데이터] 방문:%.2f | 시간:%.2f | 돌파:%.2f | 처치:%.2f | 근접:%.2f"),
-               FinalData.VisitedNodeCount, FinalData.PlayTime,
-               FinalData.PassRatio, FinalData.KillRatio, FinalData.MeleeRatio);
-        UE_LOG(LogTemp, Warning, TEXT("  탐험율    (ExplorationRate)  : %.2f  → %s"),
-               T.ExplorationRate,
-               TendencyLabel(T.ExplorationRate, TEXT("직진형 (목표만 향해 달림)"), TEXT("보통"), TEXT("탐험형 (구석구석 탐색)")));
-        UE_LOG(LogTemp, Warning, TEXT("  전투적극성 (CombatAggression): %.2f  → %s"),
-               T.CombatAggression,
-               TendencyLabel(T.CombatAggression, TEXT("회피형 (몬스터 피해다님)"), TEXT("보통"), TEXT("전투형 (적극 교전)")));
-        UE_LOG(LogTemp, Warning, TEXT("  근접선호   (MeleePreference) : %.2f  → %s"),
-               T.MeleePreference,
-               TendencyLabel(T.MeleePreference, TEXT("원거리 선호"), TEXT("균형"), TEXT("근접 선호")));
-        UE_LOG(LogTemp, Warning, TEXT("  장애물돌파 (ObstacleBypass)  : %.2f  → %s"),
-               T.ObstacleBypass,
-               TendencyLabel(T.ObstacleBypass, TEXT("우회형 (장애물 피해감)"), TEXT("보통"), TEXT("돌파형 (장애물 뚫고 지나감)")));
+            if (UCAP_GameInstance* GI = Cast<UCAP_GameInstance>(UGameplayStatics::GetGameInstance(this)))
+            {
+                GI->SetAssessmentTendency(T);
+            }
 
-        // 가장 높은 수치 2개를 기반으로 종합 성향 한 줄 요약
-        TArray<TPair<float, FString>> Items = {
-            { T.ExplorationRate,  T.ExplorationRate  >= 0.5f ? TEXT("탐험형") : TEXT("직진형") },
-            { T.CombatAggression, T.CombatAggression >= 0.5f ? TEXT("전투형") : TEXT("회피형") },
-            { T.MeleePreference,  T.MeleePreference  >= 0.5f ? TEXT("근접형") : TEXT("원거리형") },
-            { T.ObstacleBypass,   T.ObstacleBypass   >= 0.5f ? TEXT("돌파형") : TEXT("우회형") }
-        };
-        Items.Sort([](const TPair<float,FString>& A, const TPair<float,FString>& B){ return A.Key > B.Key; });
-        FString Summary = FString::Printf(TEXT("  [종합 성향] %s / %s  (탐험%.0f%% 전투%.0f%% 근접%.0f%% 돌파%.0f%%)"),
-               *Items[0].Value, *Items[1].Value,
-               T.ExplorationRate*100.f, T.CombatAggression*100.f,
-               T.MeleePreference*100.f, T.ObstacleBypass*100.f);
-        UE_LOG(LogTemp, Warning, TEXT("%s"), *Summary);
-        UE_LOG(LogTemp, Warning, TEXT("============================================="));
+            UE_LOG(LogTemp, Warning, TEXT("========== [Assessment] 성향 측정 완료 =========="));
+            UE_LOG(LogTemp, Warning, TEXT("  [원시 데이터] 방문:%.2f | 시간:%.2f | 돌파:%.2f | 처치:%.2f | 근접:%.2f"),
+                   FinalData.VisitedNodeCount, FinalData.PlayTime,
+                   FinalData.PassRatio, FinalData.KillRatio, FinalData.MeleeRatio);
+            UE_LOG(LogTemp, Warning, TEXT("  탐험율    : %.2f"), T.ExplorationRate);
+            UE_LOG(LogTemp, Warning, TEXT("  전투적극성: %.2f"), T.CombatAggression);
+            UE_LOG(LogTemp, Warning, TEXT("  근접선호  : %.2f"), T.MeleePreference);
+            UE_LOG(LogTemp, Warning, TEXT("  장애물돌파: %.2f"), T.ObstacleBypass);
+            UE_LOG(LogTemp, Warning, TEXT("================================================="));
 
-        if (GEngine)
+            if (GEngine)
+            {
+                FString Msg = FString::Printf(TEXT("[Assessment] 탐험%.0f%% 전투%.0f%% 근접%.0f%% 돌파%.0f%%"),
+                    T.ExplorationRate * 100.f, T.CombatAggression * 100.f,
+                    T.MeleePreference * 100.f, T.ObstacleBypass * 100.f);
+                GEngine->AddOnScreenDebugMessage(-1, 20.f, FColor::Yellow, Msg);
+            }
+
+            if (!TargetLevelName.IsNone())
+            {
+                UGameplayStatics::OpenLevel(this, TargetLevelName);
+            }
+        }
+        else
         {
-            GEngine->AddOnScreenDebugMessage(-1, 20.f, FColor::Green, Summary);
+            Learner->ProcessPlayerData(FinalData);
+
+            // 플레이어 성향 분석 결과 상세 로그
+            FPlayerTendencyModifier T = Learner->GetCurrentPlayerTendency();
+
+            auto TendencyLabel = [](float V, const TCHAR* Low, const TCHAR* Mid, const TCHAR* High) -> const TCHAR*
+            {
+                return V >= 0.66f ? High : V >= 0.33f ? Mid : Low;
+            };
+
+            UE_LOG(LogTemp, Warning, TEXT("========== 플레이어 성향 분석 결과 =========="));
+            UE_LOG(LogTemp, Warning, TEXT("  [원시 데이터] 방문:%.2f | 시간:%.2f | 돌파:%.2f | 처치:%.2f | 근접:%.2f"),
+                   FinalData.VisitedNodeCount, FinalData.PlayTime,
+                   FinalData.PassRatio, FinalData.KillRatio, FinalData.MeleeRatio);
+            UE_LOG(LogTemp, Warning, TEXT("  탐험율    (ExplorationRate)  : %.2f  → %s"),
+                   T.ExplorationRate,
+                   TendencyLabel(T.ExplorationRate, TEXT("직진형 (목표만 향해 달림)"), TEXT("보통"), TEXT("탐험형 (구석구석 탐색)")));
+            UE_LOG(LogTemp, Warning, TEXT("  전투적극성 (CombatAggression): %.2f  → %s"),
+                   T.CombatAggression,
+                   TendencyLabel(T.CombatAggression, TEXT("회피형 (몬스터 피해다님)"), TEXT("보통"), TEXT("전투형 (적극 교전)")));
+            UE_LOG(LogTemp, Warning, TEXT("  근접선호   (MeleePreference) : %.2f  → %s"),
+                   T.MeleePreference,
+                   TendencyLabel(T.MeleePreference, TEXT("원거리 선호"), TEXT("균형"), TEXT("근접 선호")));
+            UE_LOG(LogTemp, Warning, TEXT("  장애물돌파 (ObstacleBypass)  : %.2f  → %s"),
+                   T.ObstacleBypass,
+                   TendencyLabel(T.ObstacleBypass, TEXT("우회형 (장애물 피해감)"), TEXT("보통"), TEXT("돌파형 (장애물 뚫고 지나감)")));
+
+            TArray<TPair<float, FString>> Items = {
+                { T.ExplorationRate,  T.ExplorationRate  >= 0.5f ? TEXT("탐험형") : TEXT("직진형") },
+                { T.CombatAggression, T.CombatAggression >= 0.5f ? TEXT("전투형") : TEXT("회피형") },
+                { T.MeleePreference,  T.MeleePreference  >= 0.5f ? TEXT("근접형") : TEXT("원거리형") },
+                { T.ObstacleBypass,   T.ObstacleBypass   >= 0.5f ? TEXT("돌파형") : TEXT("우회형") }
+            };
+            Items.Sort([](const TPair<float,FString>& A, const TPair<float,FString>& B){ return A.Key > B.Key; });
+            FString Summary = FString::Printf(TEXT("  [종합 성향] %s / %s  (탐험%.0f%% 전투%.0f%% 근접%.0f%% 돌파%.0f%%)"),
+                   *Items[0].Value, *Items[1].Value,
+                   T.ExplorationRate*100.f, T.CombatAggression*100.f,
+                   T.MeleePreference*100.f, T.ObstacleBypass*100.f);
+            UE_LOG(LogTemp, Warning, TEXT("%s"), *Summary);
+            UE_LOG(LogTemp, Warning, TEXT("============================================="));
+
+            if (GEngine)
+            {
+                GEngine->AddOnScreenDebugMessage(-1, 20.f, FColor::Green, Summary);
+            }
         }
     }
     else

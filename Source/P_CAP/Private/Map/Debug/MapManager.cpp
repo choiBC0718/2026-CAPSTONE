@@ -16,6 +16,7 @@
 #include "Stage/StageExitActor.h"
 #include "Stage/StageDataAsset.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Framework/CAP_GameInstance.h"
 
 AMapManager::AMapManager()
 {
@@ -201,7 +202,7 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 		return;
 	}
 
-	// 성향 결정: 수동 오버라이드 or K-Means 결과
+	// 성향 결정: 수동 오버라이드 → Assessment → K-Means 순서로 우선순위 적용
 	FPlayerTendencyModifier Tendency;
 	if (bUseManualTendency)
 	{
@@ -211,16 +212,34 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 	}
 	else
 	{
-		APlayerBehaviorLearner* Learner = Cast<APlayerBehaviorLearner>(
-			UGameplayStatics::GetActorOfClass(World, APlayerBehaviorLearner::StaticClass()));
-		if (Learner)
+		bool bApplied = false;
+		if (UCAP_GameInstance* GI = Cast<UCAP_GameInstance>(UGameplayStatics::GetGameInstance(this)))
 		{
-			Tendency = Learner->GetCurrentPlayerTendency();
-			UE_LOG(LogTemp, Log, TEXT("MapManager: K-Means 성향 적용 — Combat=%.2f, Explore=%.2f, Obstacle=%.2f"),
-				Tendency.CombatAggression, Tendency.ExplorationRate, Tendency.ObstacleBypass);
+			if (GI->HasAssessmentTendency())
+			{
+				Tendency = GI->GetAssessmentTendency();
+				UE_LOG(LogTemp, Warning, TEXT("MapManager: Assessment 성향 적용 — Combat=%.2f, Explore=%.2f, Obstacle=%.2f"),
+					Tendency.CombatAggression, Tendency.ExplorationRate, Tendency.ObstacleBypass);
+				bApplied = true;
+			}
+		}
+		if (!bApplied)
+		{
+			APlayerBehaviorLearner* Learner = Cast<APlayerBehaviorLearner>(
+				UGameplayStatics::GetActorOfClass(World, APlayerBehaviorLearner::StaticClass()));
+			if (Learner)
+			{
+				Tendency = Learner->GetCurrentPlayerTendency();
+				UE_LOG(LogTemp, Log, TEXT("MapManager: K-Means 성향 적용 — Combat=%.2f, Explore=%.2f, Obstacle=%.2f"),
+					Tendency.CombatAggression, Tendency.ExplorationRate, Tendency.ObstacleBypass);
+			}
 		}
 	}
 	LastAppliedTendency = Tendency;
+	if (!bUseManualTendency)
+	{
+		ManualTendency = Tendency;
+	}
 
 	// 맵 전체 중심 계산
 	FVector2D Centroid(0.f, 0.f);

@@ -177,7 +177,7 @@ void ACAP_EnemyCharacter::OnDead()
 		UPlayerTrackerComponent* Tracker = It->FindComponentByClass<UPlayerTrackerComponent>();
 		if (!Tracker) continue;
 
-		if (!Cast<APlayerController>(It->GetController())) break;
+		if (!Cast<APlayerController>(It->GetController())) continue;
 
 		float Dist = FVector::Dist(GetActorLocation(), It->GetActorLocation());
 		if (Dist <= 300.f)
@@ -359,6 +359,7 @@ void ACAP_EnemyCharacter::FinishDeathDissolve()
 	SetActorTickEnabled(false);
 	Destroy();
 }
+
 
 void ACAP_EnemyCharacter::InitializeHealthBarWidget()
 {

@@ -211,6 +211,16 @@ int32 APlayerBehaviorLearner::FindNearestCentroid(const FPlayerBehaviorData& Dat
 // =============================================
 // [변경됨] 맵 팀이 호출할 데이터 추출 API
 // =============================================
+FPlayerTendencyModifier APlayerBehaviorLearner::ExtractTendencyFromSingleRun(const FPlayerBehaviorData& Data)
+{
+    FPlayerTendencyModifier T;
+    T.ExplorationRate  = FMath::Clamp((Data.VisitedNodeCount + Data.PlayTime) * 0.5f, 0.f, 1.f);
+    T.CombatAggression = FMath::Clamp(Data.KillRatio,  0.f, 1.f);
+    T.MeleePreference  = FMath::Clamp(Data.MeleeRatio, 0.f, 1.f);
+    T.ObstacleBypass   = FMath::Clamp(Data.PassRatio,  0.f, 1.f);
+    return T;
+}
+
 FPlayerTendencyModifier APlayerBehaviorLearner::GetCurrentPlayerTendency()
 {
     FPlayerTendencyModifier Tendency; // 기본 생성자에서 모두 0.5로 세팅됨

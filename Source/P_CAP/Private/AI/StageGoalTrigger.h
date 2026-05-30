@@ -3,10 +3,10 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Components/BoxComponent.h"
-#include "StageGoalTrigger.generated.h" 
+#include "StageGoalTrigger.generated.h"
 
 UCLASS()
-class P_CAP_API AStageGoalTrigger : public AActor 
+class P_CAP_API AStageGoalTrigger : public AActor
 {
 	GENERATED_BODY()
 	
@@ -30,6 +30,18 @@ protected:
 	// 0.4 = 맵의 40%만 돌아다녀도 탐험형 수치가 1.0으로 꽉 찹니다.
 	UPROPERTY(EditAnywhere, Category = "Normalization", meta=(ClampMin="0.1", ClampMax="1.0"))
 	float ExpectedMaxVisitRatio = 0.75f;
+
+	// Assessment 모드: K-Means 없이 단일 전투로 성향 측정 후 StageManager 시작
+	UPROPERTY(EditAnywhere, Category="Assessment")
+	bool bIsAssessmentMode = false;
+
+	// Assessment 아레나에 배치한 몬스터 총 수 (에디터에서 직접 입력)
+	UPROPERTY(EditAnywhere, Category="Assessment", meta=(EditCondition="bIsAssessmentMode", ClampMin="0"))
+	int32 TotalAssessmentMonsters = 0;
+
+	// Assessment 완료 후 이동할 레벨 이름 (예: "TestMap")
+	UPROPERTY(EditAnywhere, Category="Assessment", meta=(EditCondition="bIsAssessmentMode"))
+	FName TargetLevelName = NAME_None;
 
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);

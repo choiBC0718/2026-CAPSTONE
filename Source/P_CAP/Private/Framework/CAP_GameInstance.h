@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
+#include "AI/PlayerBehaviorLearner.h"
 #include "CAP_GameInstance.generated.h"
 
 /**
@@ -35,6 +36,11 @@ public:
 
 	UDataTable* GetKeyIconTable() const {return KeyIconTable;}
 	UDataTable*	GetStatEnhanceTable() const {return StatEnhanceDataTable;}
+
+	// Assessment 성향 — StageGoalTrigger(assessment mode)가 저장, MapManager가 읽음
+	void SetAssessmentTendency(const FPlayerTendencyModifier& Tendency);
+	const FPlayerTendencyModifier& GetAssessmentTendency() const { return AssessmentTendency; }
+	bool HasAssessmentTendency() const { return bHasAssessmentTendency; }
 	
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GlobalData")
@@ -48,4 +54,7 @@ private:
 
 	FString SaveSlotName = TEXT("MainSaveSlot");
 	uint32 UserIndex=0;
+
+	FPlayerTendencyModifier AssessmentTendency;
+	bool bHasAssessmentTendency = false;
 };
