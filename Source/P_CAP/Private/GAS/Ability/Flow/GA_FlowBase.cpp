@@ -146,7 +146,7 @@ void UGA_FlowBase::ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const 
 		{
 			SpecHandle.Data->DynamicGrantedTags.AddTag(CooldownTag);
 		}
-		ApplyGameplayEffectSpecToOwner(Handle,ActorInfo,ActivationInfo,SpecHandle);
+		ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 	}
 }
 
