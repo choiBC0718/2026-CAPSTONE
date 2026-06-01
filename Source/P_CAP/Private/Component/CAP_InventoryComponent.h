@@ -49,6 +49,7 @@ public:
 	
 	bool SwapItem(class UCAP_ItemInstance* OldItem, class UCAP_ItemInstance* NewItem);
 	void RemoveItem(class UCAP_ItemInstance* ItemInst);
+	bool DisassembleItem(class UCAP_ItemInstance* ItemInst);
 
 	const TMap<FGameplayTag, int32> & GetCurrentSynergyCounts() const {return CurrentSynergyCounts;}
 	const TMap<FGameplayTag, FSynergyDataTable*>& GetSynergyDataCache() const {return SynergyDataCache;}

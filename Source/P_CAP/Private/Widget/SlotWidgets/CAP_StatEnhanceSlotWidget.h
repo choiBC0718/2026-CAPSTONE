@@ -21,6 +21,7 @@ public:
 	virtual void NativeConstruct() override;
 	void InitSlot(class ACAP_PlayerCharacter* Player);
 	void SetSlotSelected(bool bIsSelected);
+	void SetConfirmColor(FLinearColor Color);
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data", meta=(RowType="/Script/P_CAP.StatEnhanceTableRow"))
 	FDataTableRowHandle StatEnhanceDataTableRow;

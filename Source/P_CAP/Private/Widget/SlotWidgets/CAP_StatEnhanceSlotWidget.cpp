@@ -54,6 +54,15 @@ void UCAP_StatEnhanceSlotWidget::SetSlotSelected(bool bIsSelected)
 	}
 }
 
+void UCAP_StatEnhanceSlotWidget::SetConfirmColor(FLinearColor Color)
+{
+	if (FocusBorderImg)
+	{
+		if (UMaterialInstanceDynamic* MID = FocusBorderImg->GetDynamicMaterial())
+			MID->SetVectorParameterValue("HighlightColor",Color);
+	}
+}
+
 FReply UCAP_StatEnhanceSlotWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry,	const FPointerEvent& InMouseEvent)
 {
 	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)

@@ -113,6 +113,19 @@ void UCAP_InventoryComponent::RemoveItem(class UCAP_ItemInstance* ItemInst)
 		OnInventoryChanged.Broadcast(ItemInst, false);
 }
 
+bool UCAP_InventoryComponent::DisassembleItem(class UCAP_ItemInstance* ItemInst)
+{
+	if (!ItemInst || !ItemInst->GetItemDA())
+		return false;
+
+	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner()))
+		if (UCAP_CurrencyComponent* CurrComp = Player->GetCurrencyComponent())
+			CurrComp->ProcessDisassembleReward(ItemInst->GetItemDA()->ItemGrade,ECurrencyType::Gold);
+
+	RemoveItem(ItemInst);
+	return true;
+}
+
 struct FInventorySaveData UCAP_InventoryComponent::CreateSaveData() const
 {
 	FInventorySaveData SaveData;

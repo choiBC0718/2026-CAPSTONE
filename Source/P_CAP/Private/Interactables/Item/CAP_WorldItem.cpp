@@ -65,25 +65,19 @@ void ACAP_WorldItem::OnConstruction(const FTransform& Transform)
 void ACAP_WorldItem::Interact(AActor* InsActor, EInteractAction ActionType)
 {
 	ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(InsActor);
-	if (!Player)
+	UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent();
+	if (!Player || !InvComp || !ItemInstance)
 		return;
 	
 	if (ActionType == EInteractAction::Tap)
 	{
-		if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
-		{
-			if (InvComp->AddItem(ItemInstance))
-				Destroy();
-		}
+		if (InvComp->AddItem(ItemInstance))
+			Destroy();
 	}
 	else
 	{
-		if (ItemDA)
-		{
-			if (UCAP_CurrencyComponent* CurrComp = Player->GetCurrencyComponent())
-				CurrComp->ProcessDisassembleReward(ItemDA->ItemGrade, ECurrencyType::Gold);
-		}
-		Destroy();
+		if (InvComp->DisassembleItem(ItemInstance))
+			Destroy();
 	}
 }
 

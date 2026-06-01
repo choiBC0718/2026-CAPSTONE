@@ -14,6 +14,7 @@
 #include "Interactables/Item/CAP_ItemInstance.h"
 #include "Component/CAP_WeaponComponent.h"
 #include "Framework/CAP_GameInstance.h"
+#include "Framework/CAP_RewardSettings.h"
 #include "Interactables/Weapon/CAP_WeaponInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "Widget/Common/CAP_ItemInteraction.h"
@@ -158,7 +159,7 @@ void UCAP_ItemEquipPanelWidget::HandleInteractionInput(ETriggerEvent& TriggerEve
 			
 		int32 SavedSlotNum = CurrentSelectedSlot->GetSlotNumber();
 			
-		Player->GetInventoryComponent()->RemoveItem(ItemInst);
+		Player->GetInventoryComponent()->DisassembleItem(ItemInst);
 
 		UCAP_ItemSlotWidget* SlotToFocus = ItemSlots.IsValidIndex(SavedSlotNum) ? ItemSlots[SavedSlotNum] : nullptr;
 		if (SlotToFocus)
@@ -219,6 +220,19 @@ void UCAP_ItemEquipPanelWidget::HandleSlotLeftClicked(class UCAP_ItemSlotWidget*
 		else if (ClickedSlot->SlotType == ESlotItemType::Item)
 		{
 			InformationSwitcher->SetActiveWidgetIndex(1);
+
+			UCAP_ItemInstance* ItemInst = Cast<UCAP_ItemInstance>(ClickedSlot->SlotItemData);
+			if (ItemInst && ItemInst->GetItemDA())
+			{
+				int32 ExpectedGold=0;
+				const UCAP_RewardSettings* Reward = GetDefault<UCAP_RewardSettings>();
+				if (UDataTable* LoadedDT = Reward->DisassembleRewardDT.LoadSynchronous())
+				{
+					FName Grade = Reward->GetRowNameFromGrade(ItemInst->GetItemDA()->ItemGrade);
+					if (const FDisassembleRewardRow* RewardRow = LoadedDT->FindRow<FDisassembleRewardRow>(Grade,""))
+						ExpectedGold = RewardRow->ItemRewardAmount;
+				}
+			}
 		}
 	}
 	
