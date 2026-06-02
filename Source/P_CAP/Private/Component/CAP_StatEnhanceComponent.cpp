@@ -22,9 +22,9 @@ void UCAP_StatEnhanceComponent::BeginPlay()
 	Super::BeginPlay();
 	if (UCAP_GameInstance* GI = Cast<UCAP_GameInstance>(UGameplayStatics::GetGameInstance(this)))
 	{
+		StatEnhanceDT = GI->GetStatEnhanceTable();
 		TMap<FName, int32> SavedData = GI->GetSavedStatEnhancedLevels();
 		LoadEnhanceData(SavedData);
-		StatEnhanceDT = GI->GetStatEnhanceTable();
 	}
 }
 

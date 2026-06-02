@@ -13,6 +13,7 @@
 #include "Component/CAP_InventoryComponent.h"
 #include "Interactables/Item/CAP_ItemInstance.h"
 #include "Component/CAP_WeaponComponent.h"
+#include "Components/TextBlock.h"
 #include "Framework/CAP_GameInstance.h"
 #include "Framework/CAP_RewardSettings.h"
 #include "Interactables/Weapon/CAP_WeaponInstance.h"
@@ -222,15 +223,27 @@ void UCAP_ItemEquipPanelWidget::HandleSlotLeftClicked(class UCAP_ItemSlotWidget*
 			InformationSwitcher->SetActiveWidgetIndex(1);
 
 			UCAP_ItemInstance* ItemInst = Cast<UCAP_ItemInstance>(ClickedSlot->SlotItemData);
-			if (ItemInst && ItemInst->GetItemDA())
+			ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
+			if (!ItemInst || !ItemInst->GetItemDA() || !Player)
+				return;
+
+			int32 ExpectDisassembleAmount =0;
+			ECurrencyType RewardType = ECurrencyType::Gold;
+			if (UCAP_CurrencyComponent* CurrComp = Player->GetCurrencyComponent())
+				CurrComp->GetExpectedDisassembleReward(ItemInst->GetCurrentGrade(),ExpectDisassembleAmount,RewardType);
+
+			if (DisassembleText)
+				DisassembleText->SetText(FText::FromString(FString::Printf(TEXT("분해하기 +%d"), ExpectDisassembleAmount)));
+			if (DisassembleCurrencyIcon)
 			{
-				int32 ExpectedGold=0;
-				const UCAP_RewardSettings* Reward = GetDefault<UCAP_RewardSettings>();
-				if (UDataTable* LoadedDT = Reward->DisassembleRewardDT.LoadSynchronous())
+				if (UTexture2D** FoundIcon = CurrencyIconMap.Find(RewardType))
 				{
-					FName Grade = Reward->GetRowNameFromGrade(ItemInst->GetItemDA()->ItemGrade);
-					if (const FDisassembleRewardRow* RewardRow = LoadedDT->FindRow<FDisassembleRewardRow>(Grade,""))
-						ExpectedGold = RewardRow->ItemRewardAmount;
+					DisassembleCurrencyIcon->SetBrushFromTexture(*FoundIcon);
+					DisassembleCurrencyIcon->SetVisibility(ESlateVisibility::Visible);
+				}
+				else
+				{
+					DisassembleCurrencyIcon->SetVisibility(ESlateVisibility::Hidden); 
 				}
 			}
 		}

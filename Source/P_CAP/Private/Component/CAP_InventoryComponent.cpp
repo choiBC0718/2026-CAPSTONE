@@ -120,7 +120,7 @@ bool UCAP_InventoryComponent::DisassembleItem(class UCAP_ItemInstance* ItemInst)
 
 	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner()))
 		if (UCAP_CurrencyComponent* CurrComp = Player->GetCurrencyComponent())
-			CurrComp->ProcessDisassembleReward(ItemInst->GetItemDA()->ItemGrade,ECurrencyType::Gold);
+			CurrComp->ProcessDisassembleReward(ItemInst->GetCurrentGrade(),ECurrencyType::Gold);
 
 	RemoveItem(ItemInst);
 	return true;

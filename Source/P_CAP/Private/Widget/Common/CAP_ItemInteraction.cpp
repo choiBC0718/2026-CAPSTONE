@@ -89,12 +89,35 @@ void UCAP_ItemInteraction::UpdateActionTexts(const FInteractionPayload& Payload)
 		if (Payload.ActionData.bShowCurrency)
 		{
 			int32 FinalAmount = Payload.ActionData.CurrencyAmount;
-			if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwningPlayerPawn<ACAP_PlayerCharacter>()))
+			ECurrencyType RewardType = Payload.ActionData.ActionCurrencyType;
+
+			if (ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>())
 			{
-				float BonusMul = ASC->GetNumericAttribute(UCAP_AttributeSet::GetDisassembleBonusMultiplierAttribute());
-				FinalAmount = FMath::RoundToInt(FinalAmount * (1.f + BonusMul));
+				if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player))
+				{
+					float BonusMul = ASC->GetNumericAttribute(UCAP_AttributeSet::GetDisassembleBonusMultiplierAttribute());
+					FinalAmount = FMath::RoundToInt(FinalAmount * (1.f + BonusMul));
+				}
 			}
+			
 			LongText=FString::Printf(TEXT("%s (+%d)"), *LongText, FinalAmount);
+			if (DisassembleRewardIcon)
+			{
+				if (UTexture2D** FoundIcon = CurrencyIconMap.Find(RewardType))
+				{
+					DisassembleRewardIcon->SetBrushFromTexture(*FoundIcon);
+					DisassembleRewardIcon->SetVisibility(ESlateVisibility::Visible);
+				}
+				else
+					DisassembleRewardIcon->SetVisibility(ESlateVisibility::Hidden);
+			}
+		}
+		else
+		{
+			if (DisassembleRewardIcon)
+			{
+				DisassembleRewardIcon->SetVisibility(ESlateVisibility::Hidden);
+			}
 		}
 		DisassembleText->SetText(FText::FromString(LongText));
 	}

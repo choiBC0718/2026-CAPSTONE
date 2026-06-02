@@ -48,9 +48,13 @@ private:
 	class UProgressBar* ProgressBar;
 	UPROPERTY(meta = (BindWidget))
 	class UImage* InteractProgressImage;
+	UPROPERTY(meta = (BindWidget))
+	class UImage* DisassembleRewardIcon;
 
 	UPROPERTY()
 	class UMaterialInstanceDynamic* ProgressMID;
+	UPROPERTY(EditDefaultsOnly, Category="UI")
+	TMap<ECurrencyType, class UTexture2D*> CurrencyIconMap;
 
 	UFUNCTION()
 	void UpdateInteractProgress(float Progress);

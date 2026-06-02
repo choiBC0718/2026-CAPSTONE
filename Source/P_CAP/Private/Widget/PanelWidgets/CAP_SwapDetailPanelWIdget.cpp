@@ -28,42 +28,50 @@ void UCAP_SwapDetailPanelWIdget::UpdateDetailInfo(UObject* ItemData)
 		return;
 	}
 
-	if (UCAP_ItemInstance* ItemInst = Cast<UCAP_ItemInstance>(ItemData))
+	UCAP_WeaponInstance* WeaponInst = Cast<UCAP_WeaponInstance>(ItemData);
+	UCAP_ItemInstance* ItemInst = Cast<UCAP_ItemInstance>(ItemData);
+	
+	UCAP_ItemDataBase* BaseItem = nullptr;
+	if (WeaponInst)
+	{
+		BaseItem = WeaponInst->GetWeaponDA();
+		ItemGradeText->SetText(GetGradeText(WeaponInst->GetCurrentGrade()));
+	}
+	else if (ItemInst)
+	{
+		BaseItem = ItemInst->GetItemDA();
+		ItemGradeText->SetText(GetGradeText(ItemInst->GetCurrentGrade()));
+	}
+	
+	if (BaseItem)
+	{
+		ItemNameText->SetText(BaseItem->ItemName);
+		ItemDescriptionText->SetText(BaseItem->ItemDescription);
+	}
+
+	if (WeaponInst)
+	{
+		for (const FWeaponSkillData& SkillData : WeaponInst->GetGrantedSkills())
+		{
+			AddFeatureIconToBox(SkillData.SkillIcon);
+		}
+	}
+	else if (ItemInst)
 	{
 		if (UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA())
 		{
-			ItemNameText->SetText(ItemDA->ItemName);
-			ItemGradeText->SetText(GetGradeText(ItemDA->ItemGrade));
-			ItemDescriptionText->SetText(ItemDA->ItemDescription);
-
 			if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn()))
 			{
 				if (UCAP_InventoryComponent* InventoryComp = Player->GetInventoryComponent())
 				{
 					const TMap<FGameplayTag, FSynergyDataTable*>& SynergyCache = InventoryComp->GetSynergyDataCache();
-
-					TArray<FGameplayTag> Synergies = ItemDA->GetSynergyTags();
-					for (const FGameplayTag& Tag : Synergies)
+					for (const FGameplayTag& Tag : ItemDA->GetSynergyTags())
 					{
 						if (FSynergyDataTable* FoundRow = SynergyCache.FindRef(Tag))
 						{
 							AddFeatureIconToBox(FoundRow->SynergyIcon);
 						}
 					}
-				}
-			}
-		}
-		if (UCAP_WeaponInstance* WeaponInst = Cast<UCAP_WeaponInstance>(ItemData))
-		{
-			if (UCAP_WeaponDataAsset* WeaponDA = WeaponInst->GetWeaponDA())
-			{
-				ItemNameText->SetText(WeaponDA->ItemName);
-				ItemGradeText->SetText(GetGradeText(WeaponDA->ItemGrade));
-				ItemDescriptionText->SetText(WeaponDA->ItemDescription);
-
-				for (const FWeaponSkillData SkillData : WeaponInst->GetGrantedSkills())
-				{
-					AddFeatureIconToBox(SkillData.SkillIcon);
 				}
 			}
 		}

@@ -33,23 +33,6 @@ void ACAP_WorldItem::BeginPlay()
 		ItemInstance = NewObject<UCAP_ItemInstance>(this);
 		ItemInstance->Initialize(ItemDA);
 	}
-
-	if (ItemDA)
-	{
-		const UCAP_RewardSettings* RewardSetting = GetDefault<UCAP_RewardSettings>();
-		if (RewardSetting->DisassembleRewardDT.IsNull())
-			return;
-
-		if (UDataTable* LoadedDT = RewardSetting->DisassembleRewardDT.LoadSynchronous())
-		{
-			FName Grade = RewardSetting->GetRowNameFromGrade(ItemDA->ItemGrade);
-			if (const FDisassembleRewardRow* RewardRow = LoadedDT->FindRow<FDisassembleRewardRow>(Grade,""))
-			{
-				CachedBaseRewardAmount = RewardRow->ItemRewardAmount;
-				CachedRewardCurrencyType = RewardRow->ItemCurrencyType;
-			}
-		}
-	}
 }
 
 void ACAP_WorldItem::OnConstruction(const FTransform& Transform)
@@ -88,8 +71,20 @@ FInteractionPayload ACAP_WorldItem::GetInteractionPayload() const
 	Payload.ActionData.ShortActionText = TEXT("줍기");
 	Payload.ActionData.LongActionText = TEXT("파괴하기");
 	Payload.ActionData.bShowCurrency = true;
-	Payload.ActionData.ActionCurrencyType = CachedRewardCurrencyType;
-	Payload.ActionData.CurrencyAmount = CachedBaseRewardAmount; 
+	
+	if (ItemDA)
+	{
+		const UCAP_RewardSettings* RewardSetting = GetDefault<UCAP_RewardSettings>();
+		if (UDataTable* LoadedDT = RewardSetting->DisassembleRewardDT.LoadSynchronous())
+		{
+			FName GradeName = RewardSetting->GetRowNameFromGrade(ItemDA->ItemGrade);
+			if (const FDisassembleRewardRow* RewardRow = LoadedDT->FindRow<FDisassembleRewardRow>(GradeName, ""))
+			{
+				Payload.ActionData.ActionCurrencyType = RewardRow->ItemCurrencyType;
+				Payload.ActionData.CurrencyAmount = RewardRow->ItemRewardAmount; 
+			}
+		}
+	}
 	
 	return Payload;
 }

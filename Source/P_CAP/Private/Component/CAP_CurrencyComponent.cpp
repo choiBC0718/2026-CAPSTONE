@@ -57,6 +57,31 @@ void UCAP_CurrencyComponent::ProcessDisassembleReward(EItemGrade Grade, ECurrenc
 	}
 }
 
+void UCAP_CurrencyComponent::GetExpectedDisassembleReward(EItemGrade Grade, int32& OutAmount, ECurrencyType& Type) const
+{
+	OutAmount = 0;
+	Type = ECurrencyType::Gold;
+
+	const UCAP_RewardSettings* RewardSetting = GetDefault<UCAP_RewardSettings>();
+	if (UDataTable* LoadedDT = RewardSetting->DisassembleRewardDT.LoadSynchronous())
+	{
+		FName GradeName = RewardSetting->GetRowNameFromGrade(Grade);
+		if (const FDisassembleRewardRow* RewardRow = LoadedDT->FindRow<FDisassembleRewardRow>(GradeName,""))
+		{
+			OutAmount = RewardRow->ItemRewardAmount;
+			Type = RewardRow->ItemCurrencyType;
+		}
+	}
+	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner()))
+	{
+		if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player))
+		{
+			float BonusMul = ASC->GetNumericAttribute(UCAP_AttributeSet::GetDisassembleBonusMultiplierAttribute());
+			OutAmount= FMath::RoundToInt(OutAmount * (1.f + BonusMul));
+		}
+	}
+}
+
 void UCAP_CurrencyComponent::AddCurrency(ECurrencyType Type, int32 Amount)
 {
 	if (Amount <=0)	return;
