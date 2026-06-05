@@ -123,6 +123,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="Data")
 	TMap<EItemGrade, FDataTableRowHandle> GradeDataMap;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Data")
+	int32 MaxDodgeCount = 2;
+	
 	UPROPERTY(EditDefaultsOnly, Category="Visual")
 	TArray<FWeaponVisualInfo> WeaponVisualInfos;
 	

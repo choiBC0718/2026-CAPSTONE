@@ -112,3 +112,8 @@ FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerHitAbility()
 {
 	return FGameplayTag::RequestGameplayTag("Item.Trigger.Hit.Ability");
 }
+
+FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerCastDodge()
+{
+	return FGameplayTag::RequestGameplayTag("Item.Trigger.Cast.Dodge");
+}
