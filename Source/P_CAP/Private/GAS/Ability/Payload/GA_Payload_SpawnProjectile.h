@@ -24,6 +24,9 @@ protected:
 	class USceneComponent* FindHomingTarget(const FVector& SearchOrigin);
 	virtual float GetPayloadTargetingRadius() override {return ExplosionRadius;}
 
+	bool GetSpawnLocationFromNotify(const FGameplayEventData& EventData, class AActor* OwnerActor, FVector& OutSpawnLoc) const;
+	void CalculateTargetAndRotation(const FGameplayEventData& EventData, FVector& InOutSpawnLoc, FRotator& InOutSpawnRot, FVector& OutTargetLoc) const;
+	
 	UPROPERTY(EditAnywhere, Category="Projectile")
 	TSubclassOf<class ACAP_ProjectileBase> ProjectileClass;
 
@@ -34,10 +37,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, meta=(EditCondition = "NumOfProjectiles > 1"), Category="Projectile")
 	float SpreadAngle = 30.f;
 	
-	// 투사체 스폰되는 무기 메시의 Muzzle
-	UPROPERTY(EditDefaultsOnly, Category="Projectile")
-	FName MuzzleSocketName = FName("Muzzle");
-
 	// 투사체 타입
 	UPROPERTY(EditDefaultsOnly, Category="InitData")
 	EProjectileType ProjectileType = EProjectileType::Straight;

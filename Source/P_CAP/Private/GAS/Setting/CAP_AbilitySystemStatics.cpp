@@ -35,12 +35,12 @@ FGameplayTag UCAP_AbilitySystemStatics::GetSkillAttackTag()
 
 FGameplayTag UCAP_AbilitySystemStatics::GetAnimHitTag()
 {
-	return FGameplayTag::RequestGameplayTag("Ability.Event.AnimHit");
+	return FGameplayTag::RequestGameplayTag("Ability.Event.Anim.Hit");
 }
 
 FGameplayTag UCAP_AbilitySystemStatics::GetAnimSpawnTag()
 {
-	return FGameplayTag::RequestGameplayTag("Ability.Event.AnimSpawn");
+	return FGameplayTag::RequestGameplayTag("Ability.Event.Anim.SpawnProj");
 }
 
 FGameplayTag UCAP_AbilitySystemStatics::GetDamageTag()
