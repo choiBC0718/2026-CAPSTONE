@@ -197,7 +197,7 @@ void UGA_FlowBase::OnAnimHitTagReceived(FGameplayEventData Payload)
 
 void UGA_FlowBase::OnAnimSpawnTagReceived(FGameplayEventData Payload)
 {
-	BroadcastTriggerEvent(SpawnProjectileTag, Payload.TargetData ,ChargedTime);
+	BroadcastTriggerEvent(SpawnProjectileTag, Payload.TargetData ,ChargedTime,Payload.OptionalObject);
 }
 
 void UGA_FlowBase::ChangeCurrentMontagePlayRate(float PlayRate)

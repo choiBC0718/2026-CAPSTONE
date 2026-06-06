@@ -31,12 +31,6 @@ void UCAP_WeaponComponent::BeginPlay()
 	if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
 		ASC=OwnerChar->GetComponentByClass<UCAP_AbilitySystemComponent>();
 
-	if (ASC && DodgeGA)
-	{
-		FGameplayAbilitySpec DodgeSpec(DodgeGA, 1,static_cast<int32>(EAbilityInputID::Dodge),GetOwner());
-		ASC->GiveAbility(DodgeSpec);
-	}
-
 	if (!TryRestoreSavedWeapons())
 		EquipDefaultWeapon();
 }
@@ -365,36 +359,27 @@ void UCAP_WeaponComponent::SetDodgeAbility(class UCAP_WeaponDataAsset* WeaponDA)
 
 	GetWorld()->GetTimerManager().ClearTimer(ComboTimer);
 	GetWorld()->GetTimerManager().ClearTimer(CooldownTimer);
-	if (OnDodgeStateChanged.IsBound())
-		OnDodgeStateChanged.Broadcast(CurrentDodgeCount,MaxDodgeCount);
 }
 
 void UCAP_WeaponComponent::ConsumeDodge()
 {
 	if (CurrentDodgeCount <= 0)	return;
 	CurrentDodgeCount--;
-	
+	GetWorld()->GetTimerManager().ClearTimer(CooldownTimer);
 	GetWorld()->GetTimerManager().ClearTimer(ComboTimer);
 	if (CurrentDodgeCount <=0)
 		GetWorld()->GetTimerManager().SetTimer(CooldownTimer,this, &UCAP_WeaponComponent::OnCooldownFinished, DodgeCooldown,false);
 	else
 		GetWorld()->GetTimerManager().SetTimer(ComboTimer,this, &UCAP_WeaponComponent::OnComboWindowExpired, ComboWindowTime,false);
-
-	if (OnDodgeStateChanged.IsBound())
-		OnDodgeStateChanged.Broadcast(CurrentDodgeCount,MaxDodgeCount);
 }
 
 void UCAP_WeaponComponent::OnComboWindowExpired()
 {
 	CurrentDodgeCount=0;
 	GetWorld()->GetTimerManager().SetTimer(CooldownTimer, this, &UCAP_WeaponComponent::OnCooldownFinished, DodgeCooldown,false);
-	if (OnDodgeStateChanged.IsBound())
-		OnDodgeStateChanged.Broadcast(CurrentDodgeCount,MaxDodgeCount);
 }
 
 void UCAP_WeaponComponent::OnCooldownFinished()
 {
 	CurrentDodgeCount = MaxDodgeCount;
-	if (OnDodgeStateChanged.IsBound())
-		OnDodgeStateChanged.Broadcast(CurrentDodgeCount,MaxDodgeCount);
 }

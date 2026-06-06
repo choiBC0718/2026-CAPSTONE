@@ -57,9 +57,6 @@ private:
 	class UProjectileMovementComponent* ProjMovementComp;
 	UPROPERTY(VisibleAnywhere)
 	class UParticleSystemComponent* TrailParticleComp;
-
-	UPROPERTY(EditDefaultsOnly, Category="Setting")
-	class UParticleSystem* HitVFX;
 	
 	EProjectileType ProjectileType = EProjectileType::Straight;
 	float ProjectileSpeed = 1000.f;

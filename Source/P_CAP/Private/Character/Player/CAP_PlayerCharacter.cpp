@@ -95,7 +95,6 @@ void ACAP_PlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		EnhancedInputComp->BindAction(MoveIA, ETriggerEvent::Completed, this, &ACAP_PlayerCharacter::MoveInputHandle);
 		EnhancedInputComp->BindAction(MoveIA, ETriggerEvent::Canceled, this, &ACAP_PlayerCharacter::MoveInputHandle);
 		EnhancedInputComp->BindAction(LookIA, ETriggerEvent::Triggered, this, &ACAP_PlayerCharacter::LookInputHandle);
-		EnhancedInputComp->BindAction(SwapIA, ETriggerEvent::Started, this, &ACAP_PlayerCharacter::SwapWeapon);
 		
 		EnhancedInputComp->BindAction(InteractIA, ETriggerEvent::Ongoing, this, &ACAP_PlayerCharacter::InteractInputHandle);
 		EnhancedInputComp->BindAction(InteractIA, ETriggerEvent::Triggered, this, &ACAP_PlayerCharacter::InteractInputHandle);
@@ -130,11 +129,29 @@ FString ACAP_PlayerCharacter::GetInteractKeyName() const
 			if (MappedKeys.Num() > 0)
 			{
 				// IMC에서 설정한 키 텍스트 가져오기
-				CurrentKeyName = MappedKeys[0].GetDisplayName().ToString();
+				CurrentKeyName = MappedKeys[0].GetFName().ToString();
 			}
 		}
 	}
 	return CurrentKeyName;
+}
+
+FString ACAP_PlayerCharacter::GetAbilityKeyName(EAbilityInputID InputID) const
+{
+	UInputAction* IA = AbilityInputActions.FindRef(InputID);
+	if (!IA)
+		return FString("");
+	
+	if (ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(GetController()))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		{
+			TArray<FKey> Keys = Subsystem->QueryKeysMappedToAction(IA);
+			if (Keys.Num() > 0)
+				return Keys[0].GetFName().ToString();
+		}
+	}
+	return FString("");
 }
 
 void ACAP_PlayerCharacter::ShowMeTheMoney()
@@ -234,7 +251,6 @@ void ACAP_PlayerCharacter::AbilityInputHandle(const FInputActionValue& InputActi
     bool bPressed = InputActionValue.Get<bool>();
     if (bPressed)
     {
-       // 기존 GAS 스킬 실행 로직만 남김 (레이저 삭제)
        GetAbilitySystemComponent()->AbilityLocalInputPressed((int32)AbilityInputID);
     }
     else
@@ -247,12 +263,6 @@ void ACAP_PlayerCharacter::InteractInputHandle(const FInputActionInstance& Insta
 {
 	if (InteractionComponent)
 		InteractionComponent->ProcessInteractInput(Instance.GetTriggerEvent(), Instance.GetElapsedTime());
-}
-
-void ACAP_PlayerCharacter::SwapWeapon()
-{
-	if (WeaponComponent)
-		WeaponComponent->SwapWeapon();
 }
 
 void ACAP_PlayerCharacter::SetInputEnabledFromPlayerController(bool bEnabled)

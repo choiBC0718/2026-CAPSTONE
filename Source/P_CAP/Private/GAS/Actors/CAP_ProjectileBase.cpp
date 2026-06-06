@@ -189,9 +189,6 @@ void ACAP_ProjectileBase::ProcessExplosiveHit(const FHitResult& SweepResult)
 		return;
 	}
 	
-	if (HitVFX != nullptr)
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitVFX, SweepResult.ImpactPoint);
-	
 	FGameplayEventData Payload;
 	Payload.Instigator = GetInstigator();
 

@@ -43,8 +43,6 @@ public:
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MoveSpeed);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, SkillCooldownSpeed);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, WeaponSwapSpeed);
-	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, CurrentDodgeCount);
-	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, MaxDodgeCount);
 	
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, ReviveHealthRatio);
 	ATTRIBUTE_ACCESSORS(UCAP_AttributeSet, ReviveCount);
@@ -69,8 +67,6 @@ private:
 	UPROPERTY()	FGameplayAttributeData MoveSpeed;
 	UPROPERTY()	FGameplayAttributeData SkillCooldownSpeed;
 	UPROPERTY()	FGameplayAttributeData WeaponSwapSpeed;
-	UPROPERTY()	FGameplayAttributeData CurrentDodgeCount;
-	UPROPERTY()	FGameplayAttributeData MaxDodgeCount;
 	
 	UPROPERTY()	FGameplayAttributeData ReviveHealthRatio;
 	UPROPERTY()	FGameplayAttributeData ReviveCount;

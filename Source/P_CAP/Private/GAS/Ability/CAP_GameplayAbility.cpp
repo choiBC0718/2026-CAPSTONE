@@ -45,7 +45,7 @@ bool UCAP_GameplayAbility::IsBasicAttack() const
 	return TargetInputID == static_cast<int32>(EAbilityInputID::BasicAttack);
 }
 
-void UCAP_GameplayAbility::BroadcastTriggerEvent(FGameplayTag EventTag,	FGameplayAbilityTargetDataHandle TargetData, float EventMagnitude) const
+void UCAP_GameplayAbility::BroadcastTriggerEvent(FGameplayTag EventTag,	FGameplayAbilityTargetDataHandle TargetData, float EventMagnitude,const UObject* OptionalObject) const
 {
 	if (!EventTag.IsValid()) return;
 
@@ -53,6 +53,7 @@ void UCAP_GameplayAbility::BroadcastTriggerEvent(FGameplayTag EventTag,	FGamepla
 	Payload.Instigator = GetAvatarActorFromActorInfo();
 	Payload.TargetData = TargetData;
 	Payload.EventMagnitude = EventMagnitude;
+	Payload.OptionalObject = OptionalObject;
 	//UE_LOG(LogTemp,Warning,TEXT("트리거 발생 태그 = %s"),*EventTag.ToString());
 	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetAvatarActorFromActorInfo(), EventTag, Payload);
 }

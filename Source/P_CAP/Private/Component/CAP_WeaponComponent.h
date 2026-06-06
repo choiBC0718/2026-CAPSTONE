@@ -12,7 +12,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWeaponChanged, class UCAP_Weapon
 // 무기의 스킬 변경 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponSkillChanged, class UCAP_WeaponInstance*, WeaponInst);
 
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnDodgetStateChanged, int32 Current, int32 Max);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class UCAP_WeaponComponent : public UActorComponent
@@ -74,11 +73,7 @@ public:
 	bool CanDodge() const {return CurrentDodgeCount>0 && !GetWorld()->GetTimerManager().IsTimerActive(CooldownTimer);}
 	void ConsumeDodge();
 
-	FOnDodgetStateChanged OnDodgeStateChanged;
 private:
-	UPROPERTY(EditDefaultsOnly, Category="Weapon")
-	TSubclassOf<class UGameplayAbility> DodgeGA;
-	
 	int32 CurrentDodgeCount =0;
 	int32 MaxDodgeCount =0;
 

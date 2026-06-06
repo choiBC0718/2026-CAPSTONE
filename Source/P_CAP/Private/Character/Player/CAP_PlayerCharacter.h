@@ -38,6 +38,7 @@ public:
 	UCAP_StatEnhanceComponent* GetStatEnhanceComponent() const {return StatEnhanceComponent;}
 	
 	FString GetInteractKeyName() const;
+	FString GetAbilityKeyName(EAbilityInputID InputID) const;
 
 	UFUNCTION(Exec)
 	void ShowMeTheMoney();
@@ -74,8 +75,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	class UInputAction* MoveIA;
 	UPROPERTY(EditDefaultsOnly, Category="Input")
-	class UInputAction* SwapIA;
-	UPROPERTY(EditDefaultsOnly, Category="Input")
 	class UInputAction* InteractIA;
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	class UInputAction* LookIA;
@@ -89,7 +88,6 @@ private:
 	void LookInputHandle(const FInputActionValue& InputActionValue);
 	void AbilityInputHandle(const FInputActionValue& InputActionValue, EAbilityInputID AbilityInputID);
 	void InteractInputHandle(const FInputActionInstance& Instance);
-	void SwapWeapon();
 
 
 	void SetInputEnabledFromPlayerController(bool bEnabled);

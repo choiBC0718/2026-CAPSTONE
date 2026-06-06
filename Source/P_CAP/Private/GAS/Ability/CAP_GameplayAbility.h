@@ -33,5 +33,5 @@ protected:
 	TSubclassOf<UGameplayEffect> GetDamageGE() const;
 	
 	bool IsBasicAttack() const;
-	void BroadcastTriggerEvent(FGameplayTag EventTag, FGameplayAbilityTargetDataHandle TargetData = FGameplayAbilityTargetDataHandle(), float EventMagnitude = 1.f) const;
+	void BroadcastTriggerEvent(FGameplayTag EventTag, FGameplayAbilityTargetDataHandle TargetData = FGameplayAbilityTargetDataHandle(), float EventMagnitude = 1.f,const UObject* OptionalObject = nullptr) const;
 };
