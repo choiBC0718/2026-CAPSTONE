@@ -23,6 +23,7 @@ public:
 
 	UFUNCTION()
 	void ProcessDisassembleReward(EItemGrade Grade, ECurrencyType Type);
+	void GetExpectedDisassembleReward(EItemGrade Grade, int32& OutAmount, ECurrencyType& Type) const;
 	
 	// 현재 재화 타입에 Amount만큼 더해줌
 	UFUNCTION()

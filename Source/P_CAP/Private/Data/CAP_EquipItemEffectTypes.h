@@ -48,12 +48,6 @@ public:
 	/** 보너스 스탯 Map <스탯 태그, 수치> */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(Categories="Data.Stat"))
 	TMap<FGameplayTag, float> BonusStat;
-	/** 무기별 회피기 최대 연속 사용 횟수 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 MaxDodgeCount = 2;
-	/** 무기 업그레이드 가능한지 (레전더리라면 false) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bIsUpgradeable = true;
 };
 
 USTRUCT(BlueprintType)

@@ -65,11 +65,7 @@ void UCAP_WeaponEnhancePanelWidget::HandleUIConfirmInput(ETriggerEvent TriggerEv
 		return;
 	}
 	
-	if (!bIsConfirmMode)
-		SetConfirmMode(true);
-	else
-		OnEnhanceClicked();
-
+	OnEnhanceClicked();
 }
 
 void UCAP_WeaponEnhancePanelWidget::OnEnhanceClicked()
@@ -77,16 +73,26 @@ void UCAP_WeaponEnhancePanelWidget::OnEnhanceClicked()
 	if (!OwnerNPC || !CachedPlayer) return;
 
 	if (!bIsConfirmMode)
+	{
+		if (UCAP_WeaponInstance* CurrentWeapon = CachedPlayer->GetWeaponComponent()->GetCurrentWeaponInstance())
+		{
+			if (CurrentWeapon->GetCurrentGrade() >= EItemGrade::Legendary)
+			{
+				if (DialogueText)
+					DialogueText->SetText(OwnerNPC->GetDialogueText(EEnhanceResult::MaxGradeReached));
+				return;
+			}
+		}
 		SetConfirmMode(true);
+	}
 	else
 	{
 		EEnhanceResult Result = OwnerNPC->TryUpgradeWeapon(CachedPlayer);
-		if (Result == EEnhanceResult::InsufficientCurrency || Result==EEnhanceResult::MaxGradeReached)
+		if (Result == EEnhanceResult::InsufficientCurrency || Result==EEnhanceResult::Success)
 			SetConfirmMode(false);
 		
-		FText DialogueToDisplay = OwnerNPC->GetDialogueText(Result);
 		if (DialogueText)
-			DialogueText->SetText(DialogueToDisplay);
+			DialogueText->SetText( OwnerNPC->GetDialogueText(Result));
 	}
 }
 

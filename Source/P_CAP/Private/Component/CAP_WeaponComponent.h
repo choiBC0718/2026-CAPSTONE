@@ -12,6 +12,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnWeaponChanged, class UCAP_Weapon
 // 무기의 스킬 변경 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponSkillChanged, class UCAP_WeaponInstance*, WeaponInst);
 
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class UCAP_WeaponComponent : public UActorComponent
 {
@@ -67,4 +68,25 @@ private:
 	void InitializeWeaponMeshes();
 	bool TryRestoreSavedWeapons();
 	void EquipDefaultWeapon();
+
+public:
+	bool CanDodge() const {return CurrentDodgeCount>0 && !GetWorld()->GetTimerManager().IsTimerActive(CooldownTimer);}
+	void ConsumeDodge();
+
+private:
+	int32 CurrentDodgeCount =0;
+	int32 MaxDodgeCount =0;
+
+	FTimerHandle ComboTimer;
+	FTimerHandle CooldownTimer;
+
+	UPROPERTY(EditDefaultsOnly, Category="Dodge")
+	float ComboWindowTime=0.5f;
+	UPROPERTY(EditDefaultsOnly, Category="Dodge")
+	float DodgeCooldown=2.f;
+
+	void SetDodgeAbility(class UCAP_WeaponDataAsset* WeaponDA);
+	// 콤보시간 만료
+	void OnComboWindowExpired();
+	void OnCooldownFinished();
 };

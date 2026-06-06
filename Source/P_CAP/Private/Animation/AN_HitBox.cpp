@@ -4,8 +4,8 @@
 #include "Animation/AN_HitBox.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
+#include "Engine/OverlapResult.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
-#include "Kismet/KismetSystemLibrary.h"
 #include "P_CAP/P_CAP.h"
 
 
@@ -40,26 +40,37 @@ void UAN_HitBox::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Ani
 		DrawDebugShape(World, WorldLocation, WorldRotation);
 	}
 
-	// 3. 실제 타격 판정 (Overlap)
-	TArray<AActor*> IgnoreActors;
-	IgnoreActors.Add(OwnerActor);
+	TArray<FOverlapResult> OverlapResults;
+	FCollisionObjectQueryParams ObjQueryParams;
+	ObjQueryParams.AddObjectTypesToQuery(ECC_Hitbox);
 
-	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
-	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Hitbox));
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(OwnerActor);
 
-	TArray<AActor*> OverlappedActors;
+	bool bHit = false;
 	// 모양에 따라 다른 함수 호출
 	switch (ShapeType)
 	{
 	case EHitboxShape::Box:
-		UKismetSystemLibrary::BoxOverlapActors(World, WorldLocation, BoxExtent, ObjectTypes, nullptr, IgnoreActors, OverlappedActors);
+		bHit = World->OverlapMultiByObjectType(OverlapResults, WorldLocation, WorldRotation.Quaternion(), ObjQueryParams, FCollisionShape::MakeBox(BoxExtent), QueryParams);
 		break;
 	case EHitboxShape::Sphere:
-		UKismetSystemLibrary::SphereOverlapActors(World, WorldLocation, SphereRadius, ObjectTypes, nullptr, IgnoreActors, OverlappedActors);
+		bHit = World->OverlapMultiByObjectType(OverlapResults, WorldLocation, FQuat::Identity, ObjQueryParams, FCollisionShape::MakeSphere(SphereRadius), QueryParams);
 		break;
 	case EHitboxShape::Capsule:
-		UKismetSystemLibrary::CapsuleOverlapActors(World, WorldLocation, CapsuleRadius, CapsuleHalfHeight, ObjectTypes, nullptr, IgnoreActors, OverlappedActors);
+		bHit = World->OverlapMultiByObjectType(OverlapResults, WorldLocation, WorldRotation.Quaternion(), ObjQueryParams, FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight), QueryParams);
 		break;
+	}
+	TArray<AActor*> OverlappedActors;
+	if (bHit)
+	{
+		for (const FOverlapResult& Result : OverlapResults)
+		{
+			if (AActor* HitActor = Result.GetActor())
+			{
+				OverlappedActors.AddUnique(HitActor);
+			}
+		}
 	}
 
 	// 4. 적중 처리 및 데미지 이벤트 발송

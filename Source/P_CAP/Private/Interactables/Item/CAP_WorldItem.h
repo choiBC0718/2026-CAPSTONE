@@ -37,11 +37,6 @@ protected:
 	class UStaticMeshComponent* ItemMesh;
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class URotatingMovementComponent* RotatingMovement;
-	
-	UPROPERTY()
-	int32 CachedBaseRewardAmount = 0;
-	UPROPERTY()
-	ECurrencyType CachedRewardCurrencyType;
 
 private:
 	void SetItemStaticMesh();

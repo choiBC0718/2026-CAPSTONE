@@ -3,7 +3,10 @@
 
 #include "GAS/Ability/Payload/GA_Payload_SpawnProjectile.h"
 
+#include "Animation/AN_SpawnProjectile.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
 #include "Engine/OverlapResult.h"
+#include "GameFramework/Character.h"
 #include "GAS/Actors/CAP_ProjectileBase.h"
 #include "P_CAP/P_CAP.h"
 
@@ -24,25 +27,12 @@ void UGA_Payload_SpawnProjectile::ExecutePayloadLogic(const FGameplayEventData& 
 	FRotator SpawnRot = OwnerActor->GetActorRotation();
 	FVector TargetLoc = FVector::ZeroVector;
 
-	if (EventData.TargetData.Num()>0)
-	{
-		if (const FHitResult* Hit = EventData.TargetData.Data[0]->GetHitResult())
-		{
-			TargetLoc = Hit->ImpactPoint;
-			if (ProjectileType == EProjectileType::Falling)
-			{
-				SpawnLoc=Hit->ImpactPoint + FVector(0.f,0.f,FallingSpawnHeight);
-				SpawnRot=FRotator(-90.f,0.f,0.f);
-			}
-		}
-	}
-	//UE_LOG(LogTemp,Warning,TEXT("투사체 목표 위치 = %f	  %f  %f"),TargetLoc.X, TargetLoc.Y,TargetLoc.Z);
-	
-	if (TargetLoc.IsZero())
-		TargetLoc = SpawnLoc + SpawnRot.Vector() * MaxDistance;
 	if (ProjectileType != EProjectileType::Falling)
-		SpawnLoc = GetMuzzleSocketLocation(MuzzleSocketName);
+	{
+		GetSpawnLocationFromNotify(EventData, OwnerActor, SpawnLoc);
+	}
 	
+	CalculateTargetAndRotation(EventData, SpawnLoc, SpawnRot, TargetLoc);
 	SpawnProjectile(SpawnLoc, SpawnRot,TargetLoc, EventData);
 }
 
@@ -51,7 +41,7 @@ void UGA_Payload_SpawnProjectile::SpawnProjectile(FVector SpawnLoc, FRotator Spa
 	TSubclassOf<UGameplayEffect> DamageGE = GetDamageGE();
 	FGameplayEffectSpecHandle DamageSpecHandle;
 	if (DamageGE)
-		DamageSpecHandle = MakeOutgoingGameplayEffectSpec(GetDamageGE(), GetAbilityLevel());
+		DamageSpecHandle = MakeOutgoingGameplayEffectSpec(DamageGE, GetAbilityLevel());
 	
 	const FWeaponSkillData* SkillData = GetSkillDataFromContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
 	if (DamageSpecHandle.IsValid() && SkillData)
@@ -115,6 +105,70 @@ void UGA_Payload_SpawnProjectile::SpawnProjectile(FVector SpawnLoc, FRotator Spa
 			Projectile->InitProjectile(InitData);
 			Projectile->FinishSpawning(SpawnTrans);
 		}
+	}
+}
+
+bool UGA_Payload_SpawnProjectile::GetSpawnLocationFromNotify(const FGameplayEventData& EventData,
+	class AActor* OwnerActor, FVector& OutSpawnLoc) const
+{
+	const UAN_SpawnProjectile* NotifyData = Cast<UAN_SpawnProjectile>(EventData.OptionalObject);
+	if (!NotifyData)
+		return false;
+
+	USkeletalMeshComponent* TargetMesh = nullptr;
+	if (NotifyData->MeshTarget == ESpawnMeshTarget::Character)
+	{
+		if (ACharacter* Avatar = Cast<ACharacter>(OwnerActor))
+			TargetMesh = Avatar->GetMesh();
+	}
+	else if (NotifyData->MeshTarget == ESpawnMeshTarget::Weapon)
+	{
+		if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(OwnerActor))
+			if (UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent())
+				TargetMesh = WeaponComp->GetWeaponMesh(NotifyData->SpawnHand);
+	}
+
+	if (TargetMesh && TargetMesh->DoesSocketExist(NotifyData->SocketName))
+	{
+		OutSpawnLoc = TargetMesh->GetSocketTransform(NotifyData->SocketName).GetLocation();
+		return true;
+	}
+
+	return false;
+}
+
+void UGA_Payload_SpawnProjectile::CalculateTargetAndRotation(const FGameplayEventData& EventData,
+	FVector& InOutSpawnLoc, FRotator& InOutSpawnRot, FVector& OutTargetLoc) const
+{
+	OutTargetLoc = FVector::ZeroVector;
+
+	if (EventData.TargetData.Num() > 0)
+	{
+		if (const FHitResult* Hit = EventData.TargetData.Data[0]->GetHitResult())
+		{
+			// TargetLoc = 마우스 클릭 지점
+			OutTargetLoc = Hit->ImpactPoint;
+
+			// 메테오 형이라면 위에서 떨어지도록 높이 및 회전 추가
+			if (ProjectileType == EProjectileType::Falling)
+			{
+				InOutSpawnLoc = OutTargetLoc + FVector(0.f, 0.f, FallingSpawnHeight);
+				InOutSpawnRot = FRotator(-90.f, 0.f, 0.f);
+			}
+			// 다른 거라면 마우스 방향으로 날라가도록
+			else
+			{
+				FVector AimDir = OutTargetLoc - InOutSpawnLoc;
+				AimDir.Z = 0.f;
+				InOutSpawnRot = AimDir.Rotation();
+			}
+		}
+	}
+	
+	// 마우스 타겟이 잡히지 않았을 경우 바라보는 방향의 최대 사거리로 타겟 강제 설정
+	if (OutTargetLoc.IsZero())
+	{
+		OutTargetLoc = InOutSpawnLoc + InOutSpawnRot.Vector() * MaxDistance;
 	}
 }
 

@@ -13,7 +13,9 @@
 #include "Component/CAP_InventoryComponent.h"
 #include "Interactables/Item/CAP_ItemInstance.h"
 #include "Component/CAP_WeaponComponent.h"
+#include "Components/TextBlock.h"
 #include "Framework/CAP_GameInstance.h"
+#include "Framework/CAP_RewardSettings.h"
 #include "Interactables/Weapon/CAP_WeaponInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "Widget/Common/CAP_ItemInteraction.h"
@@ -158,7 +160,7 @@ void UCAP_ItemEquipPanelWidget::HandleInteractionInput(ETriggerEvent& TriggerEve
 			
 		int32 SavedSlotNum = CurrentSelectedSlot->GetSlotNumber();
 			
-		Player->GetInventoryComponent()->RemoveItem(ItemInst);
+		Player->GetInventoryComponent()->DisassembleItem(ItemInst);
 
 		UCAP_ItemSlotWidget* SlotToFocus = ItemSlots.IsValidIndex(SavedSlotNum) ? ItemSlots[SavedSlotNum] : nullptr;
 		if (SlotToFocus)
@@ -219,6 +221,31 @@ void UCAP_ItemEquipPanelWidget::HandleSlotLeftClicked(class UCAP_ItemSlotWidget*
 		else if (ClickedSlot->SlotType == ESlotItemType::Item)
 		{
 			InformationSwitcher->SetActiveWidgetIndex(1);
+
+			UCAP_ItemInstance* ItemInst = Cast<UCAP_ItemInstance>(ClickedSlot->SlotItemData);
+			ACAP_PlayerCharacter* Player = GetOwningPlayerPawn<ACAP_PlayerCharacter>();
+			if (!ItemInst || !ItemInst->GetItemDA() || !Player)
+				return;
+
+			int32 ExpectDisassembleAmount =0;
+			ECurrencyType RewardType = ECurrencyType::Gold;
+			if (UCAP_CurrencyComponent* CurrComp = Player->GetCurrencyComponent())
+				CurrComp->GetExpectedDisassembleReward(ItemInst->GetCurrentGrade(),ExpectDisassembleAmount,RewardType);
+
+			if (DisassembleText)
+				DisassembleText->SetText(FText::FromString(FString::Printf(TEXT("분해하기 +%d"), ExpectDisassembleAmount)));
+			if (DisassembleCurrencyIcon)
+			{
+				if (UTexture2D** FoundIcon = CurrencyIconMap.Find(RewardType))
+				{
+					DisassembleCurrencyIcon->SetBrushFromTexture(*FoundIcon);
+					DisassembleCurrencyIcon->SetVisibility(ESlateVisibility::Visible);
+				}
+				else
+				{
+					DisassembleCurrencyIcon->SetVisibility(ESlateVisibility::Hidden); 
+				}
+			}
 		}
 	}
 	

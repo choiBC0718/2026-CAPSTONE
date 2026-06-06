@@ -39,7 +39,7 @@ void UGameplayAbility_Charge_Slowdown::OnChargeStartTagReceived(FGameplayEventDa
 	MaxChargeTask->OnFinish.AddDynamic(this, &UGameplayAbility_Charge_Slowdown::OnMaxCharged);
 	MaxChargeTask->ReadyForActivation();
 
-	ChangeCurrentMontagePlayRate(0.3f);
+	ChangeCurrentMontagePlayRate(MontageSpeedRateAtCharging);
 }
 
 void UGameplayAbility_Charge_Slowdown::OnInputReleased(float TimeHeld)

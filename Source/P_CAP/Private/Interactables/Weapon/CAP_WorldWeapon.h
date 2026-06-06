@@ -43,11 +43,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Weapon Data")
 	class UCAP_WeaponDataAsset* WeaponDA;
 
-	UPROPERTY()
-	int32 CachedBaseRewardAmount = 0;
-	UPROPERTY()
-	ECurrencyType CachedRewardCurrencyType;
-
 private:
 	void SetWeaponSkeletalMesh();
 };

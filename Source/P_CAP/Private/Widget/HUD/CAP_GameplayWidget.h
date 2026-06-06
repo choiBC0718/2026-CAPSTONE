@@ -32,6 +32,8 @@ public:
 	void ShowStatisticDashboard();
 
 protected:
+	UPROPERTY(meta = (BindWidget))
+	class UCAP_WeaponSwapWidget* WeaponSwapWidget;
 	// Hp 바
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_ValueGauge* HealthBar;

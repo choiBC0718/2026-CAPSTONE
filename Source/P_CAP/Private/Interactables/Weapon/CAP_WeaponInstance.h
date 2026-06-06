@@ -51,4 +51,6 @@ private:
 
 	// 에셋을 메모리에 잡아둘 핸들
 	TSharedPtr<FStreamableHandle> AssetLoadHandle;
+
+	TArray<FName> ActiveSkillRowNames;
 };

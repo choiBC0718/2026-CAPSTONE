@@ -43,23 +43,6 @@ void ACAP_WorldWeapon::BeginPlay()
 		WeaponInstance->Initialize(WeaponDA);
 		WeaponInstance->LoadWeaponAssets(FStreamableDelegate::CreateLambda([](){}));
 	}
-	
-	if (WeaponInstance)
-	{
-		const UCAP_RewardSettings* RewardSetting = GetDefault<UCAP_RewardSettings>();
-		if (RewardSetting->DisassembleRewardDT.IsNull())
-			return;
-
-		if (UDataTable* LoadedDT = RewardSetting->DisassembleRewardDT.LoadSynchronous())
-		{
-			FName Grade = RewardSetting->GetRowNameFromGrade(WeaponInstance->GetCurrentGrade());
-			if (const FDisassembleRewardRow* RewardRow = LoadedDT->FindRow<FDisassembleRewardRow>(Grade,""))
-			{
-				CachedBaseRewardAmount = RewardRow->WeaponRewardAmount;
-				CachedRewardCurrencyType = RewardRow->WeaponCurrencyType;
-			}
-		}
-	}
 }
 
 void ACAP_WorldWeapon::OnConstruction(const FTransform& Transform)
@@ -120,8 +103,22 @@ FInteractionPayload ACAP_WorldWeapon::GetInteractionPayload() const
 	Payload.ActionData.ShortActionText = TEXT("줍기");
 	Payload.ActionData.LongActionText = TEXT("파괴하기");
 	Payload.ActionData.bShowCurrency = true;
-	Payload.ActionData.ActionCurrencyType = CachedRewardCurrencyType;
-	Payload.ActionData.CurrencyAmount = CachedBaseRewardAmount;
+
+	if (WeaponInstance)
+	{
+		const UCAP_RewardSettings* RewardSetting = GetDefault<UCAP_RewardSettings>();
+		if (UDataTable* LoadedDT = RewardSetting->DisassembleRewardDT.LoadSynchronous())
+		{
+			EItemGrade CurrentGrade = WeaponInstance->GetCurrentGrade(); 
+			FName GradeName = RewardSetting->GetRowNameFromGrade(CurrentGrade);
+			
+			if (const FDisassembleRewardRow* RewardRow = LoadedDT->FindRow<FDisassembleRewardRow>(GradeName, ""))
+			{
+				Payload.ActionData.ActionCurrencyType = RewardRow->WeaponCurrencyType; 
+				Payload.ActionData.CurrencyAmount = RewardRow->WeaponRewardAmount; 
+			}
+		}
+	}
 	return Payload;
 }
 

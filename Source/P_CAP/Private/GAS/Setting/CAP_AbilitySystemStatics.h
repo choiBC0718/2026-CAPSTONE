@@ -41,4 +41,5 @@ public:
 	static FGameplayTag GetItemTriggerCastAbility();
 	static FGameplayTag GetItemTriggerHitBasic();
 	static FGameplayTag GetItemTriggerHitAbility();
+	static FGameplayTag GetItemTriggerCastDodge();
 };

@@ -6,6 +6,7 @@
 #include "EnhancedInputComponent.h"
 #include "Widget/SlotWidgets/CAP_ItemSlotWidget.h"
 #include "Blueprint/UserWidget.h"
+#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "CAP_ItemEquipPanelWidget.generated.h"
 
 class ACAP_PlayerCharacter;
@@ -47,9 +48,15 @@ private:
 	class UImage* SwapKeyIconImg;
 	UPROPERTY(meta = (BindWidget))
 	class UImage* DisassembleKeyIconImg;
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* DisassembleText;
+	UPROPERTY(meta = (BindWidget))
+	class UImage* DisassembleCurrencyIcon;
 	
 	UPROPERTY(EditDefaultsOnly, Category="Inventory")
 	TSubclassOf<UCAP_ItemSlotWidget> ItemSlotWidgetClass;
+	UPROPERTY(EditDefaultsOnly, Category="UI")
+	TMap<ECurrencyType, UTexture2D*> CurrencyIconMap;
 	
 	UPROPERTY()
 	class UCAP_ItemSlotWidget* CurrentSelectedSlot;

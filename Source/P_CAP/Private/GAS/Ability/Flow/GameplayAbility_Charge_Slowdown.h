@@ -33,6 +33,8 @@ private:
 	UPROPERTY()
 	class UAbilityTask_TickRotToCursor* TickRotTask;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Ability")
+	float MontageSpeedRateAtCharging = 0.3f;
 	// 회전 속도
 	UPROPERTY(EditDefaultsOnly, Category = "Ability")
 	float TickRotSpeed = 100.f;

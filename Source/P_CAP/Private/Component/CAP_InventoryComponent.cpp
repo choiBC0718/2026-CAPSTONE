@@ -62,14 +62,22 @@ bool UCAP_InventoryComponent::AddItem(class UCAP_ItemInstance* NewItem)
 			break;
 		}
 	}
-	if (TargetIndex == INDEX_NONE && InventoryItems.Num() >= Capacity)
-	{
-		OnInventoryFull.Broadcast(NewItem);
-		return false;
-	}
-	
 	if (TargetIndex != INDEX_NONE)
+	{
 		InventoryItems[TargetIndex] = NewItem;
+	}
+	else
+	{
+		if (InventoryItems.Num() < Capacity)
+		{
+			InventoryItems.Add(NewItem);
+		}
+		else
+		{
+			OnInventoryFull.Broadcast(NewItem);
+			return false;
+		}
+	}
 	
 	OnItemEquipped(NewItem);
 	return true;
@@ -103,6 +111,19 @@ void UCAP_InventoryComponent::RemoveItem(class UCAP_ItemInstance* ItemInst)
 	
 	if (OnInventoryChanged.IsBound())
 		OnInventoryChanged.Broadcast(ItemInst, false);
+}
+
+bool UCAP_InventoryComponent::DisassembleItem(class UCAP_ItemInstance* ItemInst)
+{
+	if (!ItemInst || !ItemInst->GetItemDA())
+		return false;
+
+	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner()))
+		if (UCAP_CurrencyComponent* CurrComp = Player->GetCurrencyComponent())
+			CurrComp->ProcessDisassembleReward(ItemInst->GetCurrentGrade(),ECurrencyType::Gold);
+
+	RemoveItem(ItemInst);
+	return true;
 }
 
 struct FInventorySaveData UCAP_InventoryComponent::CreateSaveData() const

@@ -135,6 +135,7 @@ void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 		AnimInst->UpdateWeaponAnimData(WeaponDA);
 	}
 	AttachWeaponMesh(WeaponDA);
+	SetDodgeAbility(WeaponDA);
 	GrantAbilities(WeaponInstance);
 
 	if (OnWeaponChanged.IsBound())
@@ -254,14 +255,14 @@ void UCAP_WeaponComponent::GrantAbilities(class UCAP_WeaponInstance* WeaponInst)
 			return;
 		if (SkillData->InputAbilityClass)
 		{
-			FGameplayAbilitySpec Spec(SkillData->InputAbilityClass, 1, InputID, GetOwner());
+			FGameplayAbilitySpec Spec(SkillData->InputAbilityClass, 1, InputID, WeaponInst);
 			WeaponInst->GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
 		}
 		for (TSubclassOf<UGA_PayloadBase> PayloadClass : SkillData->PayloadAbilityClass)
 		{
 			if (PayloadClass)
 			{
-				FGameplayAbilitySpec Spec(PayloadClass, 1, InputID+PAYLOAD_INPUT_OFFSET, GetOwner());
+				FGameplayAbilitySpec Spec(PayloadClass, 1, InputID+PAYLOAD_INPUT_OFFSET, WeaponInst);
 				WeaponInst->GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
 			}
 		}
@@ -347,4 +348,38 @@ class UCAP_WeaponInstance* UCAP_WeaponComponent::GetCurrentWeaponInstance() cons
 		return EquippedWeapons[CurrentWeaponIndex];
 	}
 	return nullptr;
+}
+
+void UCAP_WeaponComponent::SetDodgeAbility(class UCAP_WeaponDataAsset* WeaponDA)
+{
+	if (!WeaponDA)
+		return;
+	MaxDodgeCount = WeaponDA->MaxDodgeCount;
+	CurrentDodgeCount = MaxDodgeCount;
+
+	GetWorld()->GetTimerManager().ClearTimer(ComboTimer);
+	GetWorld()->GetTimerManager().ClearTimer(CooldownTimer);
+}
+
+void UCAP_WeaponComponent::ConsumeDodge()
+{
+	if (CurrentDodgeCount <= 0)	return;
+	CurrentDodgeCount--;
+	GetWorld()->GetTimerManager().ClearTimer(CooldownTimer);
+	GetWorld()->GetTimerManager().ClearTimer(ComboTimer);
+	if (CurrentDodgeCount <=0)
+		GetWorld()->GetTimerManager().SetTimer(CooldownTimer,this, &UCAP_WeaponComponent::OnCooldownFinished, DodgeCooldown,false);
+	else
+		GetWorld()->GetTimerManager().SetTimer(ComboTimer,this, &UCAP_WeaponComponent::OnComboWindowExpired, ComboWindowTime,false);
+}
+
+void UCAP_WeaponComponent::OnComboWindowExpired()
+{
+	CurrentDodgeCount=0;
+	GetWorld()->GetTimerManager().SetTimer(CooldownTimer, this, &UCAP_WeaponComponent::OnCooldownFinished, DodgeCooldown,false);
+}
+
+void UCAP_WeaponComponent::OnCooldownFinished()
+{
+	CurrentDodgeCount = MaxDodgeCount;
 }

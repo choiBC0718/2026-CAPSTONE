@@ -154,6 +154,7 @@ void UCAP_StatEnhancePanelWidget::HandleSlotFocused(UCAP_StatEnhanceSlotWidget* 
 	{
 		CurrentSelectedSlot = FocusedSlot;
 		CurrentSelectedSlot->SetSlotSelected(true);
+		SetConfirmMode(false);
 	}
 	if (DetailWidget && OwnerNPC)
 	{
@@ -250,6 +251,7 @@ void UCAP_StatEnhancePanelWidget::SetConfirmMode(bool bIsConfirm)
 	bIsConfirmMode = bIsConfirm;
 	if (bIsConfirmMode)
 	{
+		CurrentSelectedSlot->SetConfirmColor(FLinearColor::Red);
 		if (InnerCloseText) InnerCloseText->SetText(FText::FromString(TEXT("취소")));
 		CurrentButtonIndex = 0;
 
@@ -274,6 +276,7 @@ void UCAP_StatEnhancePanelWidget::SetConfirmMode(bool bIsConfirm)
 	}
 	else
 	{
+		CurrentSelectedSlot->SetConfirmColor(FLinearColor::White);
 		if (InnerCloseText)
 			InnerCloseText->SetText(FText::FromString(TEXT("닫기")));
 		if (DialogueText)
