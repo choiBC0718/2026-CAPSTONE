@@ -114,6 +114,60 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
 	bool bDrawInteriorCellDebug = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor")
+	bool bGenerateVisualFloorTiles = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles"))
+	TObjectPtr<UStaticMesh> VisualFloorTileMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles", ClampMin="1"))
+	int32 VisualFloorTileSizeInCells = 4;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles", ClampMin="0.01"))
+	float VisualFloorTileScaleMultiplier = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles"))
+	float VisualFloorTileZOffset = 2.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles"))
+	bool bHideBaseFloorMeshWhenUsingVisualTiles = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles"))
+	bool bRandomizeVisualFloorTileRotation = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Edge Fence")
+	bool bGenerateEdgeFences = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Edge Fence", meta=(EditCondition="bGenerateEdgeFences"))
+	TObjectPtr<UStaticMesh> EdgeFenceMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Edge Fence", meta=(EditCondition="bGenerateEdgeFences", ClampMin="1"))
+	int32 EdgeFenceSegmentSizeInCells = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Edge Fence", meta=(EditCondition="bGenerateEdgeFences", ClampMin="0.01"))
+	float EdgeFenceScaleMultiplier = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Edge Fence", meta=(EditCondition="bGenerateEdgeFences"))
+	float EdgeFenceZOffset = 30.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Edge Fence", meta=(EditCondition="bGenerateEdgeFences"))
+	float EdgeFenceInset = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Edge Fence", meta=(EditCondition="bGenerateEdgeFences", ClampMin="0.0"))
+	float EdgeFenceDoorGapWidth = 600.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Edge Fence", meta=(EditCondition="bGenerateEdgeFences"))
+	bool bEnableEdgeFenceCollision = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Edge Fence", meta=(EditCondition="bGenerateEdgeFences"))
+	TObjectPtr<UStaticMesh> DoorSideBlockMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Edge Fence", meta=(EditCondition="bGenerateEdgeFences", ClampMin="0.01"))
+	float DoorSideBlockScaleMultiplier = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Edge Fence", meta=(EditCondition="bGenerateEdgeFences"))
+	float DoorSideBlockZOffset = 30.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Trigger", meta=(ClampMin="0.0"))
 	float RoomEnterTriggerHeight = 300.f;
 
@@ -148,6 +202,12 @@ protected:
 	/* 이 방에서 동적으로 생성한 큰 구조물 메쉬 컴포넌트 */
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> SpawnedStructureMeshes;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMeshComponent>> SpawnedVisualFloorTileMeshes;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMeshComponent>> SpawnedEdgeFenceMeshes;
 
 	UPROPERTY()
 	FRoomData CachedRoomData;
@@ -201,12 +261,15 @@ private:
 	void HandleCombatRoomCleared();
 	void SetSpawnedDoorsPortalEnabled(bool bEnabled);
 	void SpawnRoomMonsters();
+	void ApplyBaseFloorVisibility();
 
 	void ClearSpawnedDoors();
 	/* 이 방이 소유하는 경로 액터들을 정리 */
 	void ClearSpawnedPathActors();
 	/* 이 방이 소유하는 큰 구조물 메쉬 컴포넌트를 정리 */
 	void ClearSpawnedStructureMeshes();
+	void ClearSpawnedVisualFloorTiles();
+	void ClearSpawnedEdgeFences();
 	/* 성향 기반으로 동적 스폰된 장애물 정리 */
 	void ClearSpawnedObstacles();
 	/* ObstacleBypass 성향에 따라 장애물 동적 스폰 */
@@ -216,6 +279,20 @@ private:
 
 	/* 내부 경로 데이터를 생성하고 실제 path actor를 배치 */
 	void GenerateAndSpawnInterior();
+	void SpawnVisualFloorTiles();
+	void SpawnEdgeFences();
+	void SpawnEdgeFenceLine(
+		const FVector& EdgeStart,
+		const FVector& EdgeDirection,
+		float EdgeLength,
+		float Yaw,
+		bool bHasDoorGap);
+	void SpawnDoorSideBlocks(
+		const FVector& EdgeStart,
+		const FVector& EdgeDirection,
+		float EdgeLength,
+		float Yaw);
+	bool IsInDoorGap(float DistanceAlongEdge, float EdgeLength) const;
 	/* 생성된 경로 데이터를 바탕으로 전용 path actor를 스폰 */
 	void SpawnGuaranteedPaths(const FRoomInteriorLayout& Layout);
 	/* 큰 구조물 점유 결과를 실제 메쉬 컴포넌트로 배치 */

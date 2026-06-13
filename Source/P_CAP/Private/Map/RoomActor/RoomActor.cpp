@@ -137,6 +137,8 @@ void ARoomActor::InitializeRoom(
 	ClearSpawnedDoors();
 	ClearSpawnedPathActors();
 	ClearSpawnedStructureMeshes();
+	ClearSpawnedVisualFloorTiles();
+	ClearSpawnedEdgeFences();
 	ClearSpawnedObstacles();
 	if (MonsterSpawnerComponent)
 	{
@@ -144,6 +146,9 @@ void ARoomActor::InitializeRoom(
 	}
 
 	/* 방 정보 기준으로 문과 경로를 다시 생성 */
+	SpawnVisualFloorTiles();
+	SpawnEdgeFences();
+	ApplyBaseFloorVisibility();
 	SpawnConnectedDoors();
 	GenerateAndSpawnInterior();
 	SetSpawnedDoorsPortalEnabled(true);
@@ -463,6 +468,8 @@ void ARoomActor::Destroyed()
 	ClearSpawnedDoors();
 	ClearSpawnedPathActors();
 	ClearSpawnedStructureMeshes();
+	ClearSpawnedVisualFloorTiles();
+	ClearSpawnedEdgeFences();
 	if (MonsterSpawnerComponent)
 	{
 		MonsterSpawnerComponent->ClearSpawnedMonsters();
@@ -510,6 +517,33 @@ void ARoomActor::ClearSpawnedStructureMeshes()
 	}
 
 	SpawnedStructureMeshes.Empty();
+}
+
+void ARoomActor::ClearSpawnedVisualFloorTiles()
+{
+	for (UStaticMeshComponent* MeshComponent : SpawnedVisualFloorTileMeshes)
+	{
+		if (IsValid(MeshComponent))
+		{
+			MeshComponent->DestroyComponent();
+		}
+	}
+
+	SpawnedVisualFloorTileMeshes.Empty();
+	ApplyBaseFloorVisibility();
+}
+
+void ARoomActor::ClearSpawnedEdgeFences()
+{
+	for (UStaticMeshComponent* MeshComponent : SpawnedEdgeFenceMeshes)
+	{
+		if (IsValid(MeshComponent))
+		{
+			MeshComponent->DestroyComponent();
+		}
+	}
+
+	SpawnedEdgeFenceMeshes.Empty();
 }
 
 void ARoomActor::SpawnConnectedDoors()
@@ -600,6 +634,229 @@ void ARoomActor::GenerateAndSpawnInterior()
 	SpawnLargeStructureMeshes(Layout);
 	SpawnObstaclesByTendency(CachedTendency);
 	DrawInteriorCellDebug(Layout);
+}
+
+void ARoomActor::SpawnVisualFloorTiles()
+{
+	if (!bGenerateVisualFloorTiles || !VisualFloorTileMesh || !Root)
+	{
+		return;
+	}
+
+	const float RoomSize = GetEffectiveRoomHalfExtent() * 2.f;
+	const float CellSize = FMath::Max(GetEffectiveInteriorCellSize(), 1.f);
+	const float TargetTileSize = CellSize * FMath::Max(1, VisualFloorTileSizeInCells);
+	const int32 TileCountX = FMath::Max(1, FMath::CeilToInt(RoomSize / TargetTileSize));
+	const int32 TileCountY = FMath::Max(1, FMath::CeilToInt(RoomSize / TargetTileSize));
+	const float TiledRoomSizeX = TileCountX * TargetTileSize;
+	const float TiledRoomSizeY = TileCountY * TargetTileSize;
+	const FVector GridMin(-TiledRoomSizeX * 0.5f, -TiledRoomSizeY * 0.5f, VisualFloorTileZOffset);
+
+	const FBoxSphereBounds MeshBounds = VisualFloorTileMesh->GetBounds();
+	const float MeshSizeX = FMath::Max(MeshBounds.BoxExtent.X * 2.f, 1.f);
+	const float MeshSizeY = FMath::Max(MeshBounds.BoxExtent.Y * 2.f, 1.f);
+	const FVector TileScale(
+		(TargetTileSize / MeshSizeX) * VisualFloorTileScaleMultiplier,
+		(TargetTileSize / MeshSizeY) * VisualFloorTileScaleMultiplier,
+		VisualFloorTileScaleMultiplier);
+
+	int32 Seed = CachedMapSeed;
+	Seed = HashCombineFast(Seed, GetTypeHash(CachedRoomData.GridPos));
+	Seed = HashCombineFast(Seed, 0x6A3D20F1);
+	FRandomStream RandomStream(Seed);
+
+	SpawnedVisualFloorTileMeshes.Reserve(TileCountX * TileCountY);
+	for (int32 Y = 0; Y < TileCountY; ++Y)
+	{
+		for (int32 X = 0; X < TileCountX; ++X)
+		{
+			UStaticMeshComponent* MeshComponent = NewObject<UStaticMeshComponent>(this);
+			if (!MeshComponent)
+			{
+				continue;
+			}
+
+			const FVector LocalCenter(
+				GridMin.X + (X * TargetTileSize) + (TargetTileSize * 0.5f),
+				GridMin.Y + (Y * TargetTileSize) + (TargetTileSize * 0.5f),
+				GridMin.Z);
+			const float Yaw = bRandomizeVisualFloorTileRotation
+				? 90.f * RandomStream.RandRange(0, 3)
+				: 0.f;
+			const FRotator TileRotation(0.f, Yaw, 0.f);
+			const FVector BoundsCenterOffset = TileRotation.RotateVector(FVector(
+				MeshBounds.Origin.X * TileScale.X,
+				MeshBounds.Origin.Y * TileScale.Y,
+				MeshBounds.Origin.Z * TileScale.Z));
+
+			MeshComponent->SetupAttachment(Root);
+			MeshComponent->SetStaticMesh(VisualFloorTileMesh);
+			MeshComponent->SetRelativeLocation(LocalCenter - BoundsCenterOffset);
+			MeshComponent->SetRelativeRotation(TileRotation);
+			MeshComponent->SetRelativeScale3D(TileScale);
+			MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			MeshComponent->SetMobility(EComponentMobility::Movable);
+			MeshComponent->RegisterComponent();
+			AddInstanceComponent(MeshComponent);
+
+			SpawnedVisualFloorTileMeshes.Add(MeshComponent);
+		}
+	}
+}
+
+void ARoomActor::ApplyBaseFloorVisibility()
+{
+	if (!FloorMesh)
+	{
+		return;
+	}
+
+	const bool bUseVisualFloor = bGenerateVisualFloorTiles && VisualFloorTileMesh && bHideBaseFloorMeshWhenUsingVisualTiles;
+	FloorMesh->SetHiddenInGame(bUseVisualFloor);
+	FloorMesh->SetVisibility(!bUseVisualFloor, true);
+}
+
+void ARoomActor::SpawnEdgeFences()
+{
+	if (!bGenerateEdgeFences || !EdgeFenceMesh || !Root)
+	{
+		return;
+	}
+
+	const float HalfExtent = GetEffectiveRoomHalfExtent();
+	const float InsetHalfExtent = FMath::Max(0.f, HalfExtent - EdgeFenceInset);
+	const float EdgeLength = InsetHalfExtent * 2.f;
+	if (EdgeLength <= 0.f)
+	{
+		return;
+	}
+
+	const FVector TopLeft(-InsetHalfExtent, InsetHalfExtent, EdgeFenceZOffset);
+	const FVector TopRight(InsetHalfExtent, InsetHalfExtent, EdgeFenceZOffset);
+	const FVector BottomLeft(-InsetHalfExtent, -InsetHalfExtent, EdgeFenceZOffset);
+	const FVector BottomRight(InsetHalfExtent, -InsetHalfExtent, EdgeFenceZOffset);
+
+	SpawnEdgeFenceLine(TopLeft, FVector::ForwardVector, EdgeLength, 0.f, CachedRoomData.bConnectedUp);
+	SpawnEdgeFenceLine(BottomRight, FVector::BackwardVector, EdgeLength, 180.f, CachedRoomData.bConnectedDown);
+	SpawnEdgeFenceLine(BottomLeft, FVector::RightVector, EdgeLength, 90.f, CachedRoomData.bConnectedLeft);
+	SpawnEdgeFenceLine(TopRight, FVector::LeftVector, EdgeLength, -90.f, CachedRoomData.bConnectedRight);
+}
+
+void ARoomActor::SpawnEdgeFenceLine(
+	const FVector& EdgeStart,
+	const FVector& EdgeDirection,
+	float EdgeLength,
+	float Yaw,
+	bool bHasDoorGap)
+{
+	const float CellSize = FMath::Max(GetEffectiveInteriorCellSize(), 1.f);
+	const float TargetSegmentLength = CellSize * FMath::Max(1, EdgeFenceSegmentSizeInCells);
+	const int32 SegmentCount = FMath::Max(1, FMath::FloorToInt(EdgeLength / TargetSegmentLength));
+	const float SegmentSpacing = EdgeLength / SegmentCount;
+
+	const FBoxSphereBounds MeshBounds = EdgeFenceMesh->GetBounds();
+	const float MeshLengthX = FMath::Max(MeshBounds.BoxExtent.X * 2.f, 1.f);
+	const FVector FenceScale(
+		(SegmentSpacing / MeshLengthX) * EdgeFenceScaleMultiplier,
+		EdgeFenceScaleMultiplier,
+		EdgeFenceScaleMultiplier);
+
+	const FRotator FenceRotation(0.f, Yaw, 0.f);
+	for (int32 SegmentIndex = 0; SegmentIndex < SegmentCount; ++SegmentIndex)
+	{
+		const float DistanceAlongEdge = (SegmentIndex + 0.5f) * SegmentSpacing;
+		if (bHasDoorGap && IsInDoorGap(DistanceAlongEdge, EdgeLength))
+		{
+			continue;
+		}
+
+		UStaticMeshComponent* MeshComponent = NewObject<UStaticMeshComponent>(this);
+		if (!MeshComponent)
+		{
+			continue;
+		}
+
+		const FVector LocalCenter = EdgeStart + EdgeDirection.GetSafeNormal() * DistanceAlongEdge;
+		const FVector BoundsCenterOffset = FenceRotation.RotateVector(FVector(
+			MeshBounds.Origin.X * FenceScale.X,
+			MeshBounds.Origin.Y * FenceScale.Y,
+			MeshBounds.Origin.Z * FenceScale.Z));
+
+		MeshComponent->SetupAttachment(Root);
+		MeshComponent->SetStaticMesh(EdgeFenceMesh);
+		MeshComponent->SetRelativeLocation(LocalCenter - BoundsCenterOffset);
+		MeshComponent->SetRelativeRotation(FenceRotation);
+		MeshComponent->SetRelativeScale3D(FenceScale);
+		MeshComponent->SetCollisionProfileName(bEnableEdgeFenceCollision ? TEXT("BlockAll") : TEXT("NoCollision"));
+		MeshComponent->SetCollisionEnabled(bEnableEdgeFenceCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+		MeshComponent->SetMobility(EComponentMobility::Movable);
+		MeshComponent->RegisterComponent();
+		AddInstanceComponent(MeshComponent);
+
+		SpawnedEdgeFenceMeshes.Add(MeshComponent);
+	}
+
+	if (bHasDoorGap)
+	{
+		SpawnDoorSideBlocks(EdgeStart, EdgeDirection, EdgeLength, Yaw);
+	}
+}
+
+void ARoomActor::SpawnDoorSideBlocks(
+	const FVector& EdgeStart,
+	const FVector& EdgeDirection,
+	float EdgeLength,
+	float Yaw)
+{
+	if (!DoorSideBlockMesh)
+	{
+		return;
+	}
+
+	const float HalfGap = EdgeFenceDoorGapWidth * 0.5f;
+	const float EdgeCenter = EdgeLength * 0.5f;
+	const float LeftDistance = FMath::Clamp(EdgeCenter - HalfGap, 0.f, EdgeLength);
+	const float RightDistance = FMath::Clamp(EdgeCenter + HalfGap, 0.f, EdgeLength);
+	const FRotator BlockRotation(0.f, Yaw, 0.f);
+	const FBoxSphereBounds MeshBounds = DoorSideBlockMesh->GetBounds();
+	const FVector BlockScale(DoorSideBlockScaleMultiplier);
+	const FVector BoundsCenterOffset = BlockRotation.RotateVector(FVector(
+		MeshBounds.Origin.X * BlockScale.X,
+		MeshBounds.Origin.Y * BlockScale.Y,
+		MeshBounds.Origin.Z * BlockScale.Z));
+
+	const float Distances[] = { LeftDistance, RightDistance };
+	for (const float DistanceAlongEdge : Distances)
+	{
+		UStaticMeshComponent* MeshComponent = NewObject<UStaticMeshComponent>(this);
+		if (!MeshComponent)
+		{
+			continue;
+		}
+
+		FVector LocalCenter = EdgeStart + EdgeDirection.GetSafeNormal() * DistanceAlongEdge;
+		LocalCenter.Z = DoorSideBlockZOffset;
+
+		MeshComponent->SetupAttachment(Root);
+		MeshComponent->SetStaticMesh(DoorSideBlockMesh);
+		MeshComponent->SetRelativeLocation(LocalCenter - BoundsCenterOffset);
+		MeshComponent->SetRelativeRotation(BlockRotation);
+		MeshComponent->SetRelativeScale3D(BlockScale);
+		MeshComponent->SetCollisionProfileName(bEnableEdgeFenceCollision ? TEXT("BlockAll") : TEXT("NoCollision"));
+		MeshComponent->SetCollisionEnabled(bEnableEdgeFenceCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+		MeshComponent->SetMobility(EComponentMobility::Movable);
+		MeshComponent->RegisterComponent();
+		AddInstanceComponent(MeshComponent);
+
+		SpawnedEdgeFenceMeshes.Add(MeshComponent);
+	}
+}
+
+bool ARoomActor::IsInDoorGap(float DistanceAlongEdge, float EdgeLength) const
+{
+	const float HalfGap = EdgeFenceDoorGapWidth * 0.5f;
+	const float EdgeCenter = EdgeLength * 0.5f;
+	return FMath::Abs(DistanceAlongEdge - EdgeCenter) <= HalfGap;
 }
 
 void ARoomActor::SpawnGuaranteedPaths(const FRoomInteriorLayout& Layout)
