@@ -6,6 +6,7 @@
 #include "Components/InputComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Character.h"
+#include "Blueprint/UserWidget.h"
 #include "Engine/World.h"
 #include "Engine/Engine.h"
 #include "DrawDebugHelpers.h"
@@ -13,8 +14,11 @@
 #include "Map/RoomTypes.h"
 #include "Map/NextRoomChoiceManager.h"
 #include "Map/RoomActor/RoomSizeSettings.h"
+#include "Map/SpecialRoomTransitionSubsystem.h"
 #include "Stage/StageExitActor.h"
 #include "Stage/StageDataAsset.h"
+#include "Stage/StageLoadingWidget.h"
+#include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Framework/CAP_GameInstance.h"
 
@@ -42,12 +46,18 @@ void AMapManager::BeginPlay()
 	EnsureMapGenerator();
 	EnsureNextRoomChoiceManager();
 
+	BindInput();
+
+	if (TryRestoreSpecialRoomReturn())
+	{
+		return;
+	}
+
 	if (bUseRandomSeedOnBeginPlay)
 	{
 		CurrentSeed = FMath::Rand();
 	}
 
-	BindInput();
 	if (bGenerateMapOnBeginPlay)
 	{
 		GenerateMapAndSpawnRooms();
@@ -164,6 +174,7 @@ void AMapManager::GenerateMapAndSpawnRooms()
 	Config.Seed = CurrentSeed;
 
 	CurrentLayout = MapGenerator->GenerateMap(Config);
+	CurrentSeed = CurrentLayout.UsedSeed;
 
 	ClearSpawnedRooms();
 	SpawnRooms(CurrentLayout);
@@ -260,6 +271,11 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 	for (const TPair<FIntPoint, FRoomData>& Pair : Layout.Rooms)
 	{
 		const FRoomData& RoomData = Pair.Value;
+		if (RoomData.RoomType == ERoomType::Shop || RoomData.RoomType == ERoomType::Reward)
+		{
+			continue;
+		}
+
 		const float EffectiveRoomSpacing = GetEffectiveRoomSpacing();
 
 		const FVector SpawnLocation(
@@ -497,6 +513,259 @@ void AMapManager::MovePlayerToRoom(ACharacter* PlayerCharacter, const FIntPoint&
 
 void AMapManager::RequestMovePlayer(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
 {
+	if (const FRoomData* TargetRoomData = FindRoomData(TargetRoomPos))
+	{
+		if (TryOpenSpecialRoomLevel(*TargetRoomData, TargetRoomPos, ExitDirection))
+		{
+			return;
+		}
+	}
+
 	MovePlayerToRoom(PlayerCharacter, TargetRoomPos, ExitDirection);
 }
 
+bool AMapManager::TryRestoreSpecialRoomReturn()
+{
+	USpecialRoomTransitionSubsystem* TransitionSubsystem = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<USpecialRoomTransitionSubsystem>()
+		: nullptr;
+	if (!TransitionSubsystem)
+	{
+		return false;
+	}
+
+	FSpecialRoomReturnState ReturnState;
+	if (!TransitionSubsystem->ConsumeReturnState(ReturnState))
+	{
+		return false;
+	}
+
+	CurrentSeed = ReturnState.Seed;
+	CurrentRoomCount = ReturnState.RoomCount;
+	CurrentMonsterSpawnDataAsset = ReturnState.MonsterSpawnDataAsset;
+
+	GenerateMapAndSpawnRooms();
+	ApplySpecialRoomReturnState(ReturnState);
+	MovePlayerToReturnRoom(ReturnState);
+	return true;
+}
+
+void AMapManager::ApplySpecialRoomReturnState(const FSpecialRoomReturnState& ReturnState)
+{
+	for (const TPair<FIntPoint, ECombatRoomRewardType>& Pair : ReturnState.CombatRewardTypesByRoom)
+	{
+		if (FRoomData* RoomData = FindRoomData(Pair.Key))
+		{
+			RoomData->CombatRewardType = Pair.Value;
+		}
+
+		if (ARoomActor* RoomActor = FindSpawnedRoomByGridPos(Pair.Key))
+		{
+			RoomActor->SetCombatRewardType(Pair.Value);
+		}
+	}
+
+	for (const FIntPoint& ClearedRoomGridPos : ReturnState.ClearedRoomGridPositions)
+	{
+		if (ARoomActor* RoomActor = FindSpawnedRoomByGridPos(ClearedRoomGridPos))
+		{
+			RoomActor->ApplyPersistentClearedState();
+		}
+	}
+}
+
+void AMapManager::MovePlayerToReturnRoom(const FSpecialRoomReturnState& ReturnState)
+{
+	ARoomActor* ReturnRoom = FindSpawnedRoomByGridPos(ReturnState.ReturnRoomGridPos);
+	if (!ReturnRoom)
+	{
+		MovePlayerToStartRoom();
+		return;
+	}
+
+	ACharacter* PlayerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+
+	const FVector ReturnLocation = ReturnRoom->GetEntrancePoint(ReturnState.ReturnEntryDirection);
+	PlayerCharacter->SetActorLocation(ReturnLocation);
+}
+
+bool AMapManager::TryOpenSpecialRoomLevel(const FRoomData& RoomData, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
+{
+	FName LevelToOpen = NAME_None;
+
+	switch (RoomData.RoomType)
+	{
+	case ERoomType::Shop:
+		LevelToOpen = ShopLevelName;
+		break;
+
+	case ERoomType::Reward:
+		LevelToOpen = RewardLevelName;
+		break;
+
+	default:
+		return false;
+	}
+
+	if (LevelToOpen.IsNone())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("MapManager: special room level name is not set for room type %d."), static_cast<int32>(RoomData.RoomType));
+		return false;
+	}
+
+	SaveSpecialRoomReturnState(TargetRoomPos, ExitDirection);
+	OpenSpecialRoomLevelWithLoading(LevelToOpen);
+	return true;
+}
+
+void AMapManager::SaveSpecialRoomReturnState(const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
+{
+	USpecialRoomTransitionSubsystem* TransitionSubsystem = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<USpecialRoomTransitionSubsystem>()
+		: nullptr;
+	if (!TransitionSubsystem)
+	{
+		return;
+	}
+
+	FIntPoint ReturnRoomPos = TargetRoomPos;
+	switch (ExitDirection)
+	{
+	case EDoorDirection::Up:
+		ReturnRoomPos.Y -= 1;
+		break;
+
+	case EDoorDirection::Down:
+		ReturnRoomPos.Y += 1;
+		break;
+
+	case EDoorDirection::Left:
+		ReturnRoomPos.X += 1;
+		break;
+
+	case EDoorDirection::Right:
+		ReturnRoomPos.X -= 1;
+		break;
+
+	default:
+		break;
+	}
+
+	FSpecialRoomReturnState ReturnState;
+	ReturnState.Seed = CurrentLayout.UsedSeed;
+	ReturnState.RoomCount = CurrentRoomCount;
+	ReturnState.ReturnRoomGridPos = ReturnRoomPos;
+	ReturnState.ReturnEntryDirection = ExitDirection;
+	ReturnState.MonsterSpawnDataAsset = CurrentMonsterSpawnDataAsset;
+
+	for (const TPair<FIntPoint, FRoomData>& Pair : CurrentLayout.Rooms)
+	{
+		if (Pair.Value.CombatRewardType != ECombatRoomRewardType::None)
+		{
+			ReturnState.CombatRewardTypesByRoom.Add(Pair.Key, Pair.Value.CombatRewardType);
+		}
+	}
+
+	for (const ARoomActor* RoomActor : SpawnedRooms)
+	{
+		if (!IsValid(RoomActor))
+		{
+			continue;
+		}
+
+		if (RoomActor->GetCombatRewardType() != ECombatRoomRewardType::None)
+		{
+			ReturnState.CombatRewardTypesByRoom.Add(RoomActor->GetGridPos(), RoomActor->GetCombatRewardType());
+		}
+
+		if (RoomActor->IsRoomCleared())
+		{
+			ReturnState.ClearedRoomGridPositions.Add(RoomActor->GetGridPos());
+		}
+	}
+
+	TransitionSubsystem->SaveReturnState(ReturnState);
+}
+
+void AMapManager::OpenSpecialRoomLevelWithLoading(FName LevelName)
+{
+	if (LevelName.IsNone())
+	{
+		return;
+	}
+
+	PendingSpecialRoomLevelName = LevelName;
+
+	if (SpecialRoomLoadingWidgetClass && !ActiveSpecialRoomLoadingWidget)
+	{
+		if (APlayerController* PlayerController = UGameplayStatics::GetPlayerController(GetWorld(), 0))
+		{
+			ActiveSpecialRoomLoadingWidget = CreateWidget<UStageLoadingWidget>(PlayerController, SpecialRoomLoadingWidgetClass);
+			if (ActiveSpecialRoomLoadingWidget)
+			{
+				ActiveSpecialRoomLoadingWidget->SetLoadingProgress(0.f);
+				ActiveSpecialRoomLoadingWidget->AddToViewport(1000);
+				PlayerController->SetIgnoreMoveInput(true);
+				PlayerController->SetIgnoreLookInput(true);
+			}
+		}
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		if (SpecialRoomOpenLevelDelay > 0.f && ActiveSpecialRoomLoadingWidget)
+		{
+			SpecialRoomLoadingElapsedTime = 0.f;
+			World->GetTimerManager().SetTimer(
+				SpecialRoomLoadingProgressTimerHandle,
+				this,
+				&AMapManager::UpdateSpecialRoomLoadingProgress,
+				0.02f,
+				true);
+			return;
+		}
+	}
+
+	OpenPendingSpecialRoomLevel();
+}
+
+void AMapManager::UpdateSpecialRoomLoadingProgress()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		OpenPendingSpecialRoomLevel();
+		return;
+	}
+
+	const float SafeDuration = FMath::Max(0.01f, SpecialRoomOpenLevelDelay);
+	SpecialRoomLoadingElapsedTime += 0.02f;
+
+	const float Progress = FMath::Clamp(SpecialRoomLoadingElapsedTime / SafeDuration, 0.f, 1.f);
+	if (ActiveSpecialRoomLoadingWidget)
+	{
+		ActiveSpecialRoomLoadingWidget->SetLoadingProgress(Progress);
+	}
+
+	if (Progress >= 1.f)
+	{
+		World->GetTimerManager().ClearTimer(SpecialRoomLoadingProgressTimerHandle);
+		OpenPendingSpecialRoomLevel();
+	}
+}
+
+void AMapManager::OpenPendingSpecialRoomLevel()
+{
+	if (PendingSpecialRoomLevelName.IsNone())
+	{
+		return;
+	}
+
+	const FName LevelToOpen = PendingSpecialRoomLevelName;
+	PendingSpecialRoomLevelName = NAME_None;
+	UGameplayStatics::OpenLevel(this, LevelToOpen);
+}

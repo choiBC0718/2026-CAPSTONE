@@ -7,6 +7,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "Map/Debug/MapManager.h"
+#include "Map/SpecialRoomTransitionSubsystem.h"
 #include "Stage/StageDataAsset.h"
 #include "Stage/StageLoadingWidget.h"
 
@@ -19,6 +20,18 @@ AStageManager::AStageManager()
 void AStageManager::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (USpecialRoomTransitionSubsystem* TransitionSubsystem = GameInstance->GetSubsystem<USpecialRoomTransitionSubsystem>())
+		{
+			if (TransitionSubsystem->ShouldSkipStageAutoStart())
+			{
+				TransitionSubsystem->MarkStageAutoStartSkipped();
+				return;
+			}
+		}
+	}
 
 	if (bStartFirstStageOnBeginPlay && StageDataAsset && StageDataAsset->GetStageCount() > 0)
 	{

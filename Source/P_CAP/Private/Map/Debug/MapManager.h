@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "TimerManager.h"
 #include "Map/MapLayout.h"
 #include "Map/MapGenerator.h"
 #include "Map/RoomActor/RoomActor.h"
@@ -14,6 +15,8 @@ class AStageExitActor;
 class ANextRoomChoiceManager;
 class URoomMonsterSpawnDataAsset;
 class URoomSizeSettings;
+class UStageLoadingWidget;
+struct FSpecialRoomReturnState;
 struct FStageConfig;
 
 UCLASS()
@@ -86,6 +89,18 @@ private:
 	UPROPERTY(EditAnywhere, Category="Map Spawn")
 	TObjectPtr<URoomSizeSettings> RoomSizeSettings;
 
+	UPROPERTY(EditAnywhere, Category="Special Room")
+	FName ShopLevelName = TEXT("ShopRoom");
+
+	UPROPERTY(EditAnywhere, Category="Special Room")
+	FName RewardLevelName = TEXT("RewardRoom");
+
+	UPROPERTY(EditAnywhere, Category="Special Room|Loading")
+	TSubclassOf<UStageLoadingWidget> SpecialRoomLoadingWidgetClass;
+
+	UPROPERTY(EditAnywhere, Category="Special Room|Loading", meta=(ClampMin="0.0"))
+	float SpecialRoomOpenLevelDelay = 0.15f;
+
 	UPROPERTY(EditAnywhere, Category="Stage Exit")
 	TSubclassOf<AStageExitActor> StageExitActorClass;
 
@@ -122,6 +137,13 @@ private:
 	UPROPERTY()
 	TObjectPtr<URoomMonsterSpawnDataAsset> CurrentMonsterSpawnDataAsset;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UStageLoadingWidget> ActiveSpecialRoomLoadingWidget;
+
+	FName PendingSpecialRoomLevelName = NAME_None;
+	FTimerHandle SpecialRoomLoadingProgressTimerHandle;
+	float SpecialRoomLoadingElapsedTime = 0.f;
+
 	/* 좌표 기반 빠른 조회용 */
 	UPROPERTY()
 	TMap<FIntPoint, TObjectPtr<ARoomActor>> SpawnedRoomMap;
@@ -135,6 +157,14 @@ private:
 	float GetEffectiveRoomSpacing() const;
 	void GenerateMapAndSpawnRooms();
 	void SpawnRooms(const FMapLayout& Layout);
+	bool TryRestoreSpecialRoomReturn();
+	void ApplySpecialRoomReturnState(const FSpecialRoomReturnState& ReturnState);
+	void MovePlayerToReturnRoom(const FSpecialRoomReturnState& ReturnState);
+	bool TryOpenSpecialRoomLevel(const FRoomData& RoomData, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection);
+	void SaveSpecialRoomReturnState(const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection);
+	void OpenSpecialRoomLevelWithLoading(FName LevelName);
+	void UpdateSpecialRoomLoadingProgress();
+	void OpenPendingSpecialRoomLevel();
 	void SpawnStageExitInRoom(ARoomActor* RoomActor, const FRoomData& RoomData);
 	void SpawnBossRoomTemporaryActor(ARoomActor* RoomActor);
 	void MovePlayerToStartRoom();

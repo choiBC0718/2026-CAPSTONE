@@ -170,6 +170,20 @@ void ARoomActor::SetCombatRewardType(ECombatRoomRewardType NewRewardType)
 	CachedRoomData.CombatRewardType = NewRewardType;
 }
 
+void ARoomActor::ApplyPersistentClearedState()
+{
+	bRoomCleared = true;
+	bMonstersSpawned = true;
+
+	if (MonsterSpawnerComponent)
+	{
+		MonsterSpawnerComponent->ClearSpawnedMonsters();
+	}
+
+	SetSpawnedDoorsPortalEnabled(true);
+	SetActorTickEnabled(false);
+}
+
 void ARoomActor::ActivateRoom(AActor* TargetActor)
 {
 	if (bRoomActivated)
@@ -178,6 +192,14 @@ void ARoomActor::ActivateRoom(AActor* TargetActor)
 	}
 
 	bRoomActivated = true;
+
+	if (bRoomCleared)
+	{
+		SetSpawnedDoorsPortalEnabled(true);
+		SetActorTickEnabled(false);
+		return;
+	}
+
 	SpawnRoomMonsters();
 	if (MonsterSpawnerComponent)
 	{

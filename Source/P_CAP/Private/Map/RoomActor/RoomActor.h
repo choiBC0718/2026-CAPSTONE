@@ -38,6 +38,10 @@ public:
 		ERoomZone InZone = ERoomZone::Mid,
 		URoomSizeSettings* InRoomSizeSettings = nullptr);
 	void SetCombatRewardType(ECombatRoomRewardType NewRewardType);
+	bool IsRoomCleared() const { return bRoomCleared; }
+	FIntPoint GetGridPos() const { return CachedRoomData.GridPos; }
+	ECombatRoomRewardType GetCombatRewardType() const { return CachedRoomData.CombatRewardType; }
+	void ApplyPersistentClearedState();
 	FVector GetEntrancePoint(EDoorDirection Direction) const;
 	FTransform GetStageExitSpawnTransform() const;
 	virtual void Destroyed() override;

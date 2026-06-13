@@ -53,7 +53,7 @@ void ANextRoomChoiceManager::RequestEnterRoom(
 		return;
 	}
 
-	ResolvedMapManager->MovePlayerToRoom(PlayerCharacter, TargetRoomPos, ExitDirection);
+	ResolvedMapManager->RequestMovePlayer(PlayerCharacter, TargetRoomPos, ExitDirection);
 }
 
 void ANextRoomChoiceManager::CancelCombatRewardChoiceForRoom(const FIntPoint& TargetRoomPos)
@@ -287,7 +287,7 @@ void ANextRoomChoiceManager::BeginCombatRewardChoice(
 		ClearPendingChoice();
 		if (AMapManager* ResolvedMapManager = ResolveMapManager())
 		{
-			ResolvedMapManager->MovePlayerToRoom(PlayerCharacter, TargetRoomPos, ExitDirection);
+			ResolvedMapManager->RequestMovePlayer(PlayerCharacter, TargetRoomPos, ExitDirection);
 		}
 		return;
 	}
@@ -300,14 +300,6 @@ void ANextRoomChoiceManager::BeginCombatRewardChoice(
 		TargetRoomPos.X,
 		TargetRoomPos.Y);
 
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(
-			-1,
-			4.0f,
-			FColor::Cyan,
-			TEXT("Choose combat reward"));
-	}
 }
 
 void ANextRoomChoiceManager::ApplyCombatRewardChoice(ECombatRoomRewardType SelectedRewardType)
@@ -346,7 +338,7 @@ void ANextRoomChoiceManager::ApplyCombatRewardChoice(ECombatRoomRewardType Selec
 
 	ClearPendingChoice();
 
-	ResolvedMapManager->MovePlayerToRoom(PlayerCharacter, TargetRoomPos, ExitDirection);
+	ResolvedMapManager->RequestMovePlayer(PlayerCharacter, TargetRoomPos, ExitDirection);
 }
 
 void ANextRoomChoiceManager::ClearPendingChoice()

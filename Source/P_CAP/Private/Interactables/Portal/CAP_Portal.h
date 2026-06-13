@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Interactables/CAP_InteractableBase.h"
+#include "TimerManager.h"
 #include "CAP_Portal.generated.h"
 
 /**
@@ -17,6 +18,7 @@ class ACAP_Portal : public ACAP_InteractableBase
 public:
 	ACAP_Portal();
 	
+	virtual void BeginPlay() override;
 	virtual void Interact(AActor* InsActor, EInteractAction ActionType) override;
 	virtual FInteractionPayload GetInteractionPayload() const override;
 
@@ -24,6 +26,28 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class UStaticMeshComponent* PortalMesh;
 	
-	UPROPERTY(EditDefaultsOnly, Category="Interact")
+	UPROPERTY(EditAnywhere, Category="Interact")
 	FName NextStageName;
+
+	UPROPERTY(EditAnywhere, Category="Interact")
+	FText InteractionText = FText::FromString(TEXT("Exit"));
+
+	UPROPERTY(EditAnywhere, Category="Interact|Visual")
+	bool bShowPortalMesh = true;
+
+	UPROPERTY(EditAnywhere, Category="Interact|Loading")
+	TSubclassOf<class UStageLoadingWidget> LoadingWidgetClass;
+
+	UPROPERTY(EditAnywhere, Category="Interact|Loading", meta=(ClampMin="0.0"))
+	float OpenLevelDelay = 0.15f;
+
+	UPROPERTY(Transient)
+	TObjectPtr<class UStageLoadingWidget> ActiveLoadingWidget;
+
+	bool bIsOpeningLevel = false;
+	FTimerHandle LoadingProgressTimerHandle;
+	float LoadingElapsedTime = 0.f;
+
+	void UpdateLoadingProgress();
+	void OpenTargetLevel();
 };
