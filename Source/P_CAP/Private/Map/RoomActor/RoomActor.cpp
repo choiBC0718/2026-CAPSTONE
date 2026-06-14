@@ -5,6 +5,7 @@
 #include "Map/RoomActor/Interior/RoomInteriorGenerator.h"
 #include "Map/RoomActor/Interior/RoomInteriorData.h"
 #include "Map/RoomActor/Interior/RoomInteriorPropSet.h"
+#include "Map/RoomActor/Interior/RoomInteriorTemplateActor.h"
 #include "Map/RoomActor/Interior/PCG/RoomPathActor.h"
 #include "Map/RoomActor/RoomSizeSettings.h"
 #include "Engine/World.h"
@@ -137,15 +138,19 @@ void ARoomActor::InitializeRoom(
 	ClearSpawnedDoors();
 	ClearSpawnedPathActors();
 	ClearSpawnedStructureMeshes();
+	ClearSpawnedInteriorTemplate();
 	ClearSpawnedVisualFloorTiles();
 	ClearSpawnedEdgeFences();
 	ClearSpawnedObstacles();
+	SelectedInteriorTemplateClass = nullptr;
 	if (MonsterSpawnerComponent)
 	{
 		MonsterSpawnerComponent->ClearSpawnedMonsters();
 	}
 
 	/* 방 정보 기준으로 문과 경로를 다시 생성 */
+	SelectInteriorTemplateClass();
+	SpawnInteriorTemplate();
 	SpawnVisualFloorTiles();
 	SpawnEdgeFences();
 	ApplyBaseFloorVisibility();
@@ -490,6 +495,7 @@ void ARoomActor::Destroyed()
 	ClearSpawnedDoors();
 	ClearSpawnedPathActors();
 	ClearSpawnedStructureMeshes();
+	ClearSpawnedInteriorTemplate();
 	ClearSpawnedVisualFloorTiles();
 	ClearSpawnedEdgeFences();
 	if (MonsterSpawnerComponent)
@@ -539,6 +545,16 @@ void ARoomActor::ClearSpawnedStructureMeshes()
 	}
 
 	SpawnedStructureMeshes.Empty();
+}
+
+void ARoomActor::ClearSpawnedInteriorTemplate()
+{
+	if (IsValid(SpawnedInteriorTemplateActor))
+	{
+		SpawnedInteriorTemplateActor->Destroy();
+	}
+
+	SpawnedInteriorTemplateActor = nullptr;
 }
 
 void ARoomActor::ClearSpawnedVisualFloorTiles()
@@ -653,9 +669,89 @@ void ARoomActor::GenerateAndSpawnInterior()
 
 	/* 생성된 경로 데이터로 실제 path actor를 생성 */
 	SpawnGuaranteedPaths(Layout);
-	SpawnLargeStructureMeshes(Layout);
+	if (!bUseInteriorTemplates || !bDisableGeneratedLargeStructuresWhenUsingTemplate)
+	{
+		SpawnLargeStructureMeshes(Layout);
+	}
 	SpawnObstaclesByTendency(CachedTendency);
 	DrawInteriorCellDebug(Layout);
+}
+
+void ARoomActor::SelectInteriorTemplateClass()
+{
+	SelectedInteriorTemplateClass = nullptr;
+
+	if (CachedRoomData.RoomType != ERoomType::Normal)
+	{
+		return;
+	}
+
+	if (!bUseInteriorTemplates || InteriorTemplateClasses.IsEmpty())
+	{
+		return;
+	}
+
+	int32 Seed = CachedMapSeed;
+	Seed = HashCombineFast(Seed, GetTypeHash(CachedRoomData.GridPos));
+	Seed = HashCombineFast(Seed, 0x32B9D4A1);
+	FRandomStream RandomStream(Seed);
+
+	TArray<TSubclassOf<ARoomInteriorTemplateActor>> ValidTemplateClasses;
+	ValidTemplateClasses.Reserve(InteriorTemplateClasses.Num());
+	for (const TSubclassOf<ARoomInteriorTemplateActor>& TemplateClass : InteriorTemplateClasses)
+	{
+		if (TemplateClass)
+		{
+			ValidTemplateClasses.Add(TemplateClass);
+		}
+	}
+
+	if (ValidTemplateClasses.IsEmpty())
+	{
+		return;
+	}
+
+	const int32 PickedIndex = RandomStream.RandRange(0, ValidTemplateClasses.Num() - 1);
+	SelectedInteriorTemplateClass = ValidTemplateClasses[PickedIndex];
+}
+
+void ARoomActor::SpawnInteriorTemplate()
+{
+	if (!SelectedInteriorTemplateClass)
+	{
+		return;
+	}
+
+	if (SpawnedInteriorTemplateActor)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const FTransform RelativeTransform(InteriorTemplateRelativeRotation, InteriorTemplateRelativeLocation, FVector::OneVector);
+	const FTransform SpawnTransform = RelativeTransform * GetActorTransform();
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	SpawnedInteriorTemplateActor = World->SpawnActor<ARoomInteriorTemplateActor>(
+		SelectedInteriorTemplateClass,
+		SpawnTransform,
+		SpawnParams);
+
+	if (!SpawnedInteriorTemplateActor)
+	{
+		return;
+	}
+
+	SpawnedInteriorTemplateActor->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
+	SpawnedInteriorTemplateActor->InitializeTemplate(CachedMapSeed, CachedRoomData.GridPos);
 }
 
 void ARoomActor::SpawnVisualFloorTiles()
@@ -688,6 +784,7 @@ void ARoomActor::SpawnVisualFloorTiles()
 	FRandomStream RandomStream(Seed);
 
 	SpawnedVisualFloorTileMeshes.Reserve(TileCountX * TileCountY);
+	const FVector TileLocalExtent(TargetTileSize * 0.5f, TargetTileSize * 0.5f, 100.f);
 	for (int32 Y = 0; Y < TileCountY; ++Y)
 	{
 		for (int32 X = 0; X < TileCountX; ++X)
@@ -702,6 +799,11 @@ void ARoomActor::SpawnVisualFloorTiles()
 				GridMin.X + (X * TargetTileSize) + (TargetTileSize * 0.5f),
 				GridMin.Y + (Y * TargetTileSize) + (TargetTileSize * 0.5f),
 				GridMin.Z);
+			if (ShouldSkipVisualFloorTileAtLocalBounds(LocalCenter, TileLocalExtent))
+			{
+				continue;
+			}
+
 			const float Yaw = bRandomizeVisualFloorTileRotation
 				? 90.f * RandomStream.RandRange(0, 3)
 				: 0.f;
@@ -724,6 +826,51 @@ void ARoomActor::SpawnVisualFloorTiles()
 			SpawnedVisualFloorTileMeshes.Add(MeshComponent);
 		}
 	}
+}
+
+bool ARoomActor::ShouldSkipVisualFloorTileAtLocalBounds(const FVector& LocalCenter, const FVector& LocalExtent) const
+{
+	if (!SelectedInteriorTemplateClass)
+	{
+		return false;
+	}
+
+	const ARoomInteriorTemplateActor* TemplateSource = SpawnedInteriorTemplateActor
+		? SpawnedInteriorTemplateActor.Get()
+		: SelectedInteriorTemplateClass->GetDefaultObject<ARoomInteriorTemplateActor>();
+	if (!TemplateSource)
+	{
+		return false;
+	}
+
+	const FTransform TemplateTransform = SpawnedInteriorTemplateActor
+		? SpawnedInteriorTemplateActor->GetActorTransform()
+		: FTransform(InteriorTemplateRelativeRotation, InteriorTemplateRelativeLocation, FVector::OneVector) * GetActorTransform();
+	const FVector WorldCenter = GetActorTransform().TransformPosition(LocalCenter);
+	const FVector WorldExtent = GetActorTransform().TransformVectorNoScale(LocalExtent).GetAbs();
+	const FVector TemplateLocalCenter = TemplateTransform.InverseTransformPosition(WorldCenter);
+	const FVector TemplateLocalExtent = TemplateTransform.InverseTransformVectorNoScale(WorldExtent).GetAbs();
+
+	TArray<FRoomInteriorFloorExclusionBox> ExclusionBoxes;
+	TemplateSource->GetAllFloorExclusionBoxes(ExclusionBoxes);
+	for (const FRoomInteriorFloorExclusionBox& ExclusionBox : ExclusionBoxes)
+	{
+		const FVector EffectiveExclusionExtent(
+			FMath::Max(0.f, ExclusionBox.Extent.X + VisualFloorExclusionPadding),
+			FMath::Max(0.f, ExclusionBox.Extent.Y + VisualFloorExclusionPadding),
+			FMath::Max(0.f, ExclusionBox.Extent.Z + VisualFloorExclusionPadding));
+		const FVector EffectiveTileExtent = VisualFloorExclusionMode == ERoomVisualFloorExclusionMode::TileBoundsOverlap
+			? TemplateLocalExtent
+			: FVector::ZeroVector;
+		const FVector Delta = TemplateLocalCenter - ExclusionBox.Center;
+		if (FMath::Abs(Delta.X) <= (EffectiveTileExtent.X + EffectiveExclusionExtent.X) &&
+			FMath::Abs(Delta.Y) <= (EffectiveTileExtent.Y + EffectiveExclusionExtent.Y))
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void ARoomActor::ApplyBaseFloorVisibility()

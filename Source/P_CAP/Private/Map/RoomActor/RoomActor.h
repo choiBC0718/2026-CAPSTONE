@@ -21,6 +21,14 @@
 
 class URoomMonsterSpawnDataAsset;
 class URoomSizeSettings;
+class ARoomInteriorTemplateActor;
+
+UENUM(BlueprintType)
+enum class ERoomVisualFloorExclusionMode : uint8
+{
+	TileCenter UMETA(DisplayName="Tile Center"),
+	TileBoundsOverlap UMETA(DisplayName="Tile Bounds Overlap")
+};
 
 UCLASS()
 class ARoomActor : public AActor
@@ -139,6 +147,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles"))
 	bool bRandomizeVisualFloorTileRotation = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles"))
+	ERoomVisualFloorExclusionMode VisualFloorExclusionMode = ERoomVisualFloorExclusionMode::TileCenter;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles"))
+	float VisualFloorExclusionPadding = 0.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Edge Fence")
 	bool bGenerateEdgeFences = false;
 
@@ -179,6 +193,21 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
 	TObjectPtr<URoomInteriorPropSet> LargeStructurePropSet;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior Template")
+	bool bUseInteriorTemplates = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior Template", meta=(EditCondition="bUseInteriorTemplates"))
+	bool bDisableGeneratedLargeStructuresWhenUsingTemplate = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior Template", meta=(EditCondition="bUseInteriorTemplates"))
+	TArray<TSubclassOf<ARoomInteriorTemplateActor>> InteriorTemplateClasses;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior Template", meta=(EditCondition="bUseInteriorTemplates"))
+	FVector InteriorTemplateRelativeLocation = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior Template", meta=(EditCondition="bUseInteriorTemplates"))
+	FRotator InteriorTemplateRelativeRotation = FRotator::ZeroRotator;
+
 	/* K-Means 성향 기반으로 스폰할 장애물 블루프린트 클래스 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Obstacle")
 	TSubclassOf<AAnalysisObstacle> ObstacleClass;
@@ -206,6 +235,12 @@ protected:
 	/* 이 방에서 동적으로 생성한 큰 구조물 메쉬 컴포넌트 */
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> SpawnedStructureMeshes;
+
+	UPROPERTY(Transient)
+	TObjectPtr<ARoomInteriorTemplateActor> SpawnedInteriorTemplateActor;
+
+	UPROPERTY(Transient)
+	TSubclassOf<ARoomInteriorTemplateActor> SelectedInteriorTemplateClass;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> SpawnedVisualFloorTileMeshes;
@@ -272,6 +307,7 @@ private:
 	void ClearSpawnedPathActors();
 	/* 이 방이 소유하는 큰 구조물 메쉬 컴포넌트를 정리 */
 	void ClearSpawnedStructureMeshes();
+	void ClearSpawnedInteriorTemplate();
 	void ClearSpawnedVisualFloorTiles();
 	void ClearSpawnedEdgeFences();
 	/* 성향 기반으로 동적 스폰된 장애물 정리 */
@@ -283,7 +319,10 @@ private:
 
 	/* 내부 경로 데이터를 생성하고 실제 path actor를 배치 */
 	void GenerateAndSpawnInterior();
+	void SelectInteriorTemplateClass();
+	void SpawnInteriorTemplate();
 	void SpawnVisualFloorTiles();
+	bool ShouldSkipVisualFloorTileAtLocalBounds(const FVector& LocalCenter, const FVector& LocalExtent) const;
 	void SpawnEdgeFences();
 	void SpawnEdgeFenceLine(
 		const FVector& EdgeStart,
