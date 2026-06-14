@@ -507,7 +507,8 @@ void AMapManager::MovePlayerToRoom(ACharacter* PlayerCharacter, const FIntPoint&
 		break;
 	}
 
-	const FVector TargetLocation = TargetRoom->GetEntrancePoint(EntryDirection);
+	FVector TargetLocation = TargetRoom->GetEntrancePoint(EntryDirection);
+	TargetLocation.Z += RoomEntryZOffset;
 	PlayerCharacter->SetActorLocation(TargetLocation);
 }
 
@@ -589,7 +590,8 @@ void AMapManager::MovePlayerToReturnRoom(const FSpecialRoomReturnState& ReturnSt
 		return;
 	}
 
-	const FVector ReturnLocation = ReturnRoom->GetEntrancePoint(ReturnState.ReturnEntryDirection);
+	FVector ReturnLocation = ReturnRoom->GetEntrancePoint(ReturnState.ReturnEntryDirection);
+	ReturnLocation.Z += RoomEntryZOffset;
 	PlayerCharacter->SetActorLocation(ReturnLocation);
 }
 

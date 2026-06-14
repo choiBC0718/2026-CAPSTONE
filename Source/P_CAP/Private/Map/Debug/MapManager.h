@@ -89,6 +89,9 @@ private:
 	UPROPERTY(EditAnywhere, Category="Map Spawn")
 	TObjectPtr<URoomSizeSettings> RoomSizeSettings;
 
+	UPROPERTY(EditAnywhere, Category="Map Spawn", meta=(ClampMin="0.0"))
+	float RoomEntryZOffset = 80.f;
+
 	UPROPERTY(EditAnywhere, Category="Special Room")
 	FName ShopLevelName = TEXT("ShopRoom");
 

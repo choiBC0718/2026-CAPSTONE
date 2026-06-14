@@ -102,6 +102,12 @@ protected:
 	UPROPERTY()
 	bool bHasInitialFloorMeshScale = false;
 
+	UPROPERTY()
+	TEnumAsByte<ECollisionEnabled::Type> InitialFloorMeshCollisionEnabled = ECollisionEnabled::QueryAndPhysics;
+
+	UPROPERTY()
+	bool bHasInitialFloorMeshCollisionEnabled = false;
+
 	/* 문 높이 조절값 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Door")
 	float DoorSpawnZOffset = 0.f;
@@ -143,6 +149,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles"))
 	bool bHideBaseFloorMeshWhenUsingVisualTiles = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles"))
+	bool bUseVisualFloorTileCollision = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles"))
 	bool bRandomizeVisualFloorTileRotation = true;

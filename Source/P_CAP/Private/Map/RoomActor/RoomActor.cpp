@@ -818,7 +818,16 @@ void ARoomActor::SpawnVisualFloorTiles()
 			MeshComponent->SetRelativeLocation(LocalCenter - BoundsCenterOffset);
 			MeshComponent->SetRelativeRotation(TileRotation);
 			MeshComponent->SetRelativeScale3D(TileScale);
-			MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			if (bUseVisualFloorTileCollision)
+			{
+				MeshComponent->SetCollisionProfileName(TEXT("BlockAll"));
+				MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+				MeshComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+			}
+			else
+			{
+				MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			}
 			MeshComponent->SetMobility(EComponentMobility::Movable);
 			MeshComponent->RegisterComponent();
 			AddInstanceComponent(MeshComponent);
@@ -880,9 +889,16 @@ void ARoomActor::ApplyBaseFloorVisibility()
 		return;
 	}
 
+	if (!bHasInitialFloorMeshCollisionEnabled)
+	{
+		InitialFloorMeshCollisionEnabled = FloorMesh->GetCollisionEnabled();
+		bHasInitialFloorMeshCollisionEnabled = true;
+	}
+
 	const bool bUseVisualFloor = bGenerateVisualFloorTiles && VisualFloorTileMesh && bHideBaseFloorMeshWhenUsingVisualTiles;
 	FloorMesh->SetHiddenInGame(bUseVisualFloor);
 	FloorMesh->SetVisibility(!bUseVisualFloor, true);
+	FloorMesh->SetCollisionEnabled(bUseVisualFloor ? ECollisionEnabled::NoCollision : InitialFloorMeshCollisionEnabled.GetValue());
 }
 
 void ARoomActor::SpawnEdgeFences()
