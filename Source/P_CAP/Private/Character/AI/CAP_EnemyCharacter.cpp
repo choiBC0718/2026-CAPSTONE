@@ -7,6 +7,7 @@
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Component/CAP_CurrencyComponent.h"
 #include "Character/Player/Feedback/CAP_CoinRewardVFXActor.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Data/CAP_MonsterRewardDataAsset.h"
 #include "Framework/CAP_RewardSettings.h"
@@ -48,6 +49,8 @@ ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 	HealthBarWidgetComponent->SetDrawSize(FVector2D(120.f, 16.f));
 	HealthBarWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, 120.f));
 
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+
 	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> CoinDropVFXFinder(
 		TEXT("/Game/_Workspace/7_Monster/CoinDrop/NS_CoinDrop.NS_CoinDrop"));
 	if (CoinDropVFXFinder.Succeeded())
@@ -59,6 +62,8 @@ ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 void ACAP_EnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 
 	UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent());
 	if (ASC)

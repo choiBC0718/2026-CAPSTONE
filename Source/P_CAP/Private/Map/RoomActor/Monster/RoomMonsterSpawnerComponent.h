@@ -56,6 +56,12 @@ private:
 	float SpawnJitter = 75.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Monster Spawn", meta=(AllowPrivateAccess="true", ClampMin="0"))
+	int32 SpawnLocationMaxRetries = 12;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Monster Spawn", meta=(AllowPrivateAccess="true", ClampMin="0.0"))
+	float SpawnCollisionPadding = 5.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Monster Spawn", meta=(AllowPrivateAccess="true", ClampMin="0"))
 	int32 DoorExclusionRadiusInCells = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Monster Spawn", meta=(AllowPrivateAccess="true", ClampMin="0"))
@@ -83,5 +89,15 @@ private:
 	void SortCellsByCenterBias(TArray<FIntPoint>& SpawnableCells, const FRoomInteriorLayout& InteriorLayout, FRandomStream& RandomStream, float ExplorationRate) const;
 	FVector GetCellLocalCenter(const FRoomInteriorLayout& InteriorLayout, const FIntPoint& CellCoord) const;
 	FVector GetFormationOffset(int32 MonsterIndexInCell, int32 MonsterCountInCell, float CellSize) const;
+	bool TryBuildSpawnLocation(
+		TSubclassOf<ACharacter> MonsterClass,
+		const FRoomInteriorLayout& InteriorLayout,
+		const FIntPoint& CellCoord,
+		int32 MonsterIndexInCell,
+		int32 MonsterCountInCell,
+		const FTransform& RoomTransform,
+		FRandomStream& RandomStream,
+		FVector& OutWorldLocation) const;
+	bool IsSpawnLocationFree(TSubclassOf<ACharacter> MonsterClass, const FVector& WorldLocation) const;
 	FRandomStream MakeRoomRandomStream(const FRoomData& RoomData, int32 MapSeed) const;
 };
