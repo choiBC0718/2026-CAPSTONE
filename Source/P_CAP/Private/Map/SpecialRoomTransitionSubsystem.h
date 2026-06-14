@@ -6,9 +6,8 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Map/RoomTypes.h"
 #include "Map/RoomActor/DoorDirection.h"
+#include "Map/RoomActor/Monster/RoomMonsterSpawnDataAsset.h"
 #include "SpecialRoomTransitionSubsystem.generated.h"
-
-class URoomMonsterSpawnDataAsset;
 
 USTRUCT(BlueprintType)
 struct FSpecialRoomReturnState

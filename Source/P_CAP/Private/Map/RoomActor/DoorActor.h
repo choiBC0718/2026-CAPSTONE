@@ -3,15 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/BoxComponent.h"
 #include "Components/PrimitiveComponent.h"
+#include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "DoorDirection.h"
 #include "GameFramework/Actor.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "DoorActor.generated.h"
-
-class USceneComponent;
-class UStaticMeshComponent;
-class UBoxComponent;
-class UMaterialInstanceDynamic;
 
 UCLASS()
 class ADoorActor : public AActor

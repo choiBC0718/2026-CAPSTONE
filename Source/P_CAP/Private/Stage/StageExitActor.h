@@ -3,15 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/BoxComponent.h"
+#include "Components/ChildActorComponent.h"
+#include "Components/PrimitiveComponent.h"
+#include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
+#include "Stage/StageManager.h"
 #include "StageExitActor.generated.h"
-
-class AStageManager;
-class UBoxComponent;
-class UChildActorComponent;
-class UPrimitiveComponent;
-class USceneComponent;
-class UStaticMeshComponent;
 
 UCLASS()
 class AStageExitActor : public AActor

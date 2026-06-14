@@ -4,15 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "GameFramework/Character.h"
 #include "Map/RoomActor/Interior/RoomInteriorData.h"
 #include "Map/RoomData.h"
 #include "AI/PlayerBehaviorLearner.h"
+#include "Map/RoomActor/Monster/RoomMonsterSpawnDataAsset.h"
 #include "RoomMonsterSpawnerComponent.generated.h"
-
-class ACharacter;
-class URoomMonsterSpawnDataAsset;
-struct FRoomMonsterSpawnRule;
-struct FRoomMonsterSpawnEntry;
 
 struct FRoomMonsterSpawnPick
 {

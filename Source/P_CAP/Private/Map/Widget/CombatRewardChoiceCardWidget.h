@@ -4,12 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/Border.h"
+#include "Components/Image.h"
+#include "Components/TextBlock.h"
 #include "Map/Widget/CombatRewardChoiceTypes.h"
 #include "CombatRewardChoiceCardWidget.generated.h"
-
-class UImage;
-class UBorder;
-class UTextBlock;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCombatRewardChoiceCardSelected, ECombatRoomRewardType, RewardType);
 

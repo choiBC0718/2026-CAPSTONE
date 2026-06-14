@@ -10,18 +10,22 @@
 #include "Map/RoomActor/Interior/RoomInteriorGenerator.h"
 #include "Map/RoomActor/Interior/RoomInteriorData.h"
 #include "Map/RoomActor/Interior/RoomInteriorPropSet.h"
-#include "Map/RoomActor/Interior/PCG/RoomPathActor.h"
 #include "Map/RoomActor/Monster/RoomMonsterSpawnerComponent.h"
+#include "Map/RoomActor/Monster/RoomMonsterSpawnDataAsset.h"
+#include "Map/RoomActor/Interior/RoomInteriorTemplateActor.h"
+#include "Map/RoomActor/RoomSizeSettings.h"
 #include "Map/RoomData.h"
 #include "Map/RoomActor/DoorDirection.h"
 #include "Map/RoomActor/DoorActor.h"
+#include "Map/RoomActor/RoomFloor.h"
+#include "Map/RoomActor/RoomTemplate.h"
+#include "Map/RoomActor/RoomDoors.h"
+#include "Map/RoomActor/RoomFence.h"
+#include "Map/RoomActor/RoomObstacle.h"
+#include "Map/RoomActor/RoomStructure.h"
 #include "AI/AnalysisObstacle.h"
 #include "AI/PlayerBehaviorLearner.h"
 #include "RoomActor.generated.h"
-
-class URoomMonsterSpawnDataAsset;
-class URoomSizeSettings;
-class ARoomInteriorTemplateActor;
 
 UENUM(BlueprintType)
 enum class ERoomVisualFloorExclusionMode : uint8
@@ -34,6 +38,13 @@ UCLASS()
 class ARoomActor : public AActor
 {
 	GENERATED_BODY()
+
+	friend class FRoomFloor;
+	friend class FRoomTemplate;
+	friend class FRoomDoors;
+	friend class FRoomFence;
+	friend class FRoomObstacle;
+	friend class FRoomStructure;
 
 public:
 	ARoomActor();
@@ -232,11 +243,6 @@ protected:
 	UPROPERTY()
 	TArray<TObjectPtr<ADoorActor>> SpawnedDoors;
 
-	/* 현재 방에서 생성한 경로 액터 목록
-	   - 방이 다시 초기화될 때 함께 정리 */
-	UPROPERTY()
-	TArray<TObjectPtr<ARoomPathActor>> SpawnedPathActors;
-
 	/* 성향 기반으로 동적 스폰된 장애물 목록 */
 	UPROPERTY()
 	TArray<TObjectPtr<AAnalysisObstacle>> SpawnedObstacles;
@@ -312,10 +318,6 @@ private:
 	void ApplyBaseFloorVisibility();
 
 	void ClearSpawnedDoors();
-	/* 이 방이 소유하는 경로 액터들을 정리 */
-	void ClearSpawnedPathActors();
-	/* 이 방이 소유하는 큰 구조물 메쉬 컴포넌트를 정리 */
-	void ClearSpawnedStructureMeshes();
 	void ClearSpawnedInteriorTemplate();
 	void ClearSpawnedVisualFloorTiles();
 	void ClearSpawnedEdgeFences();
@@ -333,24 +335,6 @@ private:
 	void SpawnVisualFloorTiles();
 	bool ShouldSkipVisualFloorTileAtLocalBounds(const FVector& LocalCenter, const FVector& LocalExtent) const;
 	void SpawnEdgeFences();
-	void SpawnEdgeFenceLine(
-		const FVector& EdgeStart,
-		const FVector& EdgeDirection,
-		float EdgeLength,
-		float Yaw,
-		bool bHasDoorGap);
-	void SpawnDoorSideBlocks(
-		const FVector& EdgeStart,
-		const FVector& EdgeDirection,
-		float EdgeLength,
-		float Yaw);
-	bool IsInDoorGap(float DistanceAlongEdge, float EdgeLength) const;
-	/* 생성된 경로 데이터를 바탕으로 전용 path actor를 스폰 */
-	void SpawnGuaranteedPaths(const FRoomInteriorLayout& Layout);
-	/* 큰 구조물 점유 결과를 실제 메쉬 컴포넌트로 배치 */
-	void SpawnLargeStructureMeshes(const FRoomInteriorLayout& Layout);
-	/* 셀 기반 구조 결과를 디버그 박스로 시각화 */
-	void DrawInteriorCellDebug(const FRoomInteriorLayout& Layout) const;
 	
 	FTransform GetDoorTransform(EDoorDirection Direction) const;
 	FIntPoint GetNeighborGridPos(EDoorDirection Direction) const;

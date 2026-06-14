@@ -3,11 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/BoxComponent.h"
+#include "Components/SceneComponent.h"
 #include "GameFramework/Actor.h"
 #include "RoomInteriorTemplateActor.generated.h"
-
-class USceneComponent;
-class UBoxComponent;
 
 USTRUCT(BlueprintType)
 struct FRoomInteriorFloorExclusionBox

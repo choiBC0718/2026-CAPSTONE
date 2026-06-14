@@ -3,21 +3,22 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameFramework/Character.h"
 #include "GameFramework/Actor.h"
 #include "TimerManager.h"
 #include "Map/MapLayout.h"
 #include "Map/MapGenerator.h"
 #include "Map/RoomActor/RoomActor.h"
 #include "Map/RoomActor/DoorDirection.h"
+#include "Map/RoomActor/Monster/RoomMonsterSpawnDataAsset.h"
+#include "Map/RoomActor/RoomSizeSettings.h"
+#include "Map/SpecialRoomTransitionSubsystem.h"
+#include "Stage/StageDataAsset.h"
+#include "Stage/StageLoadingWidget.h"
 #include "MapManager.generated.h"
 
 class AStageExitActor;
 class ANextRoomChoiceManager;
-class URoomMonsterSpawnDataAsset;
-class URoomSizeSettings;
-class UStageLoadingWidget;
-struct FSpecialRoomReturnState;
-struct FStageConfig;
 
 UCLASS()
 class AMapManager : public AActor
