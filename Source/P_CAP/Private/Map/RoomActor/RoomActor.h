@@ -34,6 +34,21 @@ enum class ERoomVisualFloorExclusionMode : uint8
 	TileBoundsOverlap UMETA(DisplayName="Tile Bounds Overlap")
 };
 
+USTRUCT(BlueprintType)
+struct FRoomVisualFloorTileVariant
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Visual Floor")
+	TObjectPtr<UStaticMesh> StaticMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Visual Floor", meta=(ClampMin="0.0"))
+	float Weight = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Visual Floor")
+	float ZOffset = 0.f;
+};
+
 UCLASS()
 class ARoomActor : public AActor
 {
@@ -148,6 +163,12 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles"))
 	TObjectPtr<UStaticMesh> VisualFloorTileMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles", ClampMin="0.0"))
+	float VisualFloorTileMeshWeight = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles"))
+	TArray<FRoomVisualFloorTileVariant> VisualFloorTileVariants;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Visual Floor", meta=(EditCondition="bGenerateVisualFloorTiles", ClampMin="1"))
 	int32 VisualFloorTileSizeInCells = 4;

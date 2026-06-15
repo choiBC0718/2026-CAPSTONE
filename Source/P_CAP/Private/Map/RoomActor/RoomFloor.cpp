@@ -6,6 +6,90 @@
 #include "Map/RoomActor/Interior/RoomInteriorTemplateActor.h"
 #include "Components/StaticMeshComponent.h"
 
+bool FRoomFloor::HasVisualFloorTileSource(const ARoomActor& Room)
+	{
+		if (Room.VisualFloorTileMesh)
+		{
+			return true;
+		}
+
+		for (const FRoomVisualFloorTileVariant& Variant : Room.VisualFloorTileVariants)
+		{
+			if (Variant.Weight > 0.f && Variant.StaticMesh)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+UStaticMesh* FRoomFloor::PickVisualFloorTileMesh(const ARoomActor& Room, FRandomStream& RandomStream, float& OutZOffset)
+	{
+		OutZOffset = 0.f;
+		float TotalWeight = 0.f;
+		if (Room.VisualFloorTileMesh && Room.VisualFloorTileMeshWeight > 0.f)
+		{
+			TotalWeight += Room.VisualFloorTileMeshWeight;
+		}
+
+		for (const FRoomVisualFloorTileVariant& Variant : Room.VisualFloorTileVariants)
+		{
+			if (Variant.Weight > 0.f && Variant.StaticMesh)
+			{
+				TotalWeight += Variant.Weight;
+			}
+		}
+
+		if (TotalWeight <= 0.f)
+		{
+			return nullptr;
+		}
+
+		const float RandomPick = RandomStream.FRandRange(0.f, TotalWeight);
+		float RunningWeight = 0.f;
+		if (Room.VisualFloorTileMesh && Room.VisualFloorTileMeshWeight > 0.f)
+		{
+			RunningWeight += Room.VisualFloorTileMeshWeight;
+			if (RandomPick <= RunningWeight)
+			{
+				OutZOffset = 0.f;
+				return Room.VisualFloorTileMesh.Get();
+			}
+		}
+
+		for (const FRoomVisualFloorTileVariant& Variant : Room.VisualFloorTileVariants)
+		{
+			if (Variant.Weight <= 0.f || !Variant.StaticMesh)
+			{
+				continue;
+			}
+
+			RunningWeight += Variant.Weight;
+			if (RandomPick <= RunningWeight)
+			{
+				OutZOffset = Variant.ZOffset;
+				return Variant.StaticMesh.Get();
+			}
+		}
+
+		return nullptr;
+	}
+
+void FRoomFloor::ApplyVisualFloorCollision(ARoomActor& Room, UStaticMeshComponent& MeshComponent)
+	{
+		if (Room.bUseVisualFloorTileCollision)
+		{
+			MeshComponent.SetCollisionProfileName(TEXT("BlockAll"));
+			MeshComponent.SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+			MeshComponent.SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+		}
+		else
+		{
+			MeshComponent.SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		}
+	}
+
 void FRoomFloor::ClearVisualTiles(ARoomActor& Room)
 {
 	for (UStaticMeshComponent* MeshComponent : Room.SpawnedVisualFloorTileMeshes)
@@ -22,7 +106,7 @@ void FRoomFloor::ClearVisualTiles(ARoomActor& Room)
 
 void FRoomFloor::SpawnVisualTiles(ARoomActor& Room)
 {
-	if (!Room.bGenerateVisualFloorTiles || !Room.VisualFloorTileMesh || !Room.Root)
+	if (!Room.bGenerateVisualFloorTiles || !HasVisualFloorTileSource(Room) || !Room.Root)
 	{
 		return;
 	}
@@ -36,14 +120,6 @@ void FRoomFloor::SpawnVisualTiles(ARoomActor& Room)
 	const float TiledRoomSizeY = TileCountY * TargetTileSize;
 	const FVector GridMin(-TiledRoomSizeX * 0.5f, -TiledRoomSizeY * 0.5f, Room.VisualFloorTileZOffset);
 
-	const FBoxSphereBounds MeshBounds = Room.VisualFloorTileMesh->GetBounds();
-	const float MeshSizeX = FMath::Max(MeshBounds.BoxExtent.X * 2.f, 1.f);
-	const float MeshSizeY = FMath::Max(MeshBounds.BoxExtent.Y * 2.f, 1.f);
-	const FVector TileScale(
-		(TargetTileSize / MeshSizeX) * Room.VisualFloorTileScaleMultiplier,
-		(TargetTileSize / MeshSizeY) * Room.VisualFloorTileScaleMultiplier,
-		Room.VisualFloorTileScaleMultiplier);
-
 	int32 Seed = Room.CachedMapSeed;
 	Seed = HashCombineFast(Seed, GetTypeHash(Room.CachedRoomData.GridPos));
 	Seed = HashCombineFast(Seed, 0x6A3D20F1);
@@ -55,12 +131,6 @@ void FRoomFloor::SpawnVisualTiles(ARoomActor& Room)
 	{
 		for (int32 X = 0; X < TileCountX; ++X)
 		{
-			UStaticMeshComponent* MeshComponent = NewObject<UStaticMeshComponent>(&Room);
-			if (!MeshComponent)
-			{
-				continue;
-			}
-
 			const FVector LocalCenter(
 				GridMin.X + (X * TargetTileSize) + (TargetTileSize * 0.5f),
 				GridMin.Y + (Y * TargetTileSize) + (TargetTileSize * 0.5f),
@@ -74,31 +144,43 @@ void FRoomFloor::SpawnVisualTiles(ARoomActor& Room)
 				? 90.f * RandomStream.RandRange(0, 3)
 				: 0.f;
 			const FRotator TileRotation(0.f, Yaw, 0.f);
-			const FVector BoundsCenterOffset = TileRotation.RotateVector(FVector(
-				MeshBounds.Origin.X * TileScale.X,
-				MeshBounds.Origin.Y * TileScale.Y,
-				MeshBounds.Origin.Z * TileScale.Z));
+			float VariantZOffset = 0.f;
+			UStaticMesh* SelectedMesh = PickVisualFloorTileMesh(Room, RandomStream, VariantZOffset);
+			const float SelectedTargetTileSize = CellSize * FMath::Max(1, Room.VisualFloorTileSizeInCells);
 
-			MeshComponent->SetupAttachment(Room.Root);
-			MeshComponent->SetStaticMesh(Room.VisualFloorTileMesh);
-			MeshComponent->SetRelativeLocation(LocalCenter - BoundsCenterOffset);
-			MeshComponent->SetRelativeRotation(TileRotation);
-			MeshComponent->SetRelativeScale3D(TileScale);
-			if (Room.bUseVisualFloorTileCollision)
+			if (SelectedMesh)
 			{
-				MeshComponent->SetCollisionProfileName(TEXT("BlockAll"));
-				MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-				MeshComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
-			}
-			else
-			{
-				MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			}
-			MeshComponent->SetMobility(EComponentMobility::Movable);
-			MeshComponent->RegisterComponent();
-			Room.AddInstanceComponent(MeshComponent);
+				UStaticMeshComponent* MeshComponent = NewObject<UStaticMeshComponent>(&Room);
+				if (!MeshComponent)
+				{
+					continue;
+				}
 
-			Room.SpawnedVisualFloorTileMeshes.Add(MeshComponent);
+				const FBoxSphereBounds MeshBounds = SelectedMesh->GetBounds();
+				const float MeshSizeX = FMath::Max(MeshBounds.BoxExtent.X * 2.f, 1.f);
+				const float MeshSizeY = FMath::Max(MeshBounds.BoxExtent.Y * 2.f, 1.f);
+				const FVector TileScale(
+					(SelectedTargetTileSize / MeshSizeX) * Room.VisualFloorTileScaleMultiplier,
+					(SelectedTargetTileSize / MeshSizeY) * Room.VisualFloorTileScaleMultiplier,
+					Room.VisualFloorTileScaleMultiplier);
+				const FVector BoundsCenterOffset = TileRotation.RotateVector(FVector(
+					MeshBounds.Origin.X * TileScale.X,
+					MeshBounds.Origin.Y * TileScale.Y,
+					MeshBounds.Origin.Z * TileScale.Z));
+
+				MeshComponent->SetupAttachment(Room.Root);
+				MeshComponent->SetStaticMesh(SelectedMesh);
+				MeshComponent->SetRelativeLocation(LocalCenter + FVector(0.f, 0.f, VariantZOffset) - BoundsCenterOffset);
+				MeshComponent->SetRelativeRotation(TileRotation);
+				MeshComponent->SetRelativeScale3D(TileScale);
+				ApplyVisualFloorCollision(Room, *MeshComponent);
+				MeshComponent->SetMobility(EComponentMobility::Movable);
+				MeshComponent->RegisterComponent();
+				Room.AddInstanceComponent(MeshComponent);
+
+				Room.SpawnedVisualFloorTileMeshes.Add(MeshComponent);
+				continue;
+			}
 		}
 	}
 }
@@ -161,7 +243,7 @@ void FRoomFloor::ApplyBaseVisibility(ARoomActor& Room)
 		Room.bHasInitialFloorMeshCollisionEnabled = true;
 	}
 
-	const bool bUseVisualFloor = Room.bGenerateVisualFloorTiles && Room.VisualFloorTileMesh && Room.bHideBaseFloorMeshWhenUsingVisualTiles;
+	const bool bUseVisualFloor = Room.bGenerateVisualFloorTiles && HasVisualFloorTileSource(Room) && Room.bHideBaseFloorMeshWhenUsingVisualTiles;
 	Room.FloorMesh->SetHiddenInGame(bUseVisualFloor);
 	Room.FloorMesh->SetVisibility(!bUseVisualFloor, true);
 	Room.FloorMesh->SetCollisionEnabled(bUseVisualFloor ? ECollisionEnabled::NoCollision : Room.InitialFloorMeshCollisionEnabled.GetValue());
