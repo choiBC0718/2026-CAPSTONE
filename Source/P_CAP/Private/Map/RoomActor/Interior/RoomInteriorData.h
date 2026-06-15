@@ -18,16 +18,6 @@ enum class ERoomInteriorCellType : uint8
 	Blocked UMETA(DisplayName = "Blocked")
 };
 
-UENUM(BlueprintType)
-enum class ERoomInteriorStructureCategory : uint8
-{
-	Generic UMETA(DisplayName = "Generic"),
-	Corner UMETA(DisplayName = "Corner"),
-	Side UMETA(DisplayName = "Side"),
-	EndCap UMETA(DisplayName = "End Cap"),
-	Hub UMETA(DisplayName = "Hub")
-};
-
 USTRUCT(BlueprintType)
 struct FRoomInteriorCell
 {
@@ -38,36 +28,6 @@ struct FRoomInteriorCell
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	ERoomInteriorCellType Type = ERoomInteriorCellType::Empty;
-};
-
-USTRUCT(BlueprintType)
-struct FRoomInteriorPlacedStructure
-{
-	GENERATED_BODY()
-
-	FRoomInteriorPlacedStructure() = default;
-
-	FRoomInteriorPlacedStructure(
-		const FIntPoint& InOrigin,
-		const FIntPoint& InFootprint,
-		ERoomInteriorStructureCategory InCategory = ERoomInteriorStructureCategory::Generic)
-		: Origin(InOrigin)
-		, Footprint(InFootprint)
-		, Category(InCategory)
-	{
-	}
-
-	/* 점유 시작 셀 좌표 (좌하단 기준) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FIntPoint Origin = FIntPoint::ZeroValue;
-
-	/* 점유 footprint 크기 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FIntPoint Footprint = FIntPoint(1, 1);
-
-	/* 구조물 카테고리 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	ERoomInteriorStructureCategory Category = ERoomInteriorStructureCategory::Generic;
 };
 
 /* 방 내부 보장 이동 경로 1개의 정보
@@ -115,7 +75,4 @@ struct FRoomInteriorLayout
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FRoomInteriorPath> GuaranteedPaths;
 
-	/* 큰 구조물용 점유 영역 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FRoomInteriorPlacedStructure> PlacedStructures;
 };

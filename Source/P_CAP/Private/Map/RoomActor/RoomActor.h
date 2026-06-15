@@ -7,9 +7,9 @@
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Map/RoomActor/Interior/RoomDecorationSet.h"
 #include "Map/RoomActor/Interior/RoomInteriorGenerator.h"
 #include "Map/RoomActor/Interior/RoomInteriorData.h"
-#include "Map/RoomActor/Interior/RoomInteriorPropSet.h"
 #include "Map/RoomActor/Monster/RoomMonsterSpawnerComponent.h"
 #include "Map/RoomActor/Monster/RoomMonsterSpawnDataAsset.h"
 #include "Map/RoomActor/Interior/RoomInteriorTemplateActor.h"
@@ -21,8 +21,8 @@
 #include "Map/RoomActor/RoomTemplate.h"
 #include "Map/RoomActor/RoomDoors.h"
 #include "Map/RoomActor/RoomFence.h"
+#include "Map/RoomActor/RoomDecor.h"
 #include "Map/RoomActor/RoomObstacle.h"
-#include "Map/RoomActor/RoomStructure.h"
 #include "AI/AnalysisObstacle.h"
 #include "AI/PlayerBehaviorLearner.h"
 #include "RoomActor.generated.h"
@@ -43,8 +43,8 @@ class ARoomActor : public AActor
 	friend class FRoomTemplate;
 	friend class FRoomDoors;
 	friend class FRoomFence;
+	friend class FRoomDecor;
 	friend class FRoomObstacle;
-	friend class FRoomStructure;
 
 public:
 	ARoomActor();
@@ -209,24 +209,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Trigger", meta=(ClampMin="0.0"))
 	float RoomEnterTriggerHeight = 300.f;
 
-	/* 큰 구조물 메쉬 후보를 담는 데이터 에셋 */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior")
-	TObjectPtr<URoomInteriorPropSet> LargeStructurePropSet;
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior Template")
 	bool bUseInteriorTemplates = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior Template", meta=(EditCondition="bUseInteriorTemplates"))
-	bool bDisableGeneratedLargeStructuresWhenUsingTemplate = true;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior Template", meta=(EditCondition="bUseInteriorTemplates"))
-	TArray<TSubclassOf<ARoomInteriorTemplateActor>> InteriorTemplateClasses;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior Template", meta=(EditCondition="bUseInteriorTemplates"))
-	FVector InteriorTemplateRelativeLocation = FVector::ZeroVector;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Interior Template", meta=(EditCondition="bUseInteriorTemplates"))
-	FRotator InteriorTemplateRelativeRotation = FRotator::ZeroRotator;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Decoration")
+	TObjectPtr<URoomDecorationSet> DecorationSet;
 
 	/* K-Means 성향 기반으로 스폰할 장애물 블루프린트 클래스 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Obstacle")
@@ -247,10 +234,6 @@ protected:
 	UPROPERTY()
 	TArray<TObjectPtr<AAnalysisObstacle>> SpawnedObstacles;
 
-	/* 이 방에서 동적으로 생성한 큰 구조물 메쉬 컴포넌트 */
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UStaticMeshComponent>> SpawnedStructureMeshes;
-
 	UPROPERTY(Transient)
 	TObjectPtr<ARoomInteriorTemplateActor> SpawnedInteriorTemplateActor;
 
@@ -258,10 +241,19 @@ protected:
 	TSubclassOf<ARoomInteriorTemplateActor> SelectedInteriorTemplateClass;
 
 	UPROPERTY(Transient)
+	FRoomTemplateDecorationRule SelectedInteriorTemplateRule;
+
+	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> SpawnedVisualFloorTileMeshes;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> SpawnedEdgeFenceMeshes;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMeshComponent>> SpawnedDecorationMeshes;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<AActor>> SpawnedLargeDecorationActors;
 
 	UPROPERTY()
 	FRoomData CachedRoomData;
@@ -321,6 +313,7 @@ private:
 	void ClearSpawnedInteriorTemplate();
 	void ClearSpawnedVisualFloorTiles();
 	void ClearSpawnedEdgeFences();
+	void ClearSpawnedDecorations();
 	/* 성향 기반으로 동적 스폰된 장애물 정리 */
 	void ClearSpawnedObstacles();
 	/* ObstacleBypass 성향에 따라 장애물 동적 스폰 */
@@ -335,6 +328,7 @@ private:
 	void SpawnVisualFloorTiles();
 	bool ShouldSkipVisualFloorTileAtLocalBounds(const FVector& LocalCenter, const FVector& LocalExtent) const;
 	void SpawnEdgeFences();
+	void SpawnDecorations(FRoomInteriorLayout& Layout);
 	
 	FTransform GetDoorTransform(EDoorDirection Direction) const;
 	FIntPoint GetNeighborGridPos(EDoorDirection Direction) const;

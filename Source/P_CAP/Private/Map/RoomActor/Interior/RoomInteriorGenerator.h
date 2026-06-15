@@ -15,7 +15,4 @@ class URoomInteriorGenerator : public UObject
 
 public:
 	FRoomInteriorLayout GenerateInteriorLayout(const FRoomData& RoomData, float RoomHalfExtent, float CellSize, float Margin, int32 MapSeed) const;
-
-private:
-	FRandomStream MakeRoomRandomStream(const FRoomData& RoomData, int32 MapSeed) const;
 };

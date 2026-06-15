@@ -3,6 +3,7 @@
 #include "Map/RoomActor/RoomTemplate.h"
 
 #include "Map/RoomActor/RoomActor.h"
+#include "Map/RoomActor/Interior/RoomDecorationSet.h"
 #include "Map/RoomActor/Interior/RoomInteriorTemplateActor.h"
 #include "Engine/World.h"
 
@@ -19,13 +20,14 @@ void FRoomTemplate::Clear(ARoomActor& Room)
 void FRoomTemplate::Select(ARoomActor& Room)
 {
 	Room.SelectedInteriorTemplateClass = nullptr;
+	Room.SelectedInteriorTemplateRule = FRoomTemplateDecorationRule();
 
 	if (Room.CachedRoomData.RoomType != ERoomType::Normal)
 	{
 		return;
 	}
 
-	if (!Room.bUseInteriorTemplates || Room.InteriorTemplateClasses.IsEmpty())
+	if (!Room.bUseInteriorTemplates || !Room.DecorationSet)
 	{
 		return;
 	}
@@ -35,23 +37,14 @@ void FRoomTemplate::Select(ARoomActor& Room)
 	Seed = HashCombineFast(Seed, 0x32B9D4A1);
 	FRandomStream RandomStream(Seed);
 
-	TArray<TSubclassOf<ARoomInteriorTemplateActor>> ValidTemplateClasses;
-	ValidTemplateClasses.Reserve(Room.InteriorTemplateClasses.Num());
-	for (const TSubclassOf<ARoomInteriorTemplateActor>& TemplateClass : Room.InteriorTemplateClasses)
-	{
-		if (TemplateClass)
-		{
-			ValidTemplateClasses.Add(TemplateClass);
-		}
-	}
-
-	if (ValidTemplateClasses.IsEmpty())
+	const FRoomTemplateDecorationRule* SelectedRule = Room.DecorationSet->PickTemplateRule(Room.CachedRoomData, RandomStream);
+	if (!SelectedRule || !SelectedRule->TemplateClass)
 	{
 		return;
 	}
 
-	const int32 PickedIndex = RandomStream.RandRange(0, ValidTemplateClasses.Num() - 1);
-	Room.SelectedInteriorTemplateClass = ValidTemplateClasses[PickedIndex];
+	Room.SelectedInteriorTemplateRule = *SelectedRule;
+	Room.SelectedInteriorTemplateClass = SelectedRule->TemplateClass;
 }
 
 void FRoomTemplate::Spawn(ARoomActor& Room)
@@ -72,7 +65,7 @@ void FRoomTemplate::Spawn(ARoomActor& Room)
 		return;
 	}
 
-	const FTransform RelativeTransform(Room.InteriorTemplateRelativeRotation, Room.InteriorTemplateRelativeLocation, FVector::OneVector);
+	const FTransform RelativeTransform(FRotator::ZeroRotator, FVector::ZeroVector, FVector::OneVector);
 	const FTransform SpawnTransform = RelativeTransform * Room.GetActorTransform();
 
 	FActorSpawnParameters SpawnParams;

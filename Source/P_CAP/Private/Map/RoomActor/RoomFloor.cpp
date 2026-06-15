@@ -120,7 +120,7 @@ bool FRoomFloor::ShouldSkipVisualTileAtLocalBounds(const ARoomActor& Room, const
 
 	const FTransform TemplateTransform = Room.SpawnedInteriorTemplateActor
 		? Room.SpawnedInteriorTemplateActor->GetActorTransform()
-		: FTransform(Room.InteriorTemplateRelativeRotation, Room.InteriorTemplateRelativeLocation, FVector::OneVector) * Room.GetActorTransform();
+		: FTransform(FRotator::ZeroRotator, FVector::ZeroVector, FVector::OneVector) * Room.GetActorTransform();
 	const FVector WorldCenter = Room.GetActorTransform().TransformPosition(LocalCenter);
 	const FVector WorldExtent = Room.GetActorTransform().TransformVectorNoScale(LocalExtent).GetAbs();
 	const FVector TemplateLocalCenter = TemplateTransform.InverseTransformPosition(WorldCenter);

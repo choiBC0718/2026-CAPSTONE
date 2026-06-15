@@ -5,12 +5,12 @@
 #include "Map/RoomActor/RoomDoors.h"
 #include "Map/RoomActor/RoomFence.h"
 #include "Map/RoomActor/RoomFloor.h"
+#include "Map/RoomActor/RoomDecor.h"
 #include "Map/RoomActor/RoomObstacle.h"
-#include "Map/RoomActor/RoomStructure.h"
 #include "Map/RoomActor/RoomTemplate.h"
+#include "Map/RoomActor/Interior/RoomInteriorDebug.h"
 #include "Map/RoomActor/Interior/RoomInteriorGenerator.h"
 #include "Map/RoomActor/Interior/RoomInteriorData.h"
-#include "Map/RoomActor/Interior/RoomInteriorPropSet.h"
 #include "Map/RoomActor/Interior/RoomInteriorTemplateActor.h"
 #include "Map/RoomActor/RoomSizeSettings.h"
 #include "Engine/World.h"
@@ -140,10 +140,10 @@ void ARoomActor::InitializeRoom(
 
 	/* 재초기화 상황을 대비해 기존 문/경로/장애물 액터를 정리 */
 	ClearSpawnedDoors();
-	FRoomStructure::Clear(*this);
 	ClearSpawnedInteriorTemplate();
 	ClearSpawnedVisualFloorTiles();
 	ClearSpawnedEdgeFences();
+	ClearSpawnedDecorations();
 	ClearSpawnedObstacles();
 	SelectedInteriorTemplateClass = nullptr;
 	if (MonsterSpawnerComponent)
@@ -490,10 +490,10 @@ void ARoomActor::Destroyed()
 {
 	/* 방이 제거될 때 함께 생성한 객체들도 정리 */
 	ClearSpawnedDoors();
-	FRoomStructure::Clear(*this);
 	ClearSpawnedInteriorTemplate();
 	ClearSpawnedVisualFloorTiles();
 	ClearSpawnedEdgeFences();
+	ClearSpawnedDecorations();
 	if (MonsterSpawnerComponent)
 	{
 		MonsterSpawnerComponent->ClearSpawnedMonsters();
@@ -522,6 +522,11 @@ void ARoomActor::ClearSpawnedEdgeFences()
 	FRoomFence::Clear(*this);
 }
 
+void ARoomActor::ClearSpawnedDecorations()
+{
+	FRoomDecor::Clear(*this);
+}
+
 void ARoomActor::SpawnConnectedDoors()
 {
 	FRoomDoors::SpawnConnected(*this);
@@ -545,7 +550,7 @@ void ARoomActor::GenerateAndSpawnInterior()
 		return;
 	}
 
-	const FRoomInteriorLayout Layout = InteriorGenerator->GenerateInteriorLayout(
+	FRoomInteriorLayout Layout = InteriorGenerator->GenerateInteriorLayout(
 		CachedRoomData,
 		GetEffectiveRoomHalfExtent(),
 		GetEffectiveInteriorCellSize(),
@@ -553,12 +558,9 @@ void ARoomActor::GenerateAndSpawnInterior()
 		CachedMapSeed);
 	CachedInteriorLayout = Layout;
 
-	if (!bUseInteriorTemplates || !bDisableGeneratedLargeStructuresWhenUsingTemplate)
-	{
-		FRoomStructure::SpawnLargeMeshes(*this, Layout);
-	}
+	SpawnDecorations(CachedInteriorLayout);
 	SpawnObstaclesByTendency(CachedTendency);
-	FRoomStructure::DrawDebugCells(*this, Layout);
+	FRoomInteriorDebug::DrawCells(GetWorld(), GetActorTransform(), GetActorQuat(), CachedInteriorLayout, PathZOffset, bDrawInteriorCellDebug);
 }
 
 void ARoomActor::SelectInteriorTemplateClass()
@@ -589,6 +591,11 @@ void ARoomActor::ApplyBaseFloorVisibility()
 void ARoomActor::SpawnEdgeFences()
 {
 	FRoomFence::Spawn(*this);
+}
+
+void ARoomActor::SpawnDecorations(FRoomInteriorLayout& Layout)
+{
+	FRoomDecor::SpawnDecorations(*this, Layout);
 }
 
 FTransform ARoomActor::GetDoorTransform(EDoorDirection Direction) const
