@@ -40,7 +40,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class URotatingMovementComponent* RotatingMovement;
 	
-	UPROPERTY(EditDefaultsOnly, Category="Weapon Data")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon Data")
 	class UCAP_WeaponDataAsset* WeaponDA;
 
 private:

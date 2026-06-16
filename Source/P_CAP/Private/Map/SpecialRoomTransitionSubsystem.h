@@ -24,6 +24,9 @@ struct FSpecialRoomReturnState
 	FIntPoint ReturnRoomGridPos = FIntPoint::ZeroValue;
 
 	UPROPERTY(BlueprintReadOnly, Category="Special Room")
+	FIntPoint SpecialRoomGridPos = FIntPoint::ZeroValue;
+
+	UPROPERTY(BlueprintReadOnly, Category="Special Room")
 	EDoorDirection ReturnEntryDirection = EDoorDirection::Up;
 
 	UPROPERTY(BlueprintReadOnly, Category="Special Room")
@@ -45,10 +48,22 @@ public:
 
 	bool ShouldSkipStageAutoStart() const;
 	void MarkStageAutoStartSkipped();
+	bool TryGetPendingSpecialRoomGridPos(FIntPoint& OutGridPos) const;
+	bool IsSpecialRoomRewardConsumed(const FIntPoint& GridPos) const;
+	void MarkSpecialRoomRewardConsumed(const FIntPoint& GridPos);
+	bool IsSpecialRoomShopSlotPurchased(FName SlotKey) const;
+	void MarkSpecialRoomShopSlotPurchased(FName SlotKey);
+	bool TryGetSpecialRoomShopSlotOfferId(FName SlotKey, FName& OutOfferId) const;
+	void SetSpecialRoomShopSlotOfferId(FName SlotKey, FName OfferId);
+	void GetSpecialRoomShopOfferIdsByKeyPrefix(const FString& SlotKeyPrefix, TSet<FName>& OutOfferIds) const;
 
 private:
 	UPROPERTY()
 	FSpecialRoomReturnState PendingReturnState;
+
+	TSet<FIntPoint> ConsumedSpecialRoomRewardGridPositions;
+	TSet<FName> PurchasedSpecialRoomShopSlotKeys;
+	TMap<FName, FName> SpecialRoomShopOfferIdsBySlotKey;
 
 	bool bHasPendingReturn = false;
 	bool bBlockStageAutoStartOnce = false;

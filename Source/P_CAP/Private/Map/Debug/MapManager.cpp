@@ -21,6 +21,7 @@
 #include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Framework/CAP_GameInstance.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
 
 AMapManager::AMapManager()
 {
@@ -620,6 +621,10 @@ bool AMapManager::TryOpenSpecialRoomLevel(const FRoomData& RoomData, const FIntP
 	}
 
 	SaveSpecialRoomReturnState(TargetRoomPos, ExitDirection);
+	if (ACAP_PlayerCharacter* PlayerCharacter = Cast<ACAP_PlayerCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0)))
+	{
+		PlayerCharacter->SaveProgressionBeforeChangeLevel();
+	}
 	OpenSpecialRoomLevelWithLoading(LevelToOpen);
 	return true;
 }
@@ -661,6 +666,7 @@ void AMapManager::SaveSpecialRoomReturnState(const FIntPoint& TargetRoomPos, EDo
 	ReturnState.Seed = CurrentLayout.UsedSeed;
 	ReturnState.RoomCount = CurrentRoomCount;
 	ReturnState.ReturnRoomGridPos = ReturnRoomPos;
+	ReturnState.SpecialRoomGridPos = TargetRoomPos;
 	ReturnState.ReturnEntryDirection = ExitDirection;
 	ReturnState.MonsterSpawnDataAsset = CurrentMonsterSpawnDataAsset;
 

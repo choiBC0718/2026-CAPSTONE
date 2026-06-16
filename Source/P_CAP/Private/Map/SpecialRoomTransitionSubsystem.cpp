@@ -33,3 +33,67 @@ void USpecialRoomTransitionSubsystem::MarkStageAutoStartSkipped()
 	bBlockStageAutoStartOnce = false;
 	bStageAutoStartSkippedForThisLoad = true;
 }
+
+bool USpecialRoomTransitionSubsystem::TryGetPendingSpecialRoomGridPos(FIntPoint& OutGridPos) const
+{
+	if (!bHasPendingReturn)
+	{
+		return false;
+	}
+
+	OutGridPos = PendingReturnState.SpecialRoomGridPos;
+	return true;
+}
+
+bool USpecialRoomTransitionSubsystem::IsSpecialRoomRewardConsumed(const FIntPoint& GridPos) const
+{
+	return ConsumedSpecialRoomRewardGridPositions.Contains(GridPos);
+}
+
+void USpecialRoomTransitionSubsystem::MarkSpecialRoomRewardConsumed(const FIntPoint& GridPos)
+{
+	ConsumedSpecialRoomRewardGridPositions.Add(GridPos);
+}
+
+bool USpecialRoomTransitionSubsystem::IsSpecialRoomShopSlotPurchased(FName SlotKey) const
+{
+	return PurchasedSpecialRoomShopSlotKeys.Contains(SlotKey);
+}
+
+void USpecialRoomTransitionSubsystem::MarkSpecialRoomShopSlotPurchased(FName SlotKey)
+{
+	if (!SlotKey.IsNone())
+	{
+		PurchasedSpecialRoomShopSlotKeys.Add(SlotKey);
+	}
+}
+
+bool USpecialRoomTransitionSubsystem::TryGetSpecialRoomShopSlotOfferId(FName SlotKey, FName& OutOfferId) const
+{
+	if (const FName* OfferId = SpecialRoomShopOfferIdsBySlotKey.Find(SlotKey))
+	{
+		OutOfferId = *OfferId;
+		return true;
+	}
+
+	return false;
+}
+
+void USpecialRoomTransitionSubsystem::SetSpecialRoomShopSlotOfferId(FName SlotKey, FName OfferId)
+{
+	if (!SlotKey.IsNone() && !OfferId.IsNone())
+	{
+		SpecialRoomShopOfferIdsBySlotKey.FindOrAdd(SlotKey) = OfferId;
+	}
+}
+
+void USpecialRoomTransitionSubsystem::GetSpecialRoomShopOfferIdsByKeyPrefix(const FString& SlotKeyPrefix, TSet<FName>& OutOfferIds) const
+{
+	for (const TPair<FName, FName>& Pair : SpecialRoomShopOfferIdsBySlotKey)
+	{
+		if (Pair.Key.ToString().StartsWith(SlotKeyPrefix) && !Pair.Value.IsNone())
+		{
+			OutOfferIds.Add(Pair.Value);
+		}
+	}
+}

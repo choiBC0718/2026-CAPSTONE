@@ -5,7 +5,9 @@
 
 void UCAP_ProgressionSubsystem::SavePlayerProgression(const FPlayerProgressionData& InData)
 {
+	const float ExistingBonusMaxHealth = CurrentRunData.BonusMaxHealth;
 	CurrentRunData = InData;
+	CurrentRunData.BonusMaxHealth = ExistingBonusMaxHealth;
 }
 
 bool UCAP_ProgressionSubsystem::LoadPlayerProgression(FPlayerProgressionData& OutData)
@@ -15,6 +17,17 @@ bool UCAP_ProgressionSubsystem::LoadPlayerProgression(FPlayerProgressionData& Ou
 
 	OutData=CurrentRunData;
 	return true;
+}
+
+void UCAP_ProgressionSubsystem::AddBonusMaxHealth(float Amount)
+{
+	if (Amount <= 0.f)
+	{
+		return;
+	}
+
+	CurrentRunData.bIsValid = true;
+	CurrentRunData.BonusMaxHealth += Amount;
 }
 
 void UCAP_ProgressionSubsystem::ClearProgression()
