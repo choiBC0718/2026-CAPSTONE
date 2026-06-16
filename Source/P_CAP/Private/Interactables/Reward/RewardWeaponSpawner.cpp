@@ -65,7 +65,19 @@ ACAP_WorldWeapon* ARewardWeaponSpawner::SpawnRandomWeapon()
 		return nullptr;
 	}
 
-	UCAP_WeaponDataAsset* SelectedWeaponDataAsset = ValidWeaponPool[FMath::RandRange(0, ValidWeaponPool.Num() - 1)];
+	UCAP_WeaponDataAsset* SelectedWeaponDataAsset = bHasSpecialRoomGridPos
+		? TransitionSubsystem->GetSpecialRoomRewardWeapon(SpecialRoomGridPos)
+		: nullptr;
+
+	if (!SelectedWeaponDataAsset)
+	{
+		SelectedWeaponDataAsset = ValidWeaponPool[FMath::RandRange(0, ValidWeaponPool.Num() - 1)];
+		if (bHasSpecialRoomGridPos)
+		{
+			TransitionSubsystem->SetSpecialRoomRewardWeapon(SpecialRoomGridPos, SelectedWeaponDataAsset);
+		}
+	}
+
 	if (!SelectedWeaponDataAsset)
 	{
 		return nullptr;
@@ -84,7 +96,7 @@ ACAP_WorldWeapon* ARewardWeaponSpawner::SpawnRandomWeapon()
 
 	if (bConsumeSpecialRoomRewardOnSpawn && bHasSpecialRoomGridPos)
 	{
-		TransitionSubsystem->MarkSpecialRoomRewardConsumed(SpecialRoomGridPos);
+		NewWeapon->SetSpecialRoomRewardSource(SpecialRoomGridPos);
 	}
 
 	return NewWeapon;

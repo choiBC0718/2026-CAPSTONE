@@ -51,6 +51,8 @@ public:
 	bool TryGetPendingSpecialRoomGridPos(FIntPoint& OutGridPos) const;
 	bool IsSpecialRoomRewardConsumed(const FIntPoint& GridPos) const;
 	void MarkSpecialRoomRewardConsumed(const FIntPoint& GridPos);
+	class UCAP_WeaponDataAsset* GetSpecialRoomRewardWeapon(const FIntPoint& GridPos) const;
+	void SetSpecialRoomRewardWeapon(const FIntPoint& GridPos, class UCAP_WeaponDataAsset* WeaponData);
 	bool IsSpecialRoomShopSlotPurchased(FName SlotKey) const;
 	void MarkSpecialRoomShopSlotPurchased(FName SlotKey);
 	bool TryGetSpecialRoomShopSlotOfferId(FName SlotKey, FName& OutOfferId) const;
@@ -62,6 +64,9 @@ private:
 	FSpecialRoomReturnState PendingReturnState;
 
 	TSet<FIntPoint> ConsumedSpecialRoomRewardGridPositions;
+	UPROPERTY()
+	TMap<FIntPoint, TObjectPtr<class UCAP_WeaponDataAsset>> SpecialRoomRewardWeaponsByGridPos;
+
 	TSet<FName> PurchasedSpecialRoomShopSlotKeys;
 	TMap<FName, FName> SpecialRoomShopOfferIdsBySlotKey;
 

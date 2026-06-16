@@ -55,6 +55,24 @@ void USpecialRoomTransitionSubsystem::MarkSpecialRoomRewardConsumed(const FIntPo
 	ConsumedSpecialRoomRewardGridPositions.Add(GridPos);
 }
 
+UCAP_WeaponDataAsset* USpecialRoomTransitionSubsystem::GetSpecialRoomRewardWeapon(const FIntPoint& GridPos) const
+{
+	if (const TObjectPtr<UCAP_WeaponDataAsset>* WeaponData = SpecialRoomRewardWeaponsByGridPos.Find(GridPos))
+	{
+		return WeaponData->Get();
+	}
+
+	return nullptr;
+}
+
+void USpecialRoomTransitionSubsystem::SetSpecialRoomRewardWeapon(const FIntPoint& GridPos, UCAP_WeaponDataAsset* WeaponData)
+{
+	if (WeaponData)
+	{
+		SpecialRoomRewardWeaponsByGridPos.FindOrAdd(GridPos) = WeaponData;
+	}
+}
+
 bool USpecialRoomTransitionSubsystem::IsSpecialRoomShopSlotPurchased(FName SlotKey) const
 {
 	return PurchasedSpecialRoomShopSlotKeys.Contains(SlotKey);
