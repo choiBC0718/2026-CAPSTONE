@@ -41,7 +41,8 @@ public:
 
 	FWeaponSaveData CreateSaveData() const;
 	void RestoreFromSaveData(const FWeaponSaveData& InData);
-	
+
+	bool RerollRandomSkill();
 private:
 	static int32 GetSkillCountByGrade(EItemGrade Grade);
 	bool TryAppendRandomNewSkill();
