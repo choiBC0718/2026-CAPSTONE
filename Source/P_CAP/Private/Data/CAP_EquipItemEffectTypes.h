@@ -16,6 +16,8 @@ struct FSynergyLevelData
 	int32 RequiredCount = 0;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TSubclassOf<class UGameplayEffect> SynergyEffect;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FText LevelDescription;
 };
 
 

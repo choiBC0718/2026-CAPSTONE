@@ -12,6 +12,8 @@
 #include "Data/CAP_EquipItemEffectTypes.h"
 #include "Interactables/Item/CAP_ItemInstance.h"
 #include "Interactables/Weapon/CAP_WeaponInstance.h"
+#include "Widget/Common/CAP_SkillToolTipWidget.h"
+#include "Widget/Common/CAP_SynergyToolTipWidget.h"
 
 void UCAP_ItemDetailPanelWidget::NativeConstruct()
 {
@@ -40,7 +42,8 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 			SetupUIContents(WeaponInst);
 			for (const FWeaponSkillData SkillData : WeaponInst->GetGrantedSkills())
 			{
-				AddFeatureIconToBox(SkillData.SkillIcon);
+				AddSkillFeatureIcon(SkillData);
+				//AddFeatureIconToBox(SkillData.SkillIcon);
 			}
 		}
 	}
@@ -63,7 +66,8 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 				{
 					if (FSynergyDataTable* FoundRow = SynergyCache.FindRef(Tag))
 					{
-						AddFeatureIconToBox(FoundRow->SynergyIcon);
+						AddSynergyFeatureIcon(FoundRow);
+						//AddFeatureIconToBox(FoundRow->SynergyIcon);
 					}
 				}
 			}
@@ -116,5 +120,62 @@ void UCAP_ItemDetailPanelWidget::SetupUIContents(class UCAP_ItemInstance* ItemIn
 	if (UTexture2D* LoadedIcon = ItemInst->GetItemDA()->ItemIcon.LoadSynchronous())
 	{
 		Icon->SetBrushFromTexture(LoadedIcon);
+	}
+}
+
+void UCAP_ItemDetailPanelWidget::AddSkillFeatureIcon(const struct FWeaponSkillData& SkillData)
+{
+	if (SkillData.SkillIcon.IsNull())
+		return;
+	UImage* FeatureIconImg = NewObject<UImage>(this);
+	if (UTexture2D* LoadedIcon = SkillData.SkillIcon.LoadSynchronous())
+	{
+		FSlateBrush IconBrush;
+		IconBrush.SetResourceObject(LoadedIcon);
+		IconBrush.ImageSize = SkillSynergyIconSize;
+		FeatureIconImg->SetBrush(IconBrush);
+	}
+	if (SkillTooltipClass)
+	{
+		if (UCAP_SkillToolTipWidget* SkillWidget = CreateWidget<UCAP_SkillToolTipWidget>(this, SkillTooltipClass))
+		{
+			SkillWidget->SetupToolTip(SkillData);
+			FeatureIconImg->SetToolTip(SkillWidget);
+		}
+	}
+	if (UHorizontalBoxSlot* HBoxSlot = FeatureIconBox->AddChildToHorizontalBox(FeatureIconImg))
+	{
+		HBoxSlot->SetPadding(FMargin(50.f, 0.f, 50.f, 0.f));
+		HBoxSlot->SetHorizontalAlignment(HAlign_Fill);
+		HBoxSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+}
+
+void UCAP_ItemDetailPanelWidget::AddSynergyFeatureIcon(const struct FSynergyDataTable* SynergyData)
+{
+	if (!SynergyData || SynergyData->SynergyIcon.IsNull()) return;
+
+	UImage* FeatureIconImg = NewObject<UImage>(this);
+	if (UTexture2D* LoadedIcon = SynergyData->SynergyIcon.LoadSynchronous())
+	{
+		FSlateBrush IconBrush;
+		IconBrush.SetResourceObject(LoadedIcon);
+		IconBrush.ImageSize = SkillSynergyIconSize;
+		FeatureIconImg->SetBrush(IconBrush);
+	}
+	
+	if (SynergyTooltipClass)
+	{
+		if (UCAP_SynergyToolTipWidget* SynergyWidget = CreateWidget<UCAP_SynergyToolTipWidget>(this, SynergyTooltipClass))
+		{
+			SynergyWidget->SetupToolTip(SynergyData);
+			FeatureIconImg->SetToolTip(SynergyWidget);
+		}
+	}
+	if (UHorizontalBoxSlot* HBoxSlot = FeatureIconBox->AddChildToHorizontalBox(FeatureIconImg))
+	{
+		HBoxSlot->SetPadding(FMargin(50.f, 0.f, 50.f, 0.f));
+		HBoxSlot->SetHorizontalAlignment(HAlign_Fill);
+		HBoxSlot->SetVerticalAlignment(VAlign_Fill);
 	}
 }

@@ -41,4 +41,14 @@ private:
 
 	void AddFeatureIconToBox(TSoftObjectPtr<class UTexture2D> IconPtr);
 	void SetupUIContents(class UCAP_ItemInstance* ItemInst);
+
+	void AddSkillFeatureIcon(const struct FWeaponSkillData& SkillData);
+	void AddSynergyFeatureIcon(const struct FSynergyDataTable* SynergyData);
+	
+protected:
+	UPROPERTY(EditDefaultsOnly, Category="Tooltip")
+	TSubclassOf<class UCAP_SkillToolTipWidget> SkillTooltipClass;
+
+	UPROPERTY(EditDefaultsOnly, Category="Tooltip")
+	TSubclassOf<class UCAP_SynergyToolTipWidget> SynergyTooltipClass;
 };
