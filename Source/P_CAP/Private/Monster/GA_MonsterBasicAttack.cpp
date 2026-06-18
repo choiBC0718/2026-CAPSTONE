@@ -29,6 +29,8 @@ void UGA_MonsterBasicAttack::ActivateAbility(
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
 	DamagedActors.Empty();
+	CurrentAttackEntry = ResolveAttackEntry();
+	CurrentAttackMontage = CurrentAttackEntry.Montage;
 
 	if (!K2_CommitAbility())
 	{
@@ -37,7 +39,7 @@ void UGA_MonsterBasicAttack::ActivateAbility(
 		return;
 	}
 
-	if (!AttackMontage)
+	if (!CurrentAttackMontage)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("GA_MonsterBasicAttack failed: AttackMontage is missing. Avatar=%s"), *GetNameSafe(GetAvatarActorFromActorInfo()));
 		K2_EndAbility();
@@ -47,8 +49,8 @@ void UGA_MonsterBasicAttack::ActivateAbility(
 	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 		this,
 		NAME_None,
-		AttackMontage,
-		MontagePlayRate);
+		CurrentAttackMontage,
+		CurrentAttackEntry.PlayRate);
 	MontageTask->OnCompleted.AddDynamic(this, &UGA_MonsterBasicAttack::OnAttackMontageFinished);
 	MontageTask->OnBlendOut.AddDynamic(this, &UGA_MonsterBasicAttack::OnAttackMontageFinished);
 	MontageTask->OnInterrupted.AddDynamic(this, &UGA_MonsterBasicAttack::OnAttackMontageFinished);
@@ -57,8 +59,8 @@ void UGA_MonsterBasicAttack::ActivateAbility(
 
 	if (UWorld* World = GetWorld())
 	{
-		const float SafePlayRate = FMath::Max(0.1f, MontagePlayRate);
-		const float FallbackDuration = AttackMontage->GetPlayLength() / SafePlayRate + 0.25f;
+		const float SafePlayRate = FMath::Max(0.1f, CurrentAttackEntry.PlayRate);
+		const float FallbackDuration = CurrentAttackMontage->GetPlayLength() / SafePlayRate + 0.25f;
 		World->GetTimerManager().SetTimer(
 			AttackFallbackTimerHandle,
 			this,
@@ -82,6 +84,7 @@ void UGA_MonsterBasicAttack::EndAbility(
 	bool bWasCancelled)
 {
 	DamagedActors.Empty();
+	CurrentAttackMontage = nullptr;
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(AttackFallbackTimerHandle);
@@ -108,8 +111,47 @@ void UGA_MonsterBasicAttack::EndAttackByFallbackTimer()
 {
 	UE_LOG(LogTemp, Verbose, TEXT("GA_MonsterBasicAttack fallback ended ability. Avatar=%s Montage=%s"),
 		*GetNameSafe(GetAvatarActorFromActorInfo()),
-		*GetNameSafe(AttackMontage));
+		*GetNameSafe(CurrentAttackMontage));
 	K2_EndAbility();
+}
+
+FMonsterBasicAttackEntry UGA_MonsterBasicAttack::ResolveAttackEntry() const
+{
+	float TotalWeight = 0.f;
+	for (const FMonsterBasicAttackEntry& Entry : AttackEntries)
+	{
+		if (Entry.Montage && Entry.Weight > 0.f)
+		{
+			TotalWeight += Entry.Weight;
+		}
+	}
+
+	if (TotalWeight > 0.f)
+	{
+		const float Roll = FMath::FRandRange(0.f, TotalWeight);
+		float AccumulatedWeight = 0.f;
+		for (const FMonsterBasicAttackEntry& Entry : AttackEntries)
+		{
+			if (!Entry.Montage || Entry.Weight <= 0.f)
+			{
+				continue;
+			}
+
+			AccumulatedWeight += Entry.Weight;
+			if (Roll <= AccumulatedWeight)
+			{
+				return Entry;
+			}
+		}
+	}
+
+	FMonsterBasicAttackEntry FallbackEntry;
+	FallbackEntry.Montage = AttackMontage;
+	FallbackEntry.BaseDamage = BaseDamage;
+	FallbackEntry.DamageMultiplier = DamageMultiplier;
+	FallbackEntry.DamageType = DamageType;
+	FallbackEntry.PlayRate = MontagePlayRate;
+	return FallbackEntry;
 }
 
 bool UGA_MonsterBasicAttack::ApplyDamageFromHitResult(const FHitResult& HitResult)
@@ -132,7 +174,7 @@ bool UGA_MonsterBasicAttack::ApplyDamageFromHitResult(const FHitResult& HitResul
 		return false;
 	}
 
-	TSubclassOf<UGameplayEffect> DamageGE = SourceASC->GetGenerics()->GetInstantDamageGE(DamageType);
+	TSubclassOf<UGameplayEffect> DamageGE = SourceASC->GetGenerics()->GetInstantDamageGE(CurrentAttackEntry.DamageType);
 	if (!DamageGE)
 	{
 		return false;
@@ -148,8 +190,8 @@ bool UGA_MonsterBasicAttack::ApplyDamageFromHitResult(const FHitResult& HitResul
 		return false;
 	}
 
-	SpecHandle.Data->SetSetByCallerMagnitude(UCAP_AbilitySystemStatics::GetDataDamageBaseTag(), BaseDamage);
-	SpecHandle.Data->SetSetByCallerMagnitude(UCAP_AbilitySystemStatics::GetDataDamageMultiplierTag(), DamageMultiplier);
+	SpecHandle.Data->SetSetByCallerMagnitude(UCAP_AbilitySystemStatics::GetDataDamageBaseTag(), CurrentAttackEntry.BaseDamage);
+	SpecHandle.Data->SetSetByCallerMagnitude(UCAP_AbilitySystemStatics::GetDataDamageMultiplierTag(), CurrentAttackEntry.DamageMultiplier);
 	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 
 	DamagedActors.Add(HitActor);

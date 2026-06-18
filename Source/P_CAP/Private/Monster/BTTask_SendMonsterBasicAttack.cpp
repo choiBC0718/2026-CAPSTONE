@@ -12,6 +12,7 @@
 UBTTask_SendMonsterBasicAttack::UBTTask_SendMonsterBasicAttack()
 {
 	NodeName = TEXT("Send Monster Basic Attack");
+	bNotifyTick = true;
 }
 
 EBTNodeResult::Type UBTTask_SendMonsterBasicAttack::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
@@ -24,6 +25,22 @@ EBTNodeResult::Type UBTTask_SendMonsterBasicAttack::ExecuteTask(UBehaviorTreeCom
 
 	APawn* Pawn = AIController->GetPawn();
 	if (!Pawn)
+	{
+		return EBTNodeResult::Failed;
+	}
+
+	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Pawn);
+	if (!ASC)
+	{
+		return EBTNodeResult::Failed;
+	}
+
+	if (IsBasicAttackActive(ASC))
+	{
+		return EBTNodeResult::InProgress;
+	}
+
+	if (IsAttackOnCooldown(Pawn))
 	{
 		return EBTNodeResult::Failed;
 	}
@@ -43,10 +60,51 @@ EBTNodeResult::Type UBTTask_SendMonsterBasicAttack::ExecuteTask(UBehaviorTreeCom
 		return EBTNodeResult::Failed;
 	}
 
-	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Pawn);
+	if (!TryActivateBasicAttack(ASC))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Monster basic attack failed: no BasicAttack ability activated. Pawn=%s"), *GetNameSafe(Pawn));
+		return EBTNodeResult::Failed;
+	}
+
+	return EBTNodeResult::InProgress;
+}
+
+void UBTTask_SendMonsterBasicAttack::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
+{
+	AAIController* AIController = OwnerComp.GetAIOwner();
+	APawn* Pawn = AIController ? AIController->GetPawn() : nullptr;
+	UAbilitySystemComponent* ASC = Pawn ? UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Pawn) : nullptr;
+	if (!ASC || !IsBasicAttackActive(ASC))
+	{
+		MarkAttackCooldownStarted(Pawn);
+		FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+	}
+}
+
+bool UBTTask_SendMonsterBasicAttack::IsBasicAttackActive(const UAbilitySystemComponent* ASC) const
+{
 	if (!ASC)
 	{
-		return EBTNodeResult::Failed;
+		return false;
+	}
+
+	const int32 InputID = static_cast<int32>(EAbilityInputID::BasicAttack);
+	for (const FGameplayAbilitySpec& AbilitySpec : ASC->GetActivatableAbilities())
+	{
+		if (AbilitySpec.InputID == InputID && AbilitySpec.IsActive())
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool UBTTask_SendMonsterBasicAttack::TryActivateBasicAttack(UAbilitySystemComponent* ASC) const
+{
+	if (!ASC)
+	{
+		return false;
 	}
 
 	const int32 InputID = static_cast<int32>(EAbilityInputID::BasicAttack);
@@ -58,21 +116,40 @@ EBTNodeResult::Type UBTTask_SendMonsterBasicAttack::ExecuteTask(UBehaviorTreeCom
 			continue;
 		}
 
-		if (AbilitySpec.IsActive())
-		{
-			return EBTNodeResult::Succeeded;
-		}
-
 		ASC->AbilitySpecInputPressed(AbilitySpec);
 		bActivatedAbility |= ASC->TryActivateAbility(AbilitySpec.Handle);
 		ASC->AbilitySpecInputReleased(AbilitySpec);
 	}
 
-	if (!bActivatedAbility)
+	return bActivatedAbility || IsBasicAttackActive(ASC);
+}
+
+bool UBTTask_SendMonsterBasicAttack::IsAttackOnCooldown(const APawn* Pawn) const
+{
+	if (!Pawn || AttackCooldown <= 0.f)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Monster basic attack failed: no BasicAttack ability activated. Pawn=%s"), *GetNameSafe(Pawn));
-		return EBTNodeResult::Failed;
+		return false;
 	}
 
-	return EBTNodeResult::Succeeded;
+	const UWorld* World = Pawn->GetWorld();
+	const float* LastAttackEndTime = LastAttackEndTimeByPawn.Find(Pawn);
+	if (!World || !LastAttackEndTime)
+	{
+		return false;
+	}
+
+	return World->GetTimeSeconds() - *LastAttackEndTime < AttackCooldown;
+}
+
+void UBTTask_SendMonsterBasicAttack::MarkAttackCooldownStarted(const APawn* Pawn)
+{
+	if (!Pawn || AttackCooldown <= 0.f)
+	{
+		return;
+	}
+
+	if (const UWorld* World = Pawn->GetWorld())
+	{
+		LastAttackEndTimeByPawn.FindOrAdd(Pawn) = World->GetTimeSeconds();
+	}
 }
