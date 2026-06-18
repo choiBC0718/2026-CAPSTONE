@@ -49,7 +49,7 @@ ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 	HealthBarWidgetComponent->SetRelativeLocation(FVector(0.f, 0.f, 120.f));
 
 	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> CoinDropVFXFinder(
-		TEXT("/Game/_Workspace/7_Monster/CoinDrop/NS_CoinDrop.NS_CoinDrop"));
+		TEXT("/Game/_Workspace/7_Monster/Reward/CoinDrop/NS_CoinDrop.NS_CoinDrop"));
 	if (CoinDropVFXFinder.Succeeded())
 	{
 		CoinRewardVFX = CoinDropVFXFinder.Object;
@@ -320,7 +320,6 @@ void ACAP_EnemyCharacter::StartDeathDissolve()
 	{
 		return;
 	}
-
 	DeathDissolveDynamicMaterials.Empty();
 
 	const int32 MaterialCount = MeshComponent->GetNumMaterials();

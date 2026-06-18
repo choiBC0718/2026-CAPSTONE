@@ -18,7 +18,7 @@ void UCAP_DamageTextSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 		ACAP_DamageTextActor* SpawnedActor = InWorld.SpawnActor<ACAP_DamageTextActor>(ActorClass);
 		if (SpawnedActor)
 		{
-			SpawnedActor->SetActorHiddenInGame(true);
+			SpawnedActor->SetActorLocation(FVector(0.f, 0.f, -99999.f));
 			TextActorPool.Add(SpawnedActor);
 		}
 	}
@@ -31,7 +31,7 @@ void UCAP_DamageTextSubsystem::ShowDamage(AActor* TargetActor, float Damage, boo
 	ACAP_DamageTextActor* TextActor = GetActorFromPool();
 	if (TextActor)
 	{
-		TextActor->SetActorLocation(TargetActor->GetActorLocation() + FVector(0,FMath::RandRange(-20.f,20.f),100.f));
+		TextActor->SetActorLocation(TargetActor->GetActorLocation() + FVector(FMath::RandRange(-30.f,30.f),FMath::RandRange(-40.f,40.f),100.f));
 		TextActor->PlayDamageText(Damage,bIsCritical,bIsPlayer);
 	}
 }
@@ -40,7 +40,7 @@ class ACAP_DamageTextActor* UCAP_DamageTextSubsystem::GetActorFromPool()
 {
 	for (ACAP_DamageTextActor* Actor : TextActorPool)
 	{
-		if (Actor && Actor->IsHidden())
+		if (Actor && Actor->GetActorLocation().Z < -90000.f)
 		{
 			return Actor;
 		}

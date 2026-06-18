@@ -30,6 +30,7 @@ void UCAP_DamageTextWidget::PlayDamageAnimation(float DamageAmount, bool bIsCrit
 	
 	if (AnimToPlay)
 	{
+		StopAnimation(AnimToPlay);
 		PlayAnimation(AnimToPlay);
 	}
 	else

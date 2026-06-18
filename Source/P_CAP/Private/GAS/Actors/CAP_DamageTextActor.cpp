@@ -29,11 +29,17 @@ void ACAP_DamageTextActor::PlayDamageText(float Damage, bool bIsCritical, bool b
 {
 	SetActorHiddenInGame(false);
 	if (UCAP_DamageTextWidget* DamageWidget = Cast<UCAP_DamageTextWidget>(DamageWidgetComp->GetUserWidgetObject()))
-		DamageWidget->PlayDamageAnimation(Damage,bIsCritical,bIsPlayer);
+	{
+		if (!DamageWidget->OnDamageAnimFinished.IsAlreadyBound(this, &ACAP_DamageTextActor::ReturnToPool))
+		{
+			DamageWidget->OnDamageAnimFinished.AddDynamic(this, &ACAP_DamageTextActor::ReturnToPool);
+		}
+		DamageWidget->PlayDamageAnimation(Damage, bIsCritical, bIsPlayer);
+	}
 }
 
 void ACAP_DamageTextActor::ReturnToPool()
 {
-	SetActorHiddenInGame(true);
+	SetActorLocation(FVector(0.f, 0.f, -99999.f));
 }
 

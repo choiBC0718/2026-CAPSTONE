@@ -44,6 +44,13 @@ void ACAP_Character::BeginPlay()
 	PerceptionStimuliSourceComponent->RegisterForSense(UAISense_Sight::StaticClass());
 }
 
+void ACAP_Character::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (HitFlashTimerHandle.IsValid())
+		GetWorldTimerManager().ClearTimer(HitFlashTimerHandle);
+	Super::EndPlay(EndPlayReason);
+}
+
 
 UAbilitySystemComponent* ACAP_Character::GetAbilitySystemComponent() const
 {
@@ -166,5 +173,20 @@ void ACAP_Character::SetAIPerceptionStimuliSourceEnabled(bool bIsEnabled)
 	{
 		PerceptionStimuliSourceComponent -> UnregisterFromPerceptionSystem();	//false : 기능 해제
 	}
+}
+
+void ACAP_Character::PlayHitFeedback()
+{
+	if (!HitOverlayMaterial || !GetMesh())
+		return;
+	GetMesh()->SetOverlayMaterial(HitOverlayMaterial);
+
+	GetWorldTimerManager().SetTimer(HitFlashTimerHandle, this, &ACAP_Character::StopHitFeedback, HitFlashDuration, false);
+}
+
+void ACAP_Character::StopHitFeedback()
+{
+	if (GetMesh())
+		GetMesh()->SetOverlayMaterial(nullptr);
 }
 

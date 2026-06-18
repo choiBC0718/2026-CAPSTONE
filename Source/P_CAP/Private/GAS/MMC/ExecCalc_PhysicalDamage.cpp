@@ -74,15 +74,18 @@ void UExecCalc_PhysicalDamage::Execute_Implementation(const FGameplayEffectCusto
 	float FinalDamage = TotalAttackPow * DiffAmp;
 	
 	// 크리티컬 계산
+	bool bCriticalHit = false;
 	if (CriticalChance > 0.0f)
 	{
 		if (FMath::RandRange(0.0f, 100.0f) <= CriticalChance)
 		{
 			FinalDamage *= CriticalDamage;
-			if (FCAP_GameplayEffectContext* CContext = static_cast<FCAP_GameplayEffectContext*>(Spec.GetContext().Get()))
-				CContext->bIsCritical = true;
+			bCriticalHit = true;
 		}
 	}
+	if (FCAP_GameplayEffectContext* CContext = static_cast<FCAP_GameplayEffectContext*>(Spec.GetContext().Get()))
+		CContext->bIsCritical = bCriticalHit;
+	
 	FinalDamage = FMath::RoundToInt(FinalDamage);
 	//UE_LOG(LogTemp,Warning,TEXT(" 최종 데미지 : %f"), FinalDamage);
 

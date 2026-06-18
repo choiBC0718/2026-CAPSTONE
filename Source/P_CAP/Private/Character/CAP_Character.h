@@ -17,6 +17,7 @@ class ACAP_Character : public ACharacter, public IAbilitySystemInterface, public
 public:
 	ACAP_Character();
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
 	/**		Components		**/
@@ -68,4 +69,16 @@ protected:
 	void Respawn();
 	virtual void OnRespawn() {};
 	void SetAIPerceptionStimuliSourceEnabled(bool bIsEnabled);
+
+public:
+	virtual void PlayHitFeedback();
+	
+protected:
+	UPROPERTY(EditDefaultsOnly, Category="Feedback")
+	class UMaterialInterface* HitOverlayMaterial;
+	UPROPERTY(EditDefaultsOnly, Category="Feedback")
+	float HitFlashDuration = 0.1f;
+
+	FTimerHandle HitFlashTimerHandle;
+	void StopHitFeedback();
 };

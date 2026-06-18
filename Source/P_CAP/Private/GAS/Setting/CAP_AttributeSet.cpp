@@ -2,7 +2,7 @@
 
 
 #include "GAS/Setting/CAP_AttributeSet.h"
-
+#include "CAP_GameplayAbilityTypes.h"
 #include "GameplayEffectExtension.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Framework/Subsystem/CAP_DamageTextSubsystem.h"
@@ -76,8 +76,12 @@ void UCAP_AttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMo
 				if (Target)
 				{
 					if (UCAP_DamageTextSubsystem* TextSubsys = Target->GetWorld()->GetSubsystem<UCAP_DamageTextSubsystem>())
+					{
 						TextSubsys->ShowDamage(Target,LocalDamage,bIsCritical,bIsPlayerOwner);
+					}
 				}
+				if (ACAP_Character* TargetChar = Cast<ACAP_Character>(Target))
+					TargetChar->PlayHitFeedback();
 			}
 		}
 	}
