@@ -92,6 +92,8 @@ struct FPlayerProgressionData
 	UPROPERTY()
 	float CurrentHealth = -1.0f;
 	UPROPERTY()
+	float BonusMaxHealth = 0.f;
+	UPROPERTY()
 	FWeaponComponentSaveData WeaponData;
 	UPROPERTY()
 	FInventorySaveData InventoryData;
@@ -112,6 +114,8 @@ public:
 	void SavePlayerProgression(const FPlayerProgressionData& InData);
 	// 레벨 이동 후 CurrenRunData에서 꺼내가 데이터 덮어씌움
 	bool LoadPlayerProgression(FPlayerProgressionData& OutData);
+	void AddBonusMaxHealth(float Amount);
+	float GetBonusMaxHealth() const { return CurrentRunData.BonusMaxHealth; }
 	// 캐릭터 장비, 아이템 정보 초기화 (레벨 변환 후 호출용)
 	void ClearProgression();
 

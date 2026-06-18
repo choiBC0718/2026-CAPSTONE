@@ -4,9 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/ProgressBar.h"
 #include "StageLoadingWidget.generated.h"
-
-class UProgressBar;
 
 UCLASS()
 class UStageLoadingWidget : public UUserWidget

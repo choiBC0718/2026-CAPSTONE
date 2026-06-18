@@ -4,6 +4,7 @@
 
 #include "Character/AI/CAP_EnemyCharacter.h"
 #include "Character/CAP_Character.h"
+#include "Components/CapsuleComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "Map/RoomActor/Monster/RoomMonsterSpawnDataAsset.h"
@@ -145,19 +146,30 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 		Placement.MonsterIndexInCell = SpawnedMonsterCountsByCell[Placement.CellIndex]++;
 		Placement.MonsterCountInCell = TotalMonsterCountsByCell[Placement.CellIndex];
 
-		FVector LocalLocation = GetCellLocalCenter(InteriorLayout, SpawnableCells[Placement.CellIndex]);
-		LocalLocation += GetFormationOffset(Placement.MonsterIndexInCell, Placement.MonsterCountInCell, InteriorLayout.CellSize);
-		LocalLocation.X += RandomStream.FRandRange(-SpawnJitter, SpawnJitter);
-		LocalLocation.Y += RandomStream.FRandRange(-SpawnJitter, SpawnJitter);
-		LocalLocation.Z += SpawnZOffset;
+		FVector WorldLocation = FVector::ZeroVector;
+		if (!TryBuildSpawnLocation(
+			Placement.SpawnPick.MonsterClass,
+			InteriorLayout,
+			SpawnableCells[Placement.CellIndex],
+			Placement.MonsterIndexInCell,
+			Placement.MonsterCountInCell,
+			RoomTransform,
+			RandomStream,
+			WorldLocation))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Spawn] Failed to find free monster spawn location in Room(%d,%d). Monster skipped."),
+				RoomData.GridPos.X,
+				RoomData.GridPos.Y);
+			continue;
+		}
 
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = GetOwner();
-		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
 
 		ACharacter* SpawnedMonster = World->SpawnActor<ACharacter>(
 			Placement.SpawnPick.MonsterClass,
-			RoomTransform.TransformPosition(LocalLocation),
+			WorldLocation,
 			FRotator(0.f, RandomStream.FRandRange(0.f, 360.f), 0.f),
 			SpawnParams);
 
@@ -468,6 +480,66 @@ FVector URoomMonsterSpawnerComponent::GetFormationOffset(
 		FMath::Cos(FMath::DegreesToRadians(AngleDegrees)) * Radius,
 		FMath::Sin(FMath::DegreesToRadians(AngleDegrees)) * Radius,
 		0.f);
+}
+
+bool URoomMonsterSpawnerComponent::TryBuildSpawnLocation(
+	TSubclassOf<ACharacter> MonsterClass,
+	const FRoomInteriorLayout& InteriorLayout,
+	const FIntPoint& CellCoord,
+	int32 MonsterIndexInCell,
+	int32 MonsterCountInCell,
+	const FTransform& RoomTransform,
+	FRandomStream& RandomStream,
+	FVector& OutWorldLocation) const
+{
+	if (!MonsterClass)
+	{
+		return false;
+	}
+
+	const int32 RetryCount = FMath::Max(1, SpawnLocationMaxRetries);
+	for (int32 RetryIndex = 0; RetryIndex < RetryCount; ++RetryIndex)
+	{
+		FVector LocalLocation = GetCellLocalCenter(InteriorLayout, CellCoord);
+		LocalLocation += GetFormationOffset(MonsterIndexInCell, MonsterCountInCell, InteriorLayout.CellSize);
+		LocalLocation.X += RandomStream.FRandRange(-SpawnJitter, SpawnJitter);
+		LocalLocation.Y += RandomStream.FRandRange(-SpawnJitter, SpawnJitter);
+		LocalLocation.Z += SpawnZOffset;
+
+		const FVector WorldLocation = RoomTransform.TransformPosition(LocalLocation);
+		if (IsSpawnLocationFree(MonsterClass, WorldLocation))
+		{
+			OutWorldLocation = WorldLocation;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool URoomMonsterSpawnerComponent::IsSpawnLocationFree(TSubclassOf<ACharacter> MonsterClass, const FVector& WorldLocation) const
+{
+	const UWorld* World = GetWorld();
+	const ACharacter* MonsterDefault = MonsterClass ? MonsterClass->GetDefaultObject<ACharacter>() : nullptr;
+	const UCapsuleComponent* CapsuleComponent = MonsterDefault ? MonsterDefault->GetCapsuleComponent() : nullptr;
+	if (!World || !CapsuleComponent)
+	{
+		return false;
+	}
+
+	const float CapsuleRadius = FMath::Max(1.f, CapsuleComponent->GetScaledCapsuleRadius() + SpawnCollisionPadding);
+	const float CapsuleHalfHeight = FMath::Max(CapsuleRadius, CapsuleComponent->GetScaledCapsuleHalfHeight() + SpawnCollisionPadding);
+	const FCollisionShape SpawnShape = FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight);
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(RoomMonsterSpawnOverlap), false, GetOwner());
+	QueryParams.bFindInitialOverlaps = true;
+
+	return !World->OverlapBlockingTestByChannel(
+		WorldLocation,
+		FQuat::Identity,
+		ECC_Pawn,
+		SpawnShape,
+		QueryParams);
 }
 
 FRandomStream URoomMonsterSpawnerComponent::MakeRoomRandomStream(

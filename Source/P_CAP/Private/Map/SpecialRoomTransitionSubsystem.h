@@ -1,0 +1,76 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Subsystems/GameInstanceSubsystem.h"
+#include "Map/RoomTypes.h"
+#include "Map/RoomActor/DoorDirection.h"
+#include "Map/RoomActor/Monster/RoomMonsterSpawnDataAsset.h"
+#include "SpecialRoomTransitionSubsystem.generated.h"
+
+USTRUCT(BlueprintType)
+struct FSpecialRoomReturnState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category="Special Room")
+	int32 Seed = 12345;
+
+	UPROPERTY(BlueprintReadOnly, Category="Special Room")
+	int32 RoomCount = 10;
+
+	UPROPERTY(BlueprintReadOnly, Category="Special Room")
+	FIntPoint ReturnRoomGridPos = FIntPoint::ZeroValue;
+
+	UPROPERTY(BlueprintReadOnly, Category="Special Room")
+	FIntPoint SpecialRoomGridPos = FIntPoint::ZeroValue;
+
+	UPROPERTY(BlueprintReadOnly, Category="Special Room")
+	EDoorDirection ReturnEntryDirection = EDoorDirection::Up;
+
+	UPROPERTY(BlueprintReadOnly, Category="Special Room")
+	TObjectPtr<URoomMonsterSpawnDataAsset> MonsterSpawnDataAsset;
+
+	TSet<FIntPoint> ClearedRoomGridPositions;
+	TMap<FIntPoint, ECombatRoomRewardType> CombatRewardTypesByRoom;
+};
+
+UCLASS()
+class USpecialRoomTransitionSubsystem : public UGameInstanceSubsystem
+{
+	GENERATED_BODY()
+
+public:
+	void SaveReturnState(const FSpecialRoomReturnState& ReturnState);
+	bool HasPendingReturn() const { return bHasPendingReturn; }
+	bool ConsumeReturnState(FSpecialRoomReturnState& OutReturnState);
+
+	bool ShouldSkipStageAutoStart() const;
+	void MarkStageAutoStartSkipped();
+	bool TryGetPendingSpecialRoomGridPos(FIntPoint& OutGridPos) const;
+	bool IsSpecialRoomRewardConsumed(const FIntPoint& GridPos) const;
+	void MarkSpecialRoomRewardConsumed(const FIntPoint& GridPos);
+	class UCAP_WeaponDataAsset* GetSpecialRoomRewardWeapon(const FIntPoint& GridPos) const;
+	void SetSpecialRoomRewardWeapon(const FIntPoint& GridPos, class UCAP_WeaponDataAsset* WeaponData);
+	bool IsSpecialRoomShopSlotPurchased(FName SlotKey) const;
+	void MarkSpecialRoomShopSlotPurchased(FName SlotKey);
+	bool TryGetSpecialRoomShopSlotOfferId(FName SlotKey, FName& OutOfferId) const;
+	void SetSpecialRoomShopSlotOfferId(FName SlotKey, FName OfferId);
+	void GetSpecialRoomShopOfferIdsByKeyPrefix(const FString& SlotKeyPrefix, TSet<FName>& OutOfferIds) const;
+
+private:
+	UPROPERTY()
+	FSpecialRoomReturnState PendingReturnState;
+
+	TSet<FIntPoint> ConsumedSpecialRoomRewardGridPositions;
+	UPROPERTY()
+	TMap<FIntPoint, TObjectPtr<class UCAP_WeaponDataAsset>> SpecialRoomRewardWeaponsByGridPos;
+
+	TSet<FName> PurchasedSpecialRoomShopSlotKeys;
+	TMap<FName, FName> SpecialRoomShopOfferIdsBySlotKey;
+
+	bool bHasPendingReturn = false;
+	bool bBlockStageAutoStartOnce = false;
+	bool bStageAutoStartSkippedForThisLoad = false;
+};

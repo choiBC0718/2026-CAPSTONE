@@ -4,12 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/PlayerController.h"
+#include "Map/Debug/MapManager.h"
+#include "Stage/StageDataAsset.h"
+#include "Stage/StageLoadingWidget.h"
 #include "StageManager.generated.h"
-
-class AMapManager;
-class APlayerController;
-class UStageDataAsset;
-class UStageLoadingWidget;
 
 UCLASS()
 class AStageManager : public AActor

@@ -35,6 +35,19 @@ ADoorActor::ADoorActor()
 	TriggerBox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	TriggerBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	TriggerBox->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Overlap);
+
+	BackBlocker = CreateDefaultSubobject<UBoxComponent>(TEXT("BackBlocker"));
+	BackBlocker->SetupAttachment(Root);
+	BackBlocker->SetBoxExtent(BackBlockerExtent);
+	BackBlocker->SetRelativeLocation(GetAdjustedBackBlockerRelativeLocation());
+	BackBlocker->SetRelativeRotation(GetAdjustedBackBlockerRelativeRotation());
+	BackBlocker->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	BackBlocker->SetCollisionObjectType(ECC_WorldStatic);
+	BackBlocker->SetCollisionResponseToAllChannels(ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	BackBlocker->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 }
 
 void ADoorActor::InitializeDoor(const FIntPoint& InSourceRoomPos, const FIntPoint& InTargetRoomPos, EDoorDirection InDirection)
@@ -42,6 +55,13 @@ void ADoorActor::InitializeDoor(const FIntPoint& InSourceRoomPos, const FIntPoin
 	SourceRoomPos = InSourceRoomPos;
 	TargetRoomPos = InTargetRoomPos;
 	Direction = InDirection;
+	ApplyBackBlockerSettings();
+}
+
+void ADoorActor::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	ApplyBackBlockerSettings();
 }
 
 void ADoorActor::BeginPlay()
@@ -50,6 +70,7 @@ void ADoorActor::BeginPlay()
 
 	InitializePortalMaterialInstances();
 	SetPortalEnabled(true);
+	ApplyBackBlockerSettings();
 
 	if (TriggerBox)
 	{
@@ -88,6 +109,123 @@ void ADoorActor::SetPortalEnabled(bool bEnabled)
 	if (TriggerBox)
 	{
 		TriggerBox->SetCollisionEnabled(bEnabled ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
+	}
+}
+
+void ADoorActor::ApplyBackBlockerSettings()
+{
+	if (!BackBlocker)
+	{
+		return;
+	}
+
+	if (bUseDirectionBasedBackBlockerPlacement)
+	{
+		ApplyDirectionBasedBackBlockerSettings();
+		return;
+	}
+
+	if (BackBlocker->GetAttachParent() != PortalMesh)
+	{
+		BackBlocker->AttachToComponent(PortalMesh, FAttachmentTransformRules::KeepRelativeTransform);
+	}
+
+	BackBlocker->SetBoxExtent(BackBlockerExtent);
+	BackBlocker->SetRelativeLocation(GetAdjustedBackBlockerRelativeLocation());
+	BackBlocker->SetRelativeRotation(GetAdjustedBackBlockerRelativeRotation());
+	BackBlocker->SetCollisionEnabled(bEnableBackBlocker ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+	BackBlocker->SetCollisionObjectType(ECC_WorldStatic);
+	BackBlocker->SetCollisionResponseToAllChannels(ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	BackBlocker->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
+}
+
+void ADoorActor::ApplyDirectionBasedBackBlockerSettings()
+{
+	if (!BackBlocker)
+	{
+		return;
+	}
+
+	if (BackBlocker->GetAttachParent() != Root)
+	{
+		BackBlocker->AttachToComponent(Root, FAttachmentTransformRules::KeepWorldTransform);
+	}
+
+	const FVector OutwardDirection = GetDoorOutwardWorldDirection();
+	const FVector BlockerWorldLocation = GetActorLocation() + (OutwardDirection * BackBlockerOutwardDistance) + FVector(0.f, 0.f, BackBlockerZOffset);
+	const FRotator BlockerWorldRotation(0.f, GetBackBlockerWorldYaw(), 0.f);
+
+	BackBlocker->SetWorldLocation(BlockerWorldLocation);
+	BackBlocker->SetWorldRotation(BlockerWorldRotation);
+	BackBlocker->SetBoxExtent(BackBlockerExtent);
+	BackBlocker->SetCollisionEnabled(bEnableBackBlocker ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+	BackBlocker->SetCollisionObjectType(ECC_WorldStatic);
+	BackBlocker->SetCollisionResponseToAllChannels(ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	BackBlocker->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
+}
+
+FVector ADoorActor::GetAdjustedBackBlockerRelativeLocation() const
+{
+	FVector AdjustedLocation = BackBlockerRelativeLocation;
+	if (bFlipBackBlockerForVerticalDoors &&
+		(Direction == EDoorDirection::Up || Direction == EDoorDirection::Down))
+	{
+		AdjustedLocation.X *= -1.f;
+	}
+
+	return AdjustedLocation;
+}
+
+FRotator ADoorActor::GetAdjustedBackBlockerRelativeRotation() const
+{
+	if (bRotateBackBlockerForVerticalDoors &&
+		(Direction == EDoorDirection::Up || Direction == EDoorDirection::Down))
+	{
+		return FRotator(0.f, VerticalBackBlockerYawOffset, 0.f);
+	}
+
+	return FRotator::ZeroRotator;
+}
+
+FVector ADoorActor::GetDoorOutwardWorldDirection() const
+{
+	switch (Direction)
+	{
+	case EDoorDirection::Up:
+		return FVector(0.f, 1.f, 0.f);
+
+	case EDoorDirection::Down:
+		return FVector(0.f, -1.f, 0.f);
+
+	case EDoorDirection::Left:
+		return FVector(-1.f, 0.f, 0.f);
+
+	case EDoorDirection::Right:
+		return FVector(1.f, 0.f, 0.f);
+
+	default:
+		return GetActorForwardVector();
+	}
+}
+
+float ADoorActor::GetBackBlockerWorldYaw() const
+{
+	switch (Direction)
+	{
+	case EDoorDirection::Left:
+	case EDoorDirection::Right:
+		return 90.f;
+
+	case EDoorDirection::Up:
+	case EDoorDirection::Down:
+	default:
+		return 0.f;
 	}
 }
 

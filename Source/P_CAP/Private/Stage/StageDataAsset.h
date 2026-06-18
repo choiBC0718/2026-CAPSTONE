@@ -4,9 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "Map/RoomActor/Monster/RoomMonsterSpawnDataAsset.h"
 #include "StageDataAsset.generated.h"
-
-class URoomMonsterSpawnDataAsset;
 
 USTRUCT(BlueprintType)
 struct FStageConfig

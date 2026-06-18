@@ -3,17 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/DataTable.h"
+#include "GameFramework/Character.h"
 #include "GameFramework/Actor.h"
+#include "Map/Debug/MapManager.h"
+#include "Map/RoomData.h"
 #include "Map/RoomActor/DoorDirection.h"
 #include "Map/RoomTypes.h"
 #include "Map/Widget/CombatRewardChoiceTypes.h"
+#include "Map/Widget/CombatRewardChoiceWidget.h"
 #include "NextRoomChoiceManager.generated.h"
-
-class ACharacter;
-class AMapManager;
-class UDataTable;
-class UCombatRewardChoiceWidget;
-struct FRoomData;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCombatRewardChoiceRequested, FIntPoint, TargetRoomPos);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCombatRewardChoiceCompleted, FIntPoint, TargetRoomPos, ECombatRoomRewardType, SelectedRewardType);

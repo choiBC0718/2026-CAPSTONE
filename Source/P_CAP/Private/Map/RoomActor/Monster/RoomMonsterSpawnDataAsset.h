@@ -4,10 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "GameFramework/Character.h"
 #include "Map/RoomTypes.h"
 #include "RoomMonsterSpawnDataAsset.generated.h"
-
-class ACharacter;
 
 USTRUCT(BlueprintType)
 struct FRoomMonsterSpawnEntry

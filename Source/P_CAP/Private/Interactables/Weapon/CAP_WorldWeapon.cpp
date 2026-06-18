@@ -10,6 +10,7 @@
 #include "Data/CAP_WeaponDataAsset.h"
 #include "Framework/CAP_RewardSettings.h"
 #include "GameFramework/RotatingMovementComponent.h"
+#include "Map/SpecialRoomTransitionSubsystem.h"
 
 ACAP_WorldWeapon::ACAP_WorldWeapon()
 {
@@ -79,6 +80,7 @@ void ACAP_WorldWeapon::Interact(class AActor* InsActor, EInteractAction ActionTy
 		if (UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent())
 		{
 			WeaponComp->PickupWeapon(WeaponInstance);
+			MarkSpecialRoomRewardConsumedIfNeeded();
 			Destroy();
 		}
 	}
@@ -92,6 +94,7 @@ void ACAP_WorldWeapon::Interact(class AActor* InsActor, EInteractAction ActionTy
 				CurrencyComp->ProcessDisassembleReward(TargetGrade, ECurrencyType::WeaponMaterial);
 			}
 		}
+		MarkSpecialRoomRewardConsumedIfNeeded();
 		Destroy();
 	}
 }
@@ -155,4 +158,28 @@ void ACAP_WorldWeapon::SetWeaponSkeletalMesh()
 void ACAP_WorldWeapon::InitializeWeaponData(class UCAP_WeaponDataAsset* NewWeaponDA)
 {
 	WeaponDA = NewWeaponDA;
+}
+
+void ACAP_WorldWeapon::SetSpecialRoomRewardSource(const FIntPoint& InSpecialRoomGridPos)
+{
+	bMarksSpecialRoomRewardConsumedOnPickup = true;
+	SpecialRoomRewardGridPos = InSpecialRoomGridPos;
+}
+
+void ACAP_WorldWeapon::MarkSpecialRoomRewardConsumedIfNeeded()
+{
+	if (!bMarksSpecialRoomRewardConsumedOnPickup)
+	{
+		return;
+	}
+
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (USpecialRoomTransitionSubsystem* TransitionSubsystem = GameInstance->GetSubsystem<USpecialRoomTransitionSubsystem>())
+		{
+			TransitionSubsystem->MarkSpecialRoomRewardConsumed(SpecialRoomRewardGridPos);
+		}
+	}
+
+	bMarksSpecialRoomRewardConsumedOnPickup = false;
 }

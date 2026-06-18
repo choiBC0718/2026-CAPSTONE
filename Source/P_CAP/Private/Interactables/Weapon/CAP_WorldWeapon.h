@@ -25,6 +25,7 @@ public:
 	virtual FInteractionPayload GetInteractionPayload() const override;
 
 	void InitializeWeaponData(class UCAP_WeaponDataAsset* NewWeaponDA);
+	void SetSpecialRoomRewardSource(const FIntPoint& InSpecialRoomGridPos);
 	
 	UPROPERTY(BlueprintReadWrite,Category="Weapon Data", meta=(ExposeOnSpawn="true"))
 	class UCAP_WeaponInstance* WeaponInstance;
@@ -40,9 +41,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category="Component")
 	class URotatingMovementComponent* RotatingMovement;
 	
-	UPROPERTY(EditDefaultsOnly, Category="Weapon Data")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon Data")
 	class UCAP_WeaponDataAsset* WeaponDA;
 
 private:
 	void SetWeaponSkeletalMesh();
+	void MarkSpecialRoomRewardConsumedIfNeeded();
+
+	bool bMarksSpecialRoomRewardConsumedOnPickup = false;
+	FIntPoint SpecialRoomRewardGridPos = FIntPoint::ZeroValue;
 };

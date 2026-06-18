@@ -327,9 +327,17 @@ void ACAP_PlayerCharacter::TryLoadProgressionData()
 		if (Data.bIsValid)
 		{
 			if (UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent()))
-				ASC->RestoreHealthFromSave(Data.CurrentHealth);
+			{
+				if (Data.BonusMaxHealth > 0.f)
+				{
+					ASC->ApplyModToAttributeUnsafe(
+						UCAP_AttributeSet::GetMaxHealthAttribute(),
+						EGameplayModOp::Additive,
+						Data.BonusMaxHealth);
+				}
 
-			Subsys->ClearProgression();
+				ASC->RestoreHealthFromSave(Data.CurrentHealth);
+			}
 		}
 	}
 }

@@ -3,14 +3,12 @@
 
 #include "Framework/CAP_GameInstance.h"
 
-#include "AbilitySystemGlobals.h"
 #include "CAP_SaveGame.h"
 #include "Kismet/GameplayStatics.h"
 
 void UCAP_GameInstance::Init()
 {
 	Super::Init();
-	UAbilitySystemGlobals::Get().InitGlobalData();
 	LoadGameData();
 }
 
