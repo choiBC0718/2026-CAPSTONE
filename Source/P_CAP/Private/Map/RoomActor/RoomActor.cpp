@@ -20,6 +20,7 @@
 #include "Framework/CAP_RewardSettings.h"
 #include "Framework/Subsystem/CAP_RewardSubsystem.h"
 #include "Interactables/Reward/CAP_RewardChest.h"
+#include "P_CAP/P_CAP.h"
 
 ARoomActor::ARoomActor()
 {
@@ -44,6 +45,7 @@ ARoomActor::ARoomActor()
 	RoomEnterTrigger->SetCollisionObjectType(ECC_WorldDynamic);
 	RoomEnterTrigger->SetCollisionResponseToAllChannels(ECR_Ignore);
 	RoomEnterTrigger->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	RoomEnterTrigger->SetCollisionResponseToChannel(ECC_TargetGround, ECR_Ignore);
 	RoomEnterTrigger->SetGenerateOverlapEvents(true);
 
 	/* 몬스터 스폰 전용 컴포넌트 */
