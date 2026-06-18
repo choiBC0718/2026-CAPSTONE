@@ -12,7 +12,6 @@
 #include "Data/CAP_MonsterRewardDataAsset.h"
 #include "Framework/CAP_RewardSettings.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
-#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "NiagaraSystem.h"
