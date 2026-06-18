@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayEffectTypes.h"
 #include "GameplayTagContainer.h"
 #include "CAP_GameplayAbilityTypes.generated.h"
 
@@ -72,4 +73,25 @@ public:
 	UPROPERTY(EditAnywhere)		float BaseMoveSpeed=0.f;
 	UPROPERTY(EditAnywhere)		float BaseCooldownMultiplier=0.f;
 	UPROPERTY(EditAnywhere)		float BaseWeaponSwapCooldownMultiplier=0.f;
+};
+
+USTRUCT()
+struct FCAP_GameplayEffectContext : public FGameplayEffectContext
+{
+	GENERATED_BODY()
+public:
+	bool bIsCritical = false;
+	virtual bool NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess) override;
+	virtual FCAP_GameplayEffectContext* Duplicate() const override;
+	virtual UScriptStruct* GetScriptStruct() const override;
+};
+
+template<>
+struct TStructOpsTypeTraits<FCAP_GameplayEffectContext> : public TStructOpsTypeTraitsBase2<FCAP_GameplayEffectContext>
+{
+	enum
+	{
+		WithNetSerializer = true,
+		WithCopy = true
+	};
 };

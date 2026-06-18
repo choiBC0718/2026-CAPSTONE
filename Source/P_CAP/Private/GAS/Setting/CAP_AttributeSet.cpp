@@ -5,6 +5,7 @@
 
 #include "GameplayEffectExtension.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "Framework/Subsystem/CAP_DamageTextSubsystem.h"
 #include "Framework/Subsystem/CAP_ProgressionSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -66,6 +67,17 @@ void UCAP_AttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMo
 			{
 				const float NewHealth = GetHealth() - LocalDamage;
 				SetHealth(FMath::Clamp(NewHealth, 0.f, GetMaxHealth()));
+
+				bool bIsCritical = false;
+				if (const FCAP_GameplayEffectContext* CContext = static_cast<const FCAP_GameplayEffectContext*>(Data.EffectSpec.GetContext().Get()))
+				{
+					bIsCritical = CContext->bIsCritical;
+				}
+				if (Target)
+				{
+					if (UCAP_DamageTextSubsystem* TextSubsys = Target->GetWorld()->GetSubsystem<UCAP_DamageTextSubsystem>())
+						TextSubsys->ShowDamage(Target,LocalDamage,bIsCritical,bIsPlayerOwner);
+				}
 			}
 		}
 	}

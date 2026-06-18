@@ -22,7 +22,7 @@ void UCAP_SynergyToolTipWidget::SetupToolTip(const struct FSynergyDataTable* Syn
 
 		for (const FSynergyLevelData& LevelData : SynergyDataTable->SynergyLevels)
 		{
-			EffectsStr += FString::Printf(TEXT("[%d세트]\n%s\n"),LevelData.RequiredCount, *LevelData.LevelDescription.ToString());
+			EffectsStr += FString::Printf(TEXT("[%d레벨]\n%s\n"),LevelData.RequiredCount, *LevelData.LevelDescription.ToString());
 		}
 
 		SynergyEffectsText->SetText(FText::FromString(EffectsStr));

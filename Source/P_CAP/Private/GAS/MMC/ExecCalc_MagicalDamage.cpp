@@ -5,6 +5,7 @@
 
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
+#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 
 UExecCalc_MagicalDamage::UExecCalc_MagicalDamage()
 {
@@ -78,9 +79,12 @@ void UExecCalc_MagicalDamage::Execute_Implementation(const FGameplayEffectCustom
 		if (FMath::RandRange(0.0f, 100.0f) <= CriticalChance)
 		{
 			FinalDamage *= CriticalDamage;
+			if (FCAP_GameplayEffectContext* CContext = static_cast<FCAP_GameplayEffectContext*>(Spec.GetContext().Get()))
+				CContext->bIsCritical = true;
 		}
 	}
-	UE_LOG(LogTemp,Warning,TEXT(" 최종 데미지 : %f"), FinalDamage);
+	FinalDamage = FMath::RoundToInt(FinalDamage);
+	//UE_LOG(LogTemp,Warning,TEXT(" 최종 데미지 : %f"), FinalDamage);
 
 	// 최종 데미지를 Damage 어트리뷰트에
 	OutExecutionOutput.AddOutputModifier(FGameplayModifierEvaluatedData(UCAP_AttributeSet::GetDamageAttribute(), EGameplayModOp::Additive, FinalDamage));
