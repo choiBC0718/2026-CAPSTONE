@@ -31,6 +31,8 @@ UGA_FlowBase::UGA_FlowBase()
 	
 	TriggerCastBasicTag = UCAP_AbilitySystemStatics::GetItemTriggerCastBasic();
 	TriggerCastAbilityTag = UCAP_AbilitySystemStatics::GetItemTriggerCastAbility();
+
+	BlockAbilitiesWithTag.AddTag(UCAP_AbilitySystemStatics::GetBasicAttackTag());
 }
 
 void UGA_FlowBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
