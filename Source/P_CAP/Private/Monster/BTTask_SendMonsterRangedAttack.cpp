@@ -1,21 +1,23 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Monster/BTTask_SendMonsterBasicAttack.h"
+#include "Monster/BTTask_SendMonsterRangedAttack.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "AIController.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 
-UBTTask_SendMonsterBasicAttack::UBTTask_SendMonsterBasicAttack()
+UBTTask_SendMonsterRangedAttack::UBTTask_SendMonsterRangedAttack()
 {
-	NodeName = TEXT("Send Monster Basic Attack");
+	NodeName = TEXT("Send Monster Ranged Attack");
 	bNotifyTick = true;
 }
 
-EBTNodeResult::Type UBTTask_SendMonsterBasicAttack::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+EBTNodeResult::Type UBTTask_SendMonsterRangedAttack::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
 	AAIController* AIController = OwnerComp.GetAIOwner();
 	if (!AIController)
@@ -35,8 +37,9 @@ EBTNodeResult::Type UBTTask_SendMonsterBasicAttack::ExecuteTask(UBehaviorTreeCom
 		return EBTNodeResult::Failed;
 	}
 
-	if (IsBasicAttackActive(ASC))
+	if (IsRangedAttackActive(ASC))
 	{
+		StopPawnMovement(Pawn);
 		return EBTNodeResult::InProgress;
 	}
 
@@ -60,27 +63,36 @@ EBTNodeResult::Type UBTTask_SendMonsterBasicAttack::ExecuteTask(UBehaviorTreeCom
 		return EBTNodeResult::Failed;
 	}
 
-	if (!TryActivateBasicAttack(ASC))
+	if (!TryActivateRangedAttack(ASC))
 	{
 		return EBTNodeResult::Failed;
 	}
 
+	AIController->StopMovement();
+	StopPawnMovement(Pawn);
 	return EBTNodeResult::InProgress;
 }
 
-void UBTTask_SendMonsterBasicAttack::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
+void UBTTask_SendMonsterRangedAttack::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
 {
 	AAIController* AIController = OwnerComp.GetAIOwner();
 	APawn* Pawn = AIController ? AIController->GetPawn() : nullptr;
 	UAbilitySystemComponent* ASC = Pawn ? UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Pawn) : nullptr;
-	if (!ASC || !IsBasicAttackActive(ASC))
+	if (ASC && IsRangedAttackActive(ASC))
 	{
-		MarkAttackCooldownStarted(Pawn);
-		FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+		if (AIController)
+		{
+			AIController->StopMovement();
+		}
+		StopPawnMovement(Pawn);
+		return;
 	}
+
+	MarkAttackCooldownStarted(Pawn);
+	FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
 }
 
-bool UBTTask_SendMonsterBasicAttack::IsBasicAttackActive(const UAbilitySystemComponent* ASC) const
+bool UBTTask_SendMonsterRangedAttack::IsRangedAttackActive(const UAbilitySystemComponent* ASC) const
 {
 	if (!ASC)
 	{
@@ -99,7 +111,7 @@ bool UBTTask_SendMonsterBasicAttack::IsBasicAttackActive(const UAbilitySystemCom
 	return false;
 }
 
-bool UBTTask_SendMonsterBasicAttack::TryActivateBasicAttack(UAbilitySystemComponent* ASC) const
+bool UBTTask_SendMonsterRangedAttack::TryActivateRangedAttack(UAbilitySystemComponent* ASC) const
 {
 	if (!ASC)
 	{
@@ -120,10 +132,26 @@ bool UBTTask_SendMonsterBasicAttack::TryActivateBasicAttack(UAbilitySystemCompon
 		ASC->AbilitySpecInputReleased(AbilitySpec);
 	}
 
-	return bActivatedAbility || IsBasicAttackActive(ASC);
+	return bActivatedAbility || IsRangedAttackActive(ASC);
 }
 
-bool UBTTask_SendMonsterBasicAttack::IsAttackOnCooldown(const APawn* Pawn) const
+void UBTTask_SendMonsterRangedAttack::StopPawnMovement(APawn* Pawn) const
+{
+	if (!Pawn)
+	{
+		return;
+	}
+
+	if (ACharacter* Character = Cast<ACharacter>(Pawn))
+	{
+		if (UCharacterMovementComponent* MovementComponent = Character->GetCharacterMovement())
+		{
+			MovementComponent->StopMovementImmediately();
+		}
+	}
+}
+
+bool UBTTask_SendMonsterRangedAttack::IsAttackOnCooldown(const APawn* Pawn) const
 {
 	if (!Pawn || AttackCooldown <= 0.f)
 	{
@@ -140,7 +168,7 @@ bool UBTTask_SendMonsterBasicAttack::IsAttackOnCooldown(const APawn* Pawn) const
 	return World->GetTimeSeconds() - *LastAttackEndTime < AttackCooldown;
 }
 
-void UBTTask_SendMonsterBasicAttack::MarkAttackCooldownStarted(const APawn* Pawn)
+void UBTTask_SendMonsterRangedAttack::MarkAttackCooldownStarted(const APawn* Pawn)
 {
 	if (!Pawn || AttackCooldown <= 0.f)
 	{

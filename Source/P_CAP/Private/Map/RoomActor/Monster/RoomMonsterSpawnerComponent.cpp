@@ -233,7 +233,7 @@ bool URoomMonsterSpawnerComponent::HasSpawnedMonsters() const
 
 bool URoomMonsterSpawnerComponent::AreAllSpawnedMonstersDefeated() const
 {
-	bool bHasAnyMonster = false;
+	const bool bHadTrackedMonsters = !SpawnedMonsters.IsEmpty();
 
 	for (const ACharacter* Monster : SpawnedMonsters)
 	{
@@ -242,16 +242,14 @@ bool URoomMonsterSpawnerComponent::AreAllSpawnedMonstersDefeated() const
 			continue;
 		}
 
-		bHasAnyMonster = true;
-
 		const ACAP_Character* CAPCharacter = Cast<ACAP_Character>(Monster);
-		if (!CAPCharacter || CAPCharacter->IsAlive())
+		if (!CAPCharacter || !CAPCharacter->IsDead())
 		{
 			return false;
 		}
 	}
 
-	return bHasAnyMonster;
+	return bHadTrackedMonsters;
 }
 
 TArray<FRoomMonsterSpawnPick> URoomMonsterSpawnerComponent::BuildMonsterSpawnList(

@@ -57,6 +57,7 @@ void ACAP_ProjectileBase::InitProjectile(const FProjectileInitData& InitData)
 	HitGameplayCueTag	= InitData.CueTag;
 	HitTriggerTag		= InitData.HitTriggerTag;
 	MaxHitCount			= InitData.MaxHitCount;
+	TargetActorClass	= InitData.TargetActorClass;
 
 	FVector LaunchDir	= InitData.LaunchDir;
 	ProjMovementComp->InitialSpeed = ProjectileSpeed;
@@ -151,6 +152,7 @@ void ACAP_ProjectileBase::SendLocalGameplayCue(const FHitResult& HitResult)
 void ACAP_ProjectileBase::ProcessStraightHit(AActor* OtherActor, const FHitResult& SweepResult)
 {
 	if (HitActors.Contains(OtherActor)) return;
+	if (!IsValidDamageTarget(OtherActor)) return;
 	HitActors.Add(OtherActor);
 
 	// 데미지 적용
@@ -206,7 +208,7 @@ void ACAP_ProjectileBase::ProcessExplosiveHit(const FHitResult& SweepResult)
 		for (const FOverlapResult& Overlap : Overlaps)
 		{
 			AActor* OverlapActor = Overlap.GetActor();
-			if (OverlapActor && OverlapActor != GetOwner() && !HitActorsArray.Contains(OverlapActor))
+			if (OverlapActor && OverlapActor != GetOwner() && IsValidDamageTarget(OverlapActor) && !HitActorsArray.Contains(OverlapActor))
 			{
 				HitActorsArray.Add(OverlapActor);
 				UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OverlapActor);
@@ -233,6 +235,16 @@ void ACAP_ProjectileBase::ProcessExplosiveHit(const FHitResult& SweepResult)
 
 	SendLocalGameplayCue(SweepResult);
 	Destroy();
+}
+
+bool ACAP_ProjectileBase::IsValidDamageTarget(AActor* TargetActor) const
+{
+	if (!IsValid(TargetActor))
+	{
+		return false;
+	}
+
+	return !TargetActorClass || TargetActor->IsA(TargetActorClass);
 }
 
 void ACAP_ProjectileBase::StraightTypeInit()

@@ -34,14 +34,12 @@ void UGA_MonsterBasicAttack::ActivateAbility(
 
 	if (!K2_CommitAbility())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("GA_MonsterBasicAttack failed: CommitAbility failed. Avatar=%s"), *GetNameSafe(GetAvatarActorFromActorInfo()));
 		K2_EndAbility();
 		return;
 	}
 
 	if (!CurrentAttackMontage)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("GA_MonsterBasicAttack failed: AttackMontage is missing. Avatar=%s"), *GetNameSafe(GetAvatarActorFromActorInfo()));
 		K2_EndAbility();
 		return;
 	}
@@ -109,9 +107,6 @@ void UGA_MonsterBasicAttack::OnAttackMontageFinished()
 
 void UGA_MonsterBasicAttack::EndAttackByFallbackTimer()
 {
-	UE_LOG(LogTemp, Verbose, TEXT("GA_MonsterBasicAttack fallback ended ability. Avatar=%s Montage=%s"),
-		*GetNameSafe(GetAvatarActorFromActorInfo()),
-		*GetNameSafe(CurrentAttackMontage));
 	K2_EndAbility();
 }
 
