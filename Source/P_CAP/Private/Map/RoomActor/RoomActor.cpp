@@ -133,7 +133,6 @@ void ARoomActor::InitializeRoom(
 	bEncounterStarted = false;
 	bReinforcementTriggered.Empty();
 	bReinforcementPending.Empty();
-	bReinforcementSkipped.Empty();
 	ReinforcementTimerHandles.Empty();
 	TriggeredReinforcementCount = 0;
 	UsedReinforcementScore = 0;
@@ -427,7 +426,6 @@ void ARoomActor::InitializeReinforcementState()
 
 	bReinforcementTriggered.Init(false, ReinforcementCount);
 	bReinforcementPending.Init(false, ReinforcementCount);
-	bReinforcementSkipped.Init(false, ReinforcementCount);
 	ReinforcementTimerHandles.SetNum(ReinforcementCount);
 	TriggeredReinforcementCount = 0;
 	UsedReinforcementScore = 0;
@@ -445,15 +443,13 @@ void ARoomActor::CheckReinforcements()
 	for (int32 ReinforcementIndex = 0; ReinforcementIndex < SpawnRule->Reinforcements.Num(); ++ReinforcementIndex)
 	{
 		if (!bReinforcementTriggered.IsValidIndex(ReinforcementIndex) ||
-			!bReinforcementPending.IsValidIndex(ReinforcementIndex) ||
-			!bReinforcementSkipped.IsValidIndex(ReinforcementIndex))
+			!bReinforcementPending.IsValidIndex(ReinforcementIndex))
 		{
 			continue;
 		}
 
 		if (bReinforcementTriggered[ReinforcementIndex] ||
-			bReinforcementPending[ReinforcementIndex] ||
-			bReinforcementSkipped[ReinforcementIndex])
+			bReinforcementPending[ReinforcementIndex])
 		{
 			continue;
 		}
@@ -517,13 +513,12 @@ void ARoomActor::SpawnQueuedReinforcement(int32 ReinforcementIndex)
 	}
 
 	if (!bReinforcementTriggered.IsValidIndex(ReinforcementIndex) ||
-		!bReinforcementPending.IsValidIndex(ReinforcementIndex) ||
-		!bReinforcementSkipped.IsValidIndex(ReinforcementIndex))
+		!bReinforcementPending.IsValidIndex(ReinforcementIndex))
 	{
 		return;
 	}
 
-	if (bReinforcementTriggered[ReinforcementIndex] || bReinforcementSkipped[ReinforcementIndex])
+	if (bReinforcementTriggered[ReinforcementIndex])
 	{
 		bReinforcementPending[ReinforcementIndex] = false;
 		return;
@@ -554,7 +549,7 @@ void ARoomActor::SpawnQueuedReinforcement(int32 ReinforcementIndex)
 	{
 		if (Reinforcement.ActivationDelayAfterSpawn <= 0.f)
 		{
-			ActivateSpawnedReinforcementMonsters();
+			ActivateRoomMonstersAfterReinforcement();
 		}
 		else if (UWorld* World = GetWorld())
 		{
@@ -562,14 +557,14 @@ void ARoomActor::SpawnQueuedReinforcement(int32 ReinforcementIndex)
 			World->GetTimerManager().SetTimer(
 				ActivationTimerHandle,
 				this,
-				&ARoomActor::ActivateSpawnedReinforcementMonsters,
+				&ARoomActor::ActivateRoomMonstersAfterReinforcement,
 				Reinforcement.ActivationDelayAfterSpawn,
 				false);
 		}
 	}
 }
 
-void ARoomActor::ActivateSpawnedReinforcementMonsters()
+void ARoomActor::ActivateRoomMonstersAfterReinforcement()
 {
 	if (MonsterSpawnerComponent && CurrentCombatTarget)
 	{
@@ -688,15 +683,6 @@ void ARoomActor::HandleCombatRoomCleared()
 		CachedRoomData.GridPos.X,
 		CachedRoomData.GridPos.Y,
 		RewardTypeText);
-
-	if (GEngine)
-	{
-		GEngine->AddOnScreenDebugMessage(
-			-1,
-			3.0f,
-			FColor::Green,
-			FString::Printf(TEXT("Combat reward ready: %s"), RewardTypeText));
-	}
 }
 
 void ARoomActor::SetSpawnedDoorsPortalEnabled(bool bEnabled)

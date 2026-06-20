@@ -100,7 +100,7 @@ int32 URoomMonsterSpawnerComponent::SpawnMonstersFromRule(
 	AdjustedRule.ScoreRange.X = FMath::Max(1, FMath::RoundToInt(SpawnRule.ScoreRange.X * AggressionScale));
 	AdjustedRule.ScoreRange.Y = FMath::Max(1, FMath::RoundToInt(SpawnRule.ScoreRange.Y * AggressionScale));
 
-	UE_LOG(LogTemp, Log, TEXT("[Spawn] Room(%d,%d) | Combat=%.2f AggrScale=%.2f | Score %d~%d → %d~%d"),
+	UE_LOG(LogTemp, Verbose, TEXT("[Spawn] Room(%d,%d) | Combat=%.2f AggrScale=%.2f | Score %d~%d → %d~%d"),
 		RoomData.GridPos.X, RoomData.GridPos.Y,
 		Tendency.CombatAggression, AggressionScale,
 		SpawnRule.ScoreRange.X, SpawnRule.ScoreRange.Y,

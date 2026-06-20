@@ -309,7 +309,6 @@ private:
 	bool bEncounterStarted = false;
 	TArray<bool> bReinforcementTriggered;
 	TArray<bool> bReinforcementPending;
-	TArray<bool> bReinforcementSkipped;
 	UPROPERTY()
 	int32 TriggeredReinforcementCount = 0;
 	UPROPERTY()
@@ -347,7 +346,7 @@ private:
 	void CheckReinforcements();
 	bool TryQueueReinforcement(int32 ReinforcementIndex);
 	void SpawnQueuedReinforcement(int32 ReinforcementIndex);
-	void ActivateSpawnedReinforcementMonsters();
+	void ActivateRoomMonstersAfterReinforcement();
 	bool CanTriggerReinforcement(const FRoomMonsterSpawnRule& SpawnRule, const FRoomReinforcementRule& Reinforcement) const;
 	bool IsReinforcementTriggerSatisfied(const FRoomReinforcementRule& Reinforcement) const;
 	bool AreRequiredReinforcementsResolved() const;
