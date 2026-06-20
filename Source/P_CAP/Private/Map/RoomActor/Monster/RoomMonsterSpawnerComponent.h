@@ -34,13 +34,23 @@ public:
 		const FTransform& RoomTransform,
 		const FPlayerTendencyModifier& Tendency = FPlayerTendencyModifier{});
 
+	int32 SpawnReinforcement(
+		const FRoomData& RoomData,
+		const FRoomInteriorLayout& InteriorLayout,
+		int32 MapSeed,
+		const FTransform& RoomTransform,
+		const FPlayerTendencyModifier& Tendency,
+		int32 ReinforcementIndex);
+
 	void ClearSpawnedMonsters();
 
 	void ActivateSpawnedMonsters(AActor* TargetActor);
 	void DeactivateSpawnedMonsters();
 	bool HasSpawnedMonsters() const;
 	bool AreAllSpawnedMonstersDefeated() const;
+	int32 GetAliveSpawnedMonsterCount() const;
 	int32 GetNumSpawnedMonsters() const { return SpawnedMonsters.Num(); }
+	const FRoomMonsterSpawnRule* GetSpawnRule(ERoomType RoomType) const;
 
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Monster Spawn", meta=(AllowPrivateAccess="true"))
@@ -74,6 +84,17 @@ private:
 		const FRoomMonsterSpawnRule& SpawnRule,
 		FRandomStream& RandomStream) const;
 
+	int32 SpawnMonstersFromRule(
+		const FRoomData& RoomData,
+		const FRoomInteriorLayout& InteriorLayout,
+		int32 MapSeed,
+		const FTransform& RoomTransform,
+		const FPlayerTendencyModifier& Tendency,
+		const FRoomMonsterSpawnRule& SpawnRule,
+		int32 RandomSalt,
+		bool bClearExisting,
+		const FRoomReinforcementRule* ReinforcementRule = nullptr);
+
 	const FRoomMonsterSpawnEntry* PickMonsterEntry(
 		const FRoomMonsterSpawnRule& SpawnRule,
 		const TMap<TSubclassOf<ACharacter>, int32>& SelectedCounts,
@@ -96,5 +117,5 @@ private:
 		FRandomStream& RandomStream,
 		FVector& OutWorldLocation) const;
 	bool IsSpawnLocationFree(TSubclassOf<ACharacter> MonsterClass, const FVector& WorldLocation) const;
-	FRandomStream MakeRoomRandomStream(const FRoomData& RoomData, int32 MapSeed) const;
+	FRandomStream MakeRoomRandomStream(const FRoomData& RoomData, int32 MapSeed, int32 RandomSalt = 0) const;
 };

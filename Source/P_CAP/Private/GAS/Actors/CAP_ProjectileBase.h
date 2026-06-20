@@ -33,6 +33,7 @@ struct FProjectileInitData
 	FGameplayTag HitTriggerTag;
 	TWeakObjectPtr<USceneComponent> HomingTarget = nullptr;
 	FVector TargetLocation;
+	TSubclassOf<AActor> TargetActorClass = nullptr;
 };
 
 UCLASS()
@@ -67,6 +68,7 @@ private:
 	FGameplayTag HitTriggerTag;
 	FGameplayTag HitGameplayCueTag;
 	FGameplayEffectSpecHandle HitEffectHandle;
+	TSubclassOf<AActor> TargetActorClass;
 	FTimerHandle ProjTimerHandle;
 	
 	UFUNCTION()
@@ -77,6 +79,7 @@ private:
 
 	void ProcessStraightHit(AActor* OtherActor, const FHitResult& SweepResult);
 	void ProcessExplosiveHit(const FHitResult& SweepResult);
+	bool IsValidDamageTarget(AActor* TargetActor) const;
 	
 	int32 CurrentHitCount =0;
 	UPROPERTY()
