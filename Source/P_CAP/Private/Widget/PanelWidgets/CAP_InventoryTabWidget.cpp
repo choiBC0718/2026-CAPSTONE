@@ -31,7 +31,7 @@ void UCAP_InventoryTabWidget::RefreshInventoryTab(ACAP_PlayerCharacter* PlayerCh
 	}
 	if (ItemSynergyPanel)
 	{
-		ItemSynergyPanel->RefreshSynergyList(InvComp->GetCurrentSynergyCounts(), InvComp->GetSynergyDataCache());
+		ItemSynergyPanel->RefreshSynergyList(InvComp->GetCurrentSynergyCounts());
 	}
 }
 

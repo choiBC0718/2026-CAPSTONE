@@ -6,7 +6,6 @@
 #include "AbilitySystemComponent.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
-#include "Interactables/Item/CAP_ItemInstance.h"
 
 UCAP_ItemBehaviorBase::UCAP_ItemBehaviorBase()
 {
@@ -16,43 +15,29 @@ UCAP_ItemBehaviorBase::UCAP_ItemBehaviorBase()
 	DurationTag = UCAP_AbilitySystemStatics::GetDataEffectDurationTag();
 }
 
-void UCAP_ItemBehaviorBase::OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
-{
-	if (ItemInst && ASC)
-	{
-		if (UCAP_AbilitySystemComponent* CAP_ASC = Cast<UCAP_AbilitySystemComponent>(ASC))
-			ItemInst->SetCachedASC(CAP_ASC);
-	}
-}
 
-void UCAP_ItemBehaviorBase::OnUnequipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+void UCAP_ItemBehaviorBase::BindGameplayEvent(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC, FGameplayTag EventTag) const
 {
-	if (ItemInst)
-		ItemInst->SetCachedASC(nullptr);
-}
-
-void UCAP_ItemBehaviorBase::BindGameplayEvent(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, FGameplayTag EventTag) const
-{
-	if (!ItemInst || !ASC || !EventTag.IsValid())
+	if (!StateProvider || !ASC || !EventTag.IsValid())
 		return;
 	/* ASC의 이벤트 시스템에 InternalEventCallback 함수 등록
 	 * GenericGameplayEventCallbacks는 GAS에서 이벤트를 관리하는 Map
 	 * EventTag를 Key로하는 Value(델리게이트)를 찾거나 새로 제작
 	*/
-	FDelegateHandle Handle = ASC->GenericGameplayEventCallbacks.FindOrAdd(EventTag).AddUObject(this, &UCAP_ItemBehaviorBase::InternalEventCallback, ItemInst, ASC);
+	FDelegateHandle Handle = ASC->GenericGameplayEventCallbacks.FindOrAdd(EventTag).AddUObject(this, &UCAP_ItemBehaviorBase::InternalEventCallback, StateProvider, ASC);
 	/* 함수 등록 시 FDelegateHandle이라는 고유 번호 발금
 	 * 이벤트 해제하게 되는 경우 이 번호 필요
-	 * Behavior클래스는 ItemDA에 들어가므로 메모리 공유 => 아이템마다 개인의 변수로 관리하기 위해 ItemInst에 번호 저장
 	 */
-	ItemInst->BoundEventHandles.FindOrAdd(this).Add(Handle);
+	if (TArray<FDelegateHandle>* Handles = StateProvider->GetBoundEventHandles(this))
+		Handles->Add(Handle);
 }
 
-void UCAP_ItemBehaviorBase::UnbindGameplayEvents(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+void UCAP_ItemBehaviorBase::UnbindGameplayEvents(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	if (!ItemInst || !ASC)
+	if (!StateProvider || !ASC)
 		return;
-	// ItemInst에 저장해놓은 고유 번호로 찾아 이벤트 제거
-	if (TArray<FDelegateHandle>* Handles = ItemInst->BoundEventHandles.Find(this))
+
+	if (TArray<FDelegateHandle>* Handles = StateProvider->GetBoundEventHandles(this))
 	{
 		for (FDelegateHandle Handle : *Handles)
 		{
@@ -61,35 +46,34 @@ void UCAP_ItemBehaviorBase::UnbindGameplayEvents(UCAP_ItemInstance* ItemInst, UA
 				Pair.Value.Remove(Handle);
 			}
 		}
-		ItemInst->BoundEventHandles.Remove(this);
+		Handles->Empty();
 	}
 }
 
-bool UCAP_ItemBehaviorBase::IsOnCooldown(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+bool UCAP_ItemBehaviorBase::IsOnCooldown(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
 	if (Cooldown <= 0.f)
 		return false;
 	
 	UWorld* World = ASC->GetAvatarActor()->GetWorld();
-	if (!ItemInst || !ASC || !World)
+	if (!StateProvider || !ASC || !World)
 		return false;
 
 	float CurrentTime = World->GetTimeSeconds();
-	const float* LastTimePtr = ItemInst->BehaviorLastTriggerTimes.Find(this);
-	float LastTriggerTime = LastTimePtr ? *LastTimePtr : -999.f;
+	float LastTimePtr = StateProvider->GetBehaviorLastTriggerTime(this);
 
-	return (CurrentTime - LastTriggerTime < Cooldown);
+	return (CurrentTime-LastTimePtr) < Cooldown;
 }
 
-void UCAP_ItemBehaviorBase::ConsumeCooldown(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+void UCAP_ItemBehaviorBase::ConsumeCooldown(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
 	if (Cooldown<=0.f)
 		return;
 	UWorld* World = ASC->GetAvatarActor()->GetWorld();
-	if (!ItemInst || !ASC || !World)
+	if (!StateProvider || !ASC || !World)
 		return;
 
-	ItemInst->BehaviorLastTriggerTimes.FindOrAdd(this) = World->GetTimeSeconds();
+	StateProvider->SetBehaviorLastTriggerTime(this, World->GetTimeSeconds());
 }
 
 void UCAP_ItemBehaviorBase::InitGameplayEffectToDefault(const FGameplayEffectSpecHandle& SpecHandle,TSubclassOf<UGameplayEffect> BuffGE,float DefaultVal) const
@@ -107,7 +91,7 @@ void UCAP_ItemBehaviorBase::InitGameplayEffectToDefault(const FGameplayEffectSpe
 	}
 }
 
-void UCAP_ItemBehaviorBase::InternalEventCallback(const struct FGameplayEventData* Payload, UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+void UCAP_ItemBehaviorBase::InternalEventCallback(const struct FGameplayEventData* Payload,ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	OnEventReceived(ItemInst, ASC,Payload);
+	OnEventReceived(StateProvider, ASC,Payload);
 }

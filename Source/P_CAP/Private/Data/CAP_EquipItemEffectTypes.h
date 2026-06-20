@@ -12,31 +12,20 @@ struct FSynergyLevelData
 {
 	GENERATED_BODY()
 
+	// 해당 효과 발동에 필요한 태그 수
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	int32 RequiredCount = 0;
+
+	// 능력치 증가 시너지인 경우
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	TSubclassOf<class UGameplayEffect> SynergyEffect;
+	TArray<FStatModifier> StatModifiers;
+
+	// 패시브 능력 시너지인 경우
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TArray<TSubclassOf<class UCAP_ItemBehaviorBase>> GrantedBehaviors;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	FText LevelDescription;
-};
-
-
-USTRUCT(BlueprintType)
-struct FSynergyDataTable : public FTableRowBase
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta=(Categories="Synergy"))
-	FGameplayTag SynergyTag;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	FText SynergyName;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	TSoftObjectPtr<UTexture2D> SynergyIcon;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	TArray<FSynergyLevelData> SynergyLevels;
 };
 
 

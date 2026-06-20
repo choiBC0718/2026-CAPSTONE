@@ -4,12 +4,12 @@
 #include "Widget/PanelWidgets/CAP_ItemDetailPanelWidget.h"
 
 #include "Character/Player/CAP_PlayerCharacter.h"
-#include "Component/CAP_InventoryComponent.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
-#include "Data/CAP_EquipItemEffectTypes.h"
+#include "Data/CAP_SynergyDataAsset.h"
+#include "Framework/Subsystem/CAP_SynergySubsystem.h"
 #include "Interactables/Item/CAP_ItemInstance.h"
 #include "Interactables/Weapon/CAP_WeaponInstance.h"
 #include "Widget/Common/CAP_SkillToolTipWidget.h"
@@ -23,6 +23,12 @@ void UCAP_ItemDetailPanelWidget::NativeConstruct()
 
 void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemType ItemType)
 {
+	UWorld* World = GetWorld();
+	if (!World || !World->GetGameInstance())
+		return;
+	UCAP_SynergySubsystem* SynergySubsystem = World->GetGameInstance()->GetSubsystem<UCAP_SynergySubsystem>();
+	if (!SynergySubsystem)
+		return;
 	FeatureIconBox->ClearChildren();
 
 	if (!ItemData)
@@ -55,19 +61,13 @@ void UCAP_ItemDetailPanelWidget::UpdateDetailInfo(UObject* ItemData, ESlotItemTy
 			{
 				SetupUIContents(ItemInst);
 
-				ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn());
-				if (!Player || !Player->GetInventoryComponent())
-					return;
-
-				const TMap<FGameplayTag, FSynergyDataTable*>& SynergyCache = Player->GetInventoryComponent()->GetSynergyDataCache();
-
 				TArray<FGameplayTag> Synergies = ItemDA->GetSynergyTags();
 				for (const FGameplayTag& Tag : Synergies)
 				{
-					if (FSynergyDataTable* FoundRow = SynergyCache.FindRef(Tag))
+					if (SynergySubsystem->SynergyMap.Contains(Tag))
 					{
-						AddSynergyFeatureIcon(FoundRow);
-						//AddFeatureIconToBox(FoundRow->SynergyIcon);
+						if (UCAP_SynergyDataAsset* SynergyDA = SynergySubsystem->SynergyMap[Tag].LoadSynchronous())
+							AddSynergyFeatureIcon(SynergyDA);
 					}
 				}
 			}
@@ -151,24 +151,21 @@ void UCAP_ItemDetailPanelWidget::AddSkillFeatureIcon(const struct FWeaponSkillDa
 	}
 }
 
-void UCAP_ItemDetailPanelWidget::AddSynergyFeatureIcon(const struct FSynergyDataTable* SynergyData)
+void UCAP_ItemDetailPanelWidget::AddSynergyFeatureIcon(UCAP_SynergyDataAsset* SynergyDA)
 {
-	if (!SynergyData || SynergyData->SynergyIcon.IsNull()) return;
+	if (!SynergyDA || !SynergyDA->SynergyIcon) return;
 
 	UImage* FeatureIconImg = NewObject<UImage>(this);
-	if (UTexture2D* LoadedIcon = SynergyData->SynergyIcon.LoadSynchronous())
-	{
-		FSlateBrush IconBrush;
-		IconBrush.SetResourceObject(LoadedIcon);
-		IconBrush.ImageSize = SkillSynergyIconSize;
-		FeatureIconImg->SetBrush(IconBrush);
-	}
+	FSlateBrush IconBrush;
+	IconBrush.SetResourceObject(SynergyDA->SynergyIcon.LoadSynchronous());
+	IconBrush.ImageSize = SkillSynergyIconSize;
+	FeatureIconImg->SetBrush(IconBrush);
 	
 	if (SynergyTooltipClass)
 	{
 		if (UCAP_SynergyToolTipWidget* SynergyWidget = CreateWidget<UCAP_SynergyToolTipWidget>(this, SynergyTooltipClass))
 		{
-			SynergyWidget->SetupToolTip(SynergyData);
+			SynergyWidget->SetupToolTip(SynergyDA);
 			FeatureIconImg->SetToolTip(SynergyWidget);
 		}
 	}

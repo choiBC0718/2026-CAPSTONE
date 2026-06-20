@@ -4,17 +4,25 @@
 #include "Widget/PanelWidgets/CAP_SwapDetailPanelWIdget.h"
 
 #include "Character/Player/CAP_PlayerCharacter.h"
-#include "Component/CAP_InventoryComponent.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
-#include "Data/CAP_EquipItemEffectTypes.h"
+#include "Data/CAP_SynergyDataAsset.h"
+#include "Framework/Subsystem/CAP_SynergySubsystem.h"
 #include "Interactables/Item/CAP_ItemInstance.h"
 #include "Interactables/Weapon/CAP_WeaponInstance.h"
+#include "Widget/Common/CAP_SynergyToolTipWidget.h"
 
 void UCAP_SwapDetailPanelWIdget::UpdateDetailInfo(UObject* ItemData)
 {
+	UWorld* World = GetWorld();
+	if (!World || !World->GetGameInstance())
+		return;
+	UCAP_SynergySubsystem* SynergySubsystem = World->GetGameInstance()->GetSubsystem<UCAP_SynergySubsystem>();
+	if (!SynergySubsystem)
+		return;
+	
 	if (FeatureIconBox)
 	{
 		FeatureIconBox->ClearChildren();
@@ -60,18 +68,12 @@ void UCAP_SwapDetailPanelWIdget::UpdateDetailInfo(UObject* ItemData)
 	{
 		if (UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA())
 		{
-			if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwningPlayerPawn()))
+			for (const FGameplayTag& Tag : ItemDA->GetSynergyTags())
 			{
-				if (UCAP_InventoryComponent* InventoryComp = Player->GetInventoryComponent())
+				if (SynergySubsystem->SynergyMap.Contains(Tag))
 				{
-					const TMap<FGameplayTag, FSynergyDataTable*>& SynergyCache = InventoryComp->GetSynergyDataCache();
-					for (const FGameplayTag& Tag : ItemDA->GetSynergyTags())
-					{
-						if (FSynergyDataTable* FoundRow = SynergyCache.FindRef(Tag))
-						{
-							AddFeatureIconToBox(FoundRow->SynergyIcon);
-						}
-					}
+					if (UCAP_SynergyDataAsset* SynergyDA = SynergySubsystem->SynergyMap[Tag].LoadSynchronous())
+						AddSynergyFeatureIcon(SynergyDA);
 				}
 			}
 		}
@@ -102,6 +104,32 @@ void UCAP_SwapDetailPanelWIdget::AddFeatureIconToBox(TSoftObjectPtr<class UTextu
 		IconBrush.SetResourceObject(LoadedIcon);
 		IconBrush.ImageSize = SkillSynergyIconSize;
 		FeatureIconImg->SetBrush(IconBrush);
+	}
+	if (UHorizontalBoxSlot* HBoxSlot = FeatureIconBox->AddChildToHorizontalBox(FeatureIconImg))
+	{
+		HBoxSlot->SetPadding(FMargin(20.f, 0.f, 20.f, 0.f));
+		HBoxSlot->SetHorizontalAlignment(HAlign_Fill);
+		HBoxSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+}
+
+void UCAP_SwapDetailPanelWIdget::AddSynergyFeatureIcon(class UCAP_SynergyDataAsset* SynergyDA)
+{
+	if (!SynergyDA || SynergyDA->SynergyIcon.IsNull()) return;
+
+	UImage* FeatureIconImg = NewObject<UImage>(this);
+	FSlateBrush IconBrush;
+	IconBrush.SetResourceObject(SynergyDA->SynergyIcon.LoadSynchronous());
+	IconBrush.ImageSize = SkillSynergyIconSize;
+	FeatureIconImg->SetBrush(IconBrush);
+	
+	if (SynergyTooltipClass)
+	{
+		if (UCAP_SynergyToolTipWidget* SynergyWidget = CreateWidget<UCAP_SynergyToolTipWidget>(this, SynergyTooltipClass))
+		{
+			SynergyWidget->SetupToolTip(SynergyDA);
+			FeatureIconImg->SetToolTip(SynergyWidget);
+		}
 	}
 	if (UHorizontalBoxSlot* HBoxSlot = FeatureIconBox->AddChildToHorizontalBox(FeatureIconImg))
 	{

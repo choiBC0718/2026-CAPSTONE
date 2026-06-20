@@ -7,26 +7,23 @@
 #include "Abilities/GameplayAbilityTypes.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Component/CAP_InventoryComponent.h"
-#include "Interactables/Item/CAP_ItemInstance.h"
 
-void UItemBehavior_SpawnProjectile::OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+void UItemBehavior_SpawnProjectile::OnEquipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	Super::OnEquipped(ItemInst, ASC);
-	BindGameplayEvent(ItemInst,ASC,TriggerEventTag);
+	BindGameplayEvent(StateProvider,ASC,TriggerEventTag);
 }
 
-void UItemBehavior_SpawnProjectile::OnUnequipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+void UItemBehavior_SpawnProjectile::OnUnequipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	UnbindGameplayEvents(ItemInst, ASC);
-	Super::OnUnequipped(ItemInst, ASC);
+	UnbindGameplayEvents(StateProvider, ASC);
 }
 
-void UItemBehavior_SpawnProjectile::OnEventReceived(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, const struct FGameplayEventData* Payload) const
+void UItemBehavior_SpawnProjectile::OnEventReceived(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC, const struct FGameplayEventData* Payload) const
 {
 	if (!Payload || !SpawnerClass || !ASC)
 		return;
 
-	if (!CheckTriggerCondition(ItemInst, ASC))
+	if (!CheckTriggerCondition(StateProvider, ASC))
 		return;
 
 	AActor* Instigator = ASC->GetAvatarActor();
@@ -63,15 +60,15 @@ void UItemBehavior_SpawnProjectile::OnEventReceived(UCAP_ItemInstance* ItemInst,
 	}
 }
 
-bool UItemBehavior_SpawnProjectile::CheckTriggerCondition(UCAP_ItemInstance* ItemInst,UAbilitySystemComponent* ASC) const
+bool UItemBehavior_SpawnProjectile::CheckTriggerCondition(ICAP_BehaviorStateProvider* StateProvider,UCAP_AbilitySystemComponent* ASC) const
 {
-	if (IsOnCooldown(ItemInst, ASC))
+	if (IsOnCooldown(StateProvider, ASC))
 		return false;
 	if (FMath::RandRange(0.f, 100.f) > TriggerChance)
 		return false;
-	
-	int32& CurrentCount = ItemInst->BehaviorCounters.FindOrAdd(this);
-	CurrentCount++;
+
+	StateProvider->AddBehaviorCount(this,1);
+	int32 CurrentCount = StateProvider->GetBehaviorCount(this);
 
 	bool bWillFire = (CurrentCount >= RequiredTriggerCount);
 	if (!bWillFire)
@@ -79,19 +76,18 @@ bool UItemBehavior_SpawnProjectile::CheckTriggerCondition(UCAP_ItemInstance* Ite
 		if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(ASC->GetAvatarActor()))
 		{
 			if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
-				InvComp->OnItemEffectTriggered.Broadcast(ItemInst,BehaviorTag,0.f,0.f,CurrentCount);
+				InvComp->OnItemEffectTriggered.Broadcast(StateProvider->GetProviderObject(),BehaviorTag,0.f,0.f,CurrentCount);
 		}
 		return false;
 	}
 
-	ConsumeCooldown(ItemInst, ASC);
-	CurrentCount = 0;
+	ConsumeCooldown(StateProvider, ASC);
+	StateProvider->ResetBehaviorCount(this);
+	
 	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(ASC->GetAvatarActor()))
 	{
 		if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
-		{
-			InvComp->OnItemEffectTriggered.Broadcast(ItemInst, BehaviorTag, Cooldown, 0.f, CurrentCount);
-		}
+			InvComp->OnItemEffectTriggered.Broadcast(StateProvider->GetProviderObject(), BehaviorTag, Cooldown, 0.f, 0);
 	}
 	return true;
 }

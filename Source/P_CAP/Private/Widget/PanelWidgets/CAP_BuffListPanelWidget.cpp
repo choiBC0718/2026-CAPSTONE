@@ -121,7 +121,6 @@ void UCAP_BuffListPanelWidget::OnGEAdded(UAbilitySystemComponent* ASC, const FGa
 	UIData.RemainingDuration = Spec.GetDuration();
 	UIData.MaxCooldown = 0.f;
 	UIData.RemainingCooldown = 0.f;
-	UIData.bIsDebuff = GrantedTags.HasTag(DebuffTag);
 	
 	AddOrUpdateBuffSlot(SlotID, UIData);
 }
@@ -134,28 +133,31 @@ void UCAP_BuffListPanelWidget::OnGERemoved(const FActiveGameplayEffect& EffectRe
 	RemoveBuffSlot(SlotID);
 }
 
-void UCAP_BuffListPanelWidget::OnEffectTriggered(class UCAP_ItemInstance* ItemInst, FGameplayTag DynamicTag,
-                                                 float Cooldown, float Duration, int32 Stacks)
+void UCAP_BuffListPanelWidget::OnEffectTriggered(UObject* SourceObj, FGameplayTag DynamicTag, float Cooldown, float Duration, int32 Stacks)
 {
-	if (!ItemInst)
-		return;
+	if (!SourceObj)	return;
 	
 	FBuffSlotID SlotID;
-	SlotID.SourceType = EBuffSourceType::Item_Effect;
-	SlotID.ItemInst = ItemInst;
-	SlotID.ItemDynamicTag = DynamicTag;
-
 	FBuffUIData UIData;
-	if (UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA())
+
+	if (UCAP_ItemInstance* ItemInst = Cast<UCAP_ItemInstance>(SourceObj))
 	{
-		UIData.Icon = ItemDA->ItemIcon;
+		SlotID.SourceType = EBuffSourceType::Item_Effect;
+		SlotID.ItemInst = ItemInst;
+		SlotID.ItemDynamicTag = DynamicTag;
+
+		if (UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA())
+		{
+			UIData.Icon = ItemDA->ItemIcon;
+		}
 	}
+	
+
 	UIData.Stacks = Stacks;
 	UIData.MaxDuration = Duration;
 	UIData.RemainingDuration = Duration;
 	UIData.MaxCooldown = Cooldown;
 	UIData.RemainingCooldown = Cooldown;
-	UIData.bIsDebuff = false; // 아이템 특수효과는 보통 버프
 	
 	AddOrUpdateBuffSlot(SlotID, UIData);
 }

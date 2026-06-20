@@ -5,6 +5,7 @@
 
 #include "GameFramework/Character.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "P_CAP/P_CAP.h"
 
 UAbilityTask_RotateToCursor::UAbilityTask_RotateToCursor()
 {
@@ -44,7 +45,7 @@ void UAbilityTask_RotateToCursor::Activate()
 	if (PC)
 	{
 		FHitResult HitResult;
-		if (PC->GetHitResultUnderCursor(ECC_Visibility, false, HitResult))
+		if (PC->GetHitResultUnderCursor(ECC_TargetGround, true, HitResult))
 		{
 			FVector StartLoc = Character->GetActorLocation();
 			FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(StartLoc, HitResult.ImpactPoint);

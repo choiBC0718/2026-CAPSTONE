@@ -49,14 +49,14 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="Value")
 	bool bIsMultiplier = false;
 
-	virtual void OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const override;
-	virtual void OnUnequipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const override;
+	virtual void OnEquipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const override;
+	virtual void OnUnequipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const override;
 
 protected:
-	virtual void OnEventReceived(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, const struct FGameplayEventData* Payload) const override;
+	virtual void OnEventReceived(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC, const struct FGameplayEventData* Payload) const override;
 
 private:
-	bool CheckTriggerCondition(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
-	void ApplyBuffWithStack(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, int32 TargetStackCount) const;
-	int32 GetExistingStackCount(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, FActiveGameplayEffectHandle& OutHandle) const;
+	bool CheckTriggerCondition(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const;
+	void ApplyBuffWithStack(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC, int32 TargetStackCount) const;
+	int32 GetExistingStackCount(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC, FActiveGameplayEffectHandle& OutHandle) const;
 };

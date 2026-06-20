@@ -8,6 +8,7 @@
 #include "Widget/SlotWidgets/CAP_ItemSlotWidget.h"
 #include "CAP_ItemDetailPanelWidget.generated.h"
 
+class UCAP_SynergyDataAsset;
 /**
  * 
  */
@@ -43,7 +44,7 @@ private:
 	void SetupUIContents(class UCAP_ItemInstance* ItemInst);
 
 	void AddSkillFeatureIcon(const struct FWeaponSkillData& SkillData);
-	void AddSynergyFeatureIcon(const struct FSynergyDataTable* SynergyData);
+	void AddSynergyFeatureIcon(UCAP_SynergyDataAsset* SynergyDA);
 	
 protected:
 	UPROPERTY(EditDefaultsOnly, Category="Tooltip")

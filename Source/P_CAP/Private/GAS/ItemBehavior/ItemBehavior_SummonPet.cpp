@@ -9,10 +9,8 @@
 #include "Component/CAP_InventoryComponent.h"
 #include "Kismet/GameplayStatics.h"
 
-void UItemBehavior_SummonPet::OnEquipped(class UCAP_ItemInstance* ItemInst, class UAbilitySystemComponent* ASC) const
+void UItemBehavior_SummonPet::OnEquipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	Super::OnEquipped(ItemInst, ASC);
-
 	AActor* OwnerActor = ASC->GetAvatarActor();
 	UWorld* World = OwnerActor->GetWorld();
 	if (!OwnerActor || !PetPawnClass || !World)
@@ -44,17 +42,16 @@ void UItemBehavior_SummonPet::OnEquipped(class UCAP_ItemInstance* ItemInst, clas
 	{
 		if (UCAP_InventoryComponent* InvComp = PlayerChar->GetInventoryComponent())
 		{
-			InvComp->OnItemEffectTriggered.Broadcast(ItemInst,BehaviorTag, 0.f, -1.f, 0);
+			InvComp->OnItemEffectTriggered.Broadcast(StateProvider->GetProviderObject(),BehaviorTag, 0.f, -1.f, 0);
 		}
 	}
 }
 
-void UItemBehavior_SummonPet::OnUnequipped(class UCAP_ItemInstance* ItemInst, class UAbilitySystemComponent* ASC) const
+void UItemBehavior_SummonPet::OnUnequipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
 	if (SpawnedPet.IsValid())
 	{
 		SpawnedPet->Destroy();
 		SpawnedPet.Reset();
 	}
-	Super::OnUnequipped(ItemInst, ASC);
 }

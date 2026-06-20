@@ -7,20 +7,21 @@
 #include "Components/RichTextBlock.h"
 #include "Components/TextBlock.h"
 #include "Data/CAP_EquipItemEffectTypes.h"
+#include "Data/CAP_SynergyDataAsset.h"
 
-void UCAP_SynergyToolTipWidget::SetupToolTip(const struct FSynergyDataTable* SynergyDataTable)
+void UCAP_SynergyToolTipWidget::SetupToolTip(UCAP_SynergyDataAsset* SynergyDA)
 {
-	if (!SynergyDataTable)
+	if (!SynergyDA)
 		return;
 
 	if (SynergyNameText)
-		SynergyNameText->SetText(SynergyDataTable->SynergyName);
+		SynergyNameText->SetText(SynergyDA->SynergyName);
 
 	if (SynergyEffectsText)
 	{
 		FString EffectsStr = TEXT("");
 
-		for (const FSynergyLevelData& LevelData : SynergyDataTable->SynergyLevels)
+		for (const FSynergyLevelData& LevelData : SynergyDA->SynergyLevels)
 		{
 			EffectsStr += FString::Printf(TEXT("[%d레벨]\n%s\n"),LevelData.RequiredCount, *LevelData.LevelDescription.ToString());
 		}
@@ -28,5 +29,5 @@ void UCAP_SynergyToolTipWidget::SetupToolTip(const struct FSynergyDataTable* Syn
 		SynergyEffectsText->SetText(FText::FromString(EffectsStr));
 	}
 	if (SynergyIcon)
-		SynergyIcon->SetBrushFromTexture(SynergyDataTable->SynergyIcon.LoadSynchronous());
+		SynergyIcon->SetBrushFromTexture(SynergyDA->SynergyIcon.LoadSynchronous());
 }

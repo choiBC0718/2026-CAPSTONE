@@ -56,7 +56,4 @@ struct FBuffUIData
 	float MaxDuration=0.f;
 	UPROPERTY()
 	float RemainingDuration =0.f;
-	
-	UPROPERTY()
-	bool bIsDebuff=false;
 };

@@ -4,30 +4,34 @@
 #include "Widget/PanelWidgets/CAP_ItemSynergyPanelWidget.h"
 
 #include "Widget/Common/CAP_SynergyListView.h"
-#include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_SynergySlotData.h"
-#include "Data/CAP_EquipItemEffectTypes.h"
+#include "Framework/Subsystem/CAP_SynergySubsystem.h"
 
-void UCAP_ItemSynergyPanelWidget::RefreshSynergyList(const TMap<FGameplayTag, int32>& CurrentCounts, const TMap<FGameplayTag, FSynergyDataTable*>& SynergyCache)
+void UCAP_ItemSynergyPanelWidget::RefreshSynergyList(const TMap<FGameplayTag, int32>& CurrentCounts)
 {
-	if (!SynergyListView || SynergyCache.IsEmpty())
+	UWorld* World = GetWorld();
+	if (!World || !World->GetGameInstance())
+		return;
+	UCAP_SynergySubsystem* SynergySubsystem = World->GetGameInstance()->GetSubsystem<UCAP_SynergySubsystem>();
+	if (!SynergySubsystem || !SynergyListView)
 		return;
 	
 	SynergyListView->ClearListItems();
-
 	// 많이 활성화된 순으로 정렬위한 배열
 	TArray<UCAP_SynergySlotData*> SynergySlots;
+	
 	for (const TPair<FGameplayTag, int32>& CountPair : CurrentCounts)
 	{
 		FGameplayTag Tag = CountPair.Key;
 		int32 Count = CountPair.Value;
-		if (Count > 0)
+		if (Count > 0 && SynergySubsystem->SynergyMap.Contains(Tag))
 		{
-			if (FSynergyDataTable* FoundRow = SynergyCache.FindRef(Tag))
+			if (UCAP_SynergyDataAsset* SynergyDA = SynergySubsystem->SynergyMap[Tag].LoadSynchronous())
 			{
 				UCAP_SynergySlotData* NewData = NewObject<UCAP_SynergySlotData>(this);
-				NewData->SynergyData = *FoundRow;
-				NewData->CurrentCount = Count;
+				NewData->SynergyTag = Tag;           // 식별용 태그
+				NewData->SynergyDA = SynergyDA;      // 가벼운 에셋 포인터
+				NewData->CurrentCount = Count;       // 현재 활성화 스택 수
 
 				SynergySlots.Add(NewData);
 			}

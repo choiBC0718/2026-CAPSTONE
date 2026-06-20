@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "CAP_SynergyToolTipWidget.generated.h"
 
+class UCAP_SynergyDataAsset;
 /**
  * 
  */
@@ -15,7 +16,7 @@ class UCAP_SynergyToolTipWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	void SetupToolTip(const struct FSynergyDataTable* SynergyDataTable);
+	void SetupToolTip(UCAP_SynergyDataAsset* SynergyDA);
 
 protected:
 	UPROPERTY(meta = (BindWidget))

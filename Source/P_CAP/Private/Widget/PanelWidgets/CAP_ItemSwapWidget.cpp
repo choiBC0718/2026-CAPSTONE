@@ -16,6 +16,8 @@
 #include "Components/WrapBox.h"
 #include "Components/WrapBoxSlot.h"
 #include "Component/CAP_InventoryComponent.h"
+#include "Data/CAP_SynergyDataAsset.h"
+#include "Framework/Subsystem/CAP_SynergySubsystem.h"
 #include "Interactables/Item/CAP_WorldItem.h"
 #include "Interactables/Item/CAP_ItemInstance.h"
 
@@ -141,7 +143,13 @@ void UCAP_ItemSwapWidget::InitNearbySlot()
 
 void UCAP_ItemSwapWidget::UpdateTopSynergyIcons()
 {
-	if (!TopSynergyScrollBox) return;
+	UWorld* World = GetWorld();
+	if (!World || !World->GetGameInstance())
+		return;
+	UCAP_SynergySubsystem* SynergySubsystem = World->GetGameInstance()->GetSubsystem<UCAP_SynergySubsystem>();
+	if (!SynergySubsystem || !TopSynergyScrollBox)
+		return;
+
 	TopSynergyScrollBox->ClearChildren();
 
 	if (!SynergySimulSlotClass || !NewItemToSwap) return;
@@ -150,9 +158,6 @@ void UCAP_ItemSwapWidget::UpdateTopSynergyIcons()
 	if (!Player || !Player->GetInventoryComponent()) return;
 
 	UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent();
-	const TMap<FGameplayTag, FSynergyDataTable*>& SynergyCache = InvComp->GetSynergyDataCache();
-
-	if (SynergyCache.IsEmpty()) return;
 
 	// 인벤토리에서 현재 시너지 원본 복사
 	TMap<FGameplayTag, int32> SimulatedCounts = InvComp->GetCurrentSynergyCounts();
@@ -189,11 +194,12 @@ void UCAP_ItemSwapWidget::UpdateTopSynergyIcons()
 		FGameplayTag Tag;
 		int32 OriginalCount;
 		int32 NewCount;
-		FSynergyDataTable* RowData;
+		UCAP_SynergyDataAsset* SynergyDA;
 	};
 	
 	TArray<FSynergySortData> SortArray;
-
+	
+	
 	// 1. 유효한 데이터만 추려서 임시 배열에 담기
 	for (const TPair<FGameplayTag, int32>& Pair : SimulatedCounts)
 	{
@@ -202,12 +208,13 @@ void UCAP_ItemSwapWidget::UpdateTopSynergyIcons()
 		int32 OriginalCount = InvComp->GetCurrentSynergyCounts().FindRef(Tag); 
 
 		if (OriginalCount == 0 && NewCount == 0) continue;
+		if (!SynergySubsystem->SynergyMap.Contains(Tag)) continue;
 
-		FSynergyDataTable* SynergyData = SynergyCache.FindRef(Tag);
-		if (!SynergyData) continue;
+		UCAP_SynergyDataAsset* SynergyDA = SynergySubsystem->SynergyMap[Tag].LoadSynchronous();
+		if (!SynergyDA) continue;
 
 		// 배열에 추가
-		SortArray.Add({Tag, OriginalCount, NewCount, SynergyData});
+		SortArray.Add({Tag, OriginalCount, NewCount, SynergyDA});
 	}
 
 	// 2. NewCount가 높은 순서(내림차순)로 배열 정렬하기
@@ -222,7 +229,7 @@ void UCAP_ItemSwapWidget::UpdateTopSynergyIcons()
 	{
 		if (UCAP_SynergySimulSlotWidget* SimSlot = CreateWidget<UCAP_SynergySimulSlotWidget>(this, SynergySimulSlotClass))
 		{
-			UTexture2D* LoadedIcon = Data.RowData->SynergyIcon.LoadSynchronous();
+			UTexture2D* LoadedIcon = Data.SynergyDA->SynergyIcon.LoadSynchronous();
 			SimSlot->InitSlot(LoadedIcon, Data.OriginalCount, Data.NewCount);
 
 			if (UScrollBoxSlot* ScrollSlot = Cast<UScrollBoxSlot>(TopSynergyScrollBox->AddChild(SimSlot)))

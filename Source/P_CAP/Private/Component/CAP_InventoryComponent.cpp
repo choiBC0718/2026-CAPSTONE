@@ -10,9 +10,14 @@
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
 #include "Data/CAP_EquipItemEffectTypes.h"
+#include "Data/CAP_SynergyDataAsset.h"
+#include "Engine/AssetManager.h"
+#include "Engine/StreamableManager.h"
 #include "Framework/Subsystem/CAP_ProgressionSubsystem.h"
+#include "Framework/Subsystem/CAP_SynergySubsystem.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
 #include "GAS/Ability/CAP_ItemGameplayAbility.h"
+#include "Interactables/Item/CAP_SynergyInstance.h"
 #include "Kismet/GameplayStatics.h"
 
 
@@ -27,60 +32,11 @@ void UCAP_InventoryComponent::BeginPlay()
 
 	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(GetOwner()))
 		OwnerASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Player);
-
-	if (SynergyDataTable)
-	{
-		TArray<FSynergyDataTable*> AllRows;
-		SynergyDataTable->GetAllRows<FSynergyDataTable>("",AllRows);
-		SynergyDataCache.Reserve(AllRows.Num());
-
-		for (FSynergyDataTable* Row : AllRows)
-		{
-			if (Row && Row->SynergyTag.IsValid())
-			{
-				SynergyDataCache.Add(Row->SynergyTag, Row);
-			}
-		}
-	}
+	
 	FGameplayTag ParentTag = FGameplayTag::RequestGameplayTag(FName("Data.ItemStat"));
 	CachedItemDataTags = UGameplayTagsManager::Get().RequestGameplayTagChildren(ParentTag);
 
 	TryRestoreSavedInventory();
-}
-
-bool UCAP_InventoryComponent::AddItem(class UCAP_ItemInstance* NewItem)
-{
-	if (!NewItem)
-		return false;
-	
-	int32 TargetIndex = INDEX_NONE;
-	for (int32 i = 0; i < InventoryItems.Num(); ++i)
-	{
-		if (InventoryItems[i]==nullptr)
-		{
-			TargetIndex = i;
-			break;
-		}
-	}
-	if (TargetIndex != INDEX_NONE)
-	{
-		InventoryItems[TargetIndex] = NewItem;
-	}
-	else
-	{
-		if (InventoryItems.Num() < Capacity)
-		{
-			InventoryItems.Add(NewItem);
-		}
-		else
-		{
-			OnInventoryFull.Broadcast(NewItem);
-			return false;
-		}
-	}
-	
-	OnItemEquipped(NewItem);
-	return true;
 }
 
 bool UCAP_InventoryComponent::SwapItem(class UCAP_ItemInstance* OldItem, class UCAP_ItemInstance* NewItem)
@@ -99,6 +55,21 @@ bool UCAP_InventoryComponent::SwapItem(class UCAP_ItemInstance* OldItem, class U
 		OnItemEquipped(NewItem);
 		return true;
 	}
+	return false;
+}
+
+bool UCAP_InventoryComponent::AddItem(class UCAP_ItemInstance* NewItem)
+{
+	if (!NewItem) return false;
+	
+	if (InventoryItems.Num() < Capacity)
+	{
+		InventoryItems.Add(NewItem);
+		OnItemEquipped(NewItem);
+		return true;
+	}
+	
+	OnInventoryFull.Broadcast(NewItem);
 	return false;
 }
 
@@ -139,59 +110,154 @@ struct FInventorySaveData UCAP_InventoryComponent::CreateSaveData() const
 
 void UCAP_InventoryComponent::UpdateItemSynergies(class UCAP_ItemDataBase* ItemDA, bool bIsAdded)
 {
-	if (!ItemDA || SynergyDataCache.IsEmpty())
+	if (!ItemDA)
 		return;
 
 	const TArray<FGameplayTag>& Synergies = ItemDA->GetSynergyTags();
+	if (Synergies.IsEmpty())
+		return;
+	
 	for (const FGameplayTag& Tag : Synergies)
 	{
 		int32& Count = CurrentSynergyCounts.FindOrAdd(Tag,0);
 		Count += (bIsAdded ? 1 : -1);
-		UpdateSingleSynergyEffect(Tag, Count);
+		if (Count <=0)
+			CurrentSynergyCounts.Remove(Tag);
+	}
+	RecalculateAllSynergies();
+}
+
+void UCAP_InventoryComponent::RecalculateAllSynergies()
+{
+	if (!OwnerASC)	return;
+	UWorld* World = GetWorld();
+	if (!World || !World->GetGameInstance())
+		return;
+	UCAP_SynergySubsystem* SynergySubsystem = World->GetGameInstance()->GetSubsystem<UCAP_SynergySubsystem>();
+	if (!SynergySubsystem)
+		return;
+	
+	ClearAllSynergies();
+	
+	TArray<FSoftObjectPath> PathsToLoad;
+	for (const auto& Pair : CurrentSynergyCounts)
+	{
+		FGameplayTag SynergyTag = Pair.Key;
+		int32 Count = Pair.Value;
+		if (Count >0 && SynergySubsystem->SynergyMap.Contains(SynergyTag))
+		{
+			TSoftObjectPtr<UCAP_SynergyDataAsset> SoftPtr = SynergySubsystem->SynergyMap[SynergyTag];
+			if (!SoftPtr.IsNull())
+				PathsToLoad.AddUnique(SoftPtr.ToSoftObjectPath());
+		}
+	}
+
+	if (PathsToLoad.Num() > 0)
+	{
+		FStreamableManager& Streamable = UAssetManager::GetStreamableManager();
+		SynergyLoadHandle = Streamable.RequestAsyncLoad(PathsToLoad, FStreamableDelegate::CreateUObject(this, &UCAP_InventoryComponent::OnSynergyDataLoaded));
 	}
 }
 
-void UCAP_InventoryComponent::UpdateSingleSynergyEffect(FGameplayTag Tag, int32 NewCount)
+void UCAP_InventoryComponent::ClearAllSynergies()
 {
-	if (!OwnerASC)
-		return;
-	int32 LastCount = CachedSynergyCounts.Contains(Tag) ? CachedSynergyCounts[Tag] : 0;
-	if (NewCount == LastCount)
-		return;
+	// 기존 시너지 효과 제거
+	OwnerASC->RemoveActiveGameplayEffect(SynergyAddMasterHandle);
+	OwnerASC->RemoveActiveGameplayEffect(SynergyMulMasterHandle);
+	SynergyAddMasterHandle.Invalidate();
+	SynergyMulMasterHandle.Invalidate();
 
-	ClearSynergyEffects(Tag);
-	if (NewCount <= 0)
-	{
-		CachedSynergyCounts.Remove(Tag);
-		AppliedSynergyHandles.Remove(Tag);
-		return;
-	}
+	for (const FGameplayAbilitySpecHandle& Handle : GrantedSynergyAbilityHandles)
+		if (Handle.IsValid())
+			OwnerASC->ClearAbility(Handle);
+	
+	GrantedSynergyAbilityHandles.Empty();
 
-	if (FSynergyDataTable** RowPtr = SynergyDataCache.Find(Tag))
+	for (auto& Pair: ActiveSynergyInstances)
+		if (Pair.Value)
+			Pair.Value->MarkAsGarbage();
+	
+	ActiveSynergyInstances.Empty();
+
+	if (SynergyLoadHandle.IsValid() && SynergyLoadHandle->IsActive())
+		SynergyLoadHandle->CancelHandle();
+}
+
+void UCAP_InventoryComponent::OnSynergyDataLoaded()
+{
+	if (!OwnerASC) return;
+
+	UWorld* World = GetWorld();
+	if (!World || !World->GetGameInstance())
+		return;
+	UCAP_SynergySubsystem* SynergySubsystem = World->GetGameInstance()->GetSubsystem<UCAP_SynergySubsystem>();
+	if (!SynergySubsystem)
+		return;
+	
+	TMap<FGameplayTag, float> AddModifiers;
+	TMap<FGameplayTag, float> MulModifiers;
+
+	for (const auto& Pair : CurrentSynergyCounts)
 	{
-		FSynergyDataTable* Row = *RowPtr;
-		for (const FSynergyLevelData& SynergyLevel : Row->SynergyLevels)
+		FGameplayTag SynTag = Pair.Key;
+		int32 Count = Pair.Value;
+
+		if (Count <=0 || !SynergySubsystem->SynergyMap.Contains(SynTag))
+			continue;
+
+		UCAP_SynergyDataAsset* SynergyDA = SynergySubsystem->SynergyMap[SynTag].Get();
+		if (!SynergyDA)
+			continue;
+
+		TArray<TSubclassOf<UCAP_ItemBehaviorBase>> BehaviorsToGrant;
+		for (const FSynergyLevelData& LvData : SynergyDA->SynergyLevels)
 		{
-			if (NewCount>=SynergyLevel.RequiredCount)
-				ApplySynergyEffect(Tag, SynergyLevel.SynergyEffect);
+			if (Count >= LvData.RequiredCount)
+			{
+				for (const FStatModifier& Mod : LvData.StatModifiers)
+				{
+					if (Mod.IsMultiplier)
+						MulModifiers.FindOrAdd(Mod.StatTag) += Mod.Value;
+					else
+						AddModifiers.FindOrAdd(Mod.StatTag) += Mod.Value;
+				}
+				for (TSubclassOf<UCAP_ItemBehaviorBase> BehaviorClass : LvData.GrantedBehaviors)
+					if (BehaviorClass)
+						BehaviorsToGrant.AddUnique(BehaviorClass);
+			}
+		}
+		if (BehaviorsToGrant.Num() > 0)
+		{
+			UCAP_SynergyInstance* SynInstance = NewObject<UCAP_SynergyInstance>(this);
+			SynInstance->InitializeSynergy(SynTag, Count, BehaviorsToGrant);
+			ActiveSynergyInstances.Add(SynTag, SynInstance);
+
+			FGameplayAbilitySpec Spec(UCAP_ItemGameplayAbility::StaticClass(), 1, INDEX_NONE, SynInstance);
+			FGameplayAbilitySpecHandle Handle = OwnerASC->GiveAbility(Spec);
+
+			if (Handle.IsValid())
+			{
+				OwnerASC->TryActivateAbility(Handle);
+				GrantedSynergyAbilityHandles.Add(Handle);
+			}
 		}
 	}
-	CachedSynergyCounts.Add(Tag, NewCount);
+	FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
+	Context.AddSourceObject(this);
+	
+	ApplyStatModifiers(AddModifiers, false, Context, SynergyAddMasterHandle);
+	ApplyStatModifiers(MulModifiers, true, Context, SynergyMulMasterHandle);
 }
 
 void UCAP_InventoryComponent::ApplyItemStatEffects(UCAP_ItemInstance* ItemInst)
 {
 	if (!ItemInst || !OwnerASC)
 		return;
-	UCAP_AbilitySystemComponent* CAP_ASC = Cast<UCAP_AbilitySystemComponent>(OwnerASC);
-	if (!CAP_ASC || !CAP_ASC->GetGenerics())
-		return;
 
 	UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA();
 	if (!ItemDA || ItemDA->GetStatModifiers().IsEmpty())
 		return;
 
-	//UE_LOG(LogTemp, Warning, TEXT("아이템 보너스 스탯 적용"));
 	FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
 	Context.AddSourceObject(ItemInst);
 
@@ -202,38 +268,20 @@ void UCAP_InventoryComponent::ApplyItemStatEffects(UCAP_ItemInstance* ItemInst)
 	for (const FStatModifier& Mod : ItemDA->GetStatModifiers())
 	{
 		if (Mod.IsMultiplier)	// 구조체의 IsMultiplier 변수에 따라 배열에 추가
-			MulModifiers.Add(Mod.StatTag, Mod.Value);
+			MulModifiers.FindOrAdd(Mod.StatTag) += Mod.Value;
 		else
-			AddModifiers.Add(Mod.StatTag, Mod.Value);
+			AddModifiers.FindOrAdd(Mod.StatTag) += Mod.Value;
 	}
-	// 최종 적용된 버프를 저장할 배열
+	FActiveGameplayEffectHandle AddHandle;
+	FActiveGameplayEffectHandle MulHandle;
+	ApplyStatModifiers(AddModifiers, false,Context,AddHandle);
+	ApplyStatModifiers(MulModifiers, true,Context,MulHandle);
+
+	// 지울수 있도록 캐싱 저장
 	TArray<FActiveGameplayEffectHandle> AppliedHandles;
+	if (AddHandle.IsValid()) AppliedHandles.Add(AddHandle);
+	if (MulHandle.IsValid()) AppliedHandles.Add(MulHandle);
 	
-	auto ApplyModifiers = [&](const TMap<FGameplayTag, float>& Modifiers, bool bIsMul)
-	{
-		if (Modifiers.IsEmpty())	return;
-		
-		TSubclassOf<UGameplayEffect> TargetGE = CAP_ASC->GetGenerics()->GetStatGE(true,bIsMul);
-		if (!TargetGE)	return;
-
-		FGameplayEffectSpecHandle SpecHandle = OwnerASC->MakeOutgoingSpec(TargetGE, 1.f, Context);
-		if (SpecHandle.IsValid())
-		{
-			// 에디터 에러 로그 방지용 모든 태그에 대해 0으로 초기화
-			for (const FGameplayTag& Tag : CachedItemDataTags)
-				SpecHandle.Data->SetSetByCallerMagnitude(Tag, bIsMul ? 1.f : 0.f);
-			// 실제 설정한 값에는 정상적인 값 전달
-			for (const TPair<FGameplayTag, float>& StatMod : Modifiers)
-				SpecHandle.Data->SetSetByCallerMagnitude(StatMod.Key, StatMod.Value);
-			// 자신에게 Spec 적용 후, 적용된 버프 배열에 추가
-			FActiveGameplayEffectHandle ActiveHandle = OwnerASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-			AppliedHandles.Add(ActiveHandle);
-		}
-	};
-	// 곱연산, 합연산에 따라 다르게 람다 함수 적용
-	ApplyModifiers(AddModifiers, false);
-	ApplyModifiers(MulModifiers, true);
-
 	if (AppliedHandles.Num() > 0)
 	{	// 구조체로 감싼 후 Map에 저장
 		FActiveGEHandleArray HandleWrapper;
@@ -289,36 +337,6 @@ void UCAP_InventoryComponent::RemoveItemAbility(class UCAP_ItemInstance* ItemIns
 	}
 }
 
-void UCAP_InventoryComponent::ClearSynergyEffects(FGameplayTag Tag)
-{
-	if (!Tag.IsValid())	return;
-
-	if (AppliedSynergyHandles.Contains(Tag))
-	{
-		for (FActiveGameplayEffectHandle& Handle : AppliedSynergyHandles[Tag])
-		{
-			OwnerASC->RemoveActiveGameplayEffect(Handle);
-		}
-		AppliedSynergyHandles[Tag].Empty();
-	}
-	else
-		AppliedSynergyHandles.Add(Tag, TArray<FActiveGameplayEffectHandle>());
-}
-
-void UCAP_InventoryComponent::ApplySynergyEffect(FGameplayTag Tag, TSubclassOf<UGameplayEffect> GE)
-{
-	if (!Tag.IsValid() || !GE)
-		return;
-
-	FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
-	FGameplayEffectSpecHandle Spec = OwnerASC->MakeOutgoingSpec(GE, 1.f, Context);
-	if (Spec.IsValid())
-	{
-		FActiveGameplayEffectHandle ActiveHandle = OwnerASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
-		AppliedSynergyHandles[Tag].Add(ActiveHandle);
-	}
-}
-
 void UCAP_InventoryComponent::TryRestoreSavedInventory()
 {
 	if (UGameInstance* GI = UGameplayStatics::GetGameInstance(this))
@@ -365,4 +383,29 @@ void UCAP_InventoryComponent::OnItemUnequipped(UCAP_ItemInstance* ItemInst)
 	RemoveItemStatEffects(ItemInst);
 	RemoveItemAbility(ItemInst);
 	UpdateItemSynergies(ItemInst->GetItemDA(), false);
+}
+
+void UCAP_InventoryComponent::ApplyStatModifiers(const TMap<FGameplayTag, float>& Modifiers, bool bIsMul,
+	const FGameplayEffectContextHandle& Context, FActiveGameplayEffectHandle& OutHandle)
+{
+	if (Modifiers.IsEmpty() || !OwnerASC)
+		return;
+	UCAP_AbilitySystemComponent* CASC = Cast<UCAP_AbilitySystemComponent>(OwnerASC);
+	if (!CASC || !CASC->GetGenerics())
+		return;
+
+	TSubclassOf<UGameplayEffect> TargetGE = CASC->GetGenerics()->GetStatGE(true, bIsMul);
+	if (!TargetGE)
+		return;
+
+	FGameplayEffectSpecHandle SpecHandle = OwnerASC->MakeOutgoingSpec(TargetGE, 1.f, Context);
+	if (SpecHandle.IsValid())
+	{
+		for (const FGameplayTag& Tag : CachedItemDataTags)
+			SpecHandle.Data->SetSetByCallerMagnitude(Tag, bIsMul ? 1.f : 0.f);
+		for (const TPair<FGameplayTag, float>& StatMod : Modifiers)
+			SpecHandle.Data->SetSetByCallerMagnitude(StatMod.Key, StatMod.Value);
+
+		OutHandle = OwnerASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	}
 }
