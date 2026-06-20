@@ -40,49 +40,79 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 	const FTransform& RoomTransform,
 	const FPlayerTendencyModifier& Tendency)
 {
-	ClearSpawnedMonsters();
-
-	if (!SpawnDataAsset)
-	{
-		return;
-	}
-
-	const FRoomMonsterSpawnRule* SpawnRule = SpawnDataAsset->FindRule(RoomData.RoomType);
+	const FRoomMonsterSpawnRule* SpawnRule = GetSpawnRule(RoomData.RoomType);
 	if (!SpawnRule)
 	{
 		return;
 	}
 
+	SpawnMonstersFromRule(RoomData, InteriorLayout, MapSeed, RoomTransform, Tendency, *SpawnRule, 0, true);
+}
+
+int32 URoomMonsterSpawnerComponent::SpawnReinforcement(
+	const FRoomData& RoomData,
+	const FRoomInteriorLayout& InteriorLayout,
+	int32 MapSeed,
+	const FTransform& RoomTransform,
+	const FPlayerTendencyModifier& Tendency,
+	int32 ReinforcementIndex)
+{
+	const FRoomMonsterSpawnRule* SpawnRule = GetSpawnRule(RoomData.RoomType);
+	if (!SpawnRule || !SpawnRule->Reinforcements.IsValidIndex(ReinforcementIndex))
+	{
+		return 0;
+	}
+
+	FRoomMonsterSpawnRule ReinforcementSpawnRule = *SpawnRule;
+	ReinforcementSpawnRule.ScoreRange = SpawnRule->Reinforcements[ReinforcementIndex].ScoreRange;
+	return SpawnMonstersFromRule(RoomData, InteriorLayout, MapSeed, RoomTransform, Tendency, ReinforcementSpawnRule, ReinforcementIndex + 1, false);
+}
+
+int32 URoomMonsterSpawnerComponent::SpawnMonstersFromRule(
+	const FRoomData& RoomData,
+	const FRoomInteriorLayout& InteriorLayout,
+	int32 MapSeed,
+	const FTransform& RoomTransform,
+	const FPlayerTendencyModifier& Tendency,
+	const FRoomMonsterSpawnRule& SpawnRule,
+	int32 RandomSalt,
+	bool bClearExisting)
+{
+	if (bClearExisting)
+	{
+		ClearSpawnedMonsters();
+	}
+
 	UWorld* World = GetWorld();
 	if (!World)
 	{
-		return;
+		return 0;
 	}
 
 	// CombatAggression에 따라 ScoreRange 스케일 (0.5x ~ 1.5x)
 	const float AggressionScale = FMath::Lerp(0.5f, 1.5f, Tendency.CombatAggression);
 
-	FRoomMonsterSpawnRule AdjustedRule = *SpawnRule;
-	AdjustedRule.ScoreRange.X = FMath::Max(1, FMath::RoundToInt(SpawnRule->ScoreRange.X * AggressionScale));
-	AdjustedRule.ScoreRange.Y = FMath::Max(1, FMath::RoundToInt(SpawnRule->ScoreRange.Y * AggressionScale));
+	FRoomMonsterSpawnRule AdjustedRule = SpawnRule;
+	AdjustedRule.ScoreRange.X = FMath::Max(1, FMath::RoundToInt(SpawnRule.ScoreRange.X * AggressionScale));
+	AdjustedRule.ScoreRange.Y = FMath::Max(1, FMath::RoundToInt(SpawnRule.ScoreRange.Y * AggressionScale));
 
 	UE_LOG(LogTemp, Log, TEXT("[Spawn] Room(%d,%d) | Combat=%.2f AggrScale=%.2f | Score %d~%d → %d~%d"),
 		RoomData.GridPos.X, RoomData.GridPos.Y,
 		Tendency.CombatAggression, AggressionScale,
-		SpawnRule->ScoreRange.X, SpawnRule->ScoreRange.Y,
+		SpawnRule.ScoreRange.X, SpawnRule.ScoreRange.Y,
 		AdjustedRule.ScoreRange.X, AdjustedRule.ScoreRange.Y);
 
-	FRandomStream RandomStream = MakeRoomRandomStream(RoomData, MapSeed);
+	FRandomStream RandomStream = MakeRoomRandomStream(RoomData, MapSeed, RandomSalt);
 	TArray<FRoomMonsterSpawnPick> MonsterSpawnList = BuildMonsterSpawnList(AdjustedRule, RandomStream);
 	if (MonsterSpawnList.IsEmpty())
 	{
-		return;
+		return 0;
 	}
 
 	TArray<FIntPoint> SpawnableCells = CollectSpawnableCells(InteriorLayout);
 	if (SpawnableCells.IsEmpty())
 	{
-		return;
+		return 0;
 	}
 
 	// ExplorationRate=0 → 중앙 셀 우선, ExplorationRate=1 → 외곽 셀 우선
@@ -136,6 +166,7 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 	TArray<int32> SpawnedMonsterCountsByCell;
 	SpawnedMonsterCountsByCell.Init(0, SpawnableCells.Num());
 
+	int32 SpawnedCount = 0;
 	for (FRoomMonsterCellPlacement& Placement : Placements)
 	{
 		if (!SpawnableCells.IsValidIndex(Placement.CellIndex))
@@ -177,8 +208,11 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 		{
 			SpawnedMonster->SpawnDefaultController();
 			SpawnedMonsters.Add(SpawnedMonster);
+			++SpawnedCount;
 		}
 	}
+
+	return SpawnedCount;
 }
 
 void URoomMonsterSpawnerComponent::ClearSpawnedMonsters()
@@ -250,6 +284,31 @@ bool URoomMonsterSpawnerComponent::AreAllSpawnedMonstersDefeated() const
 	}
 
 	return bHadTrackedMonsters;
+}
+
+int32 URoomMonsterSpawnerComponent::GetAliveSpawnedMonsterCount() const
+{
+	int32 AliveCount = 0;
+	for (const ACharacter* Monster : SpawnedMonsters)
+	{
+		if (!IsValid(Monster))
+		{
+			continue;
+		}
+
+		const ACAP_Character* CAPCharacter = Cast<ACAP_Character>(Monster);
+		if (!CAPCharacter || !CAPCharacter->IsDead())
+		{
+			++AliveCount;
+		}
+	}
+
+	return AliveCount;
+}
+
+const FRoomMonsterSpawnRule* URoomMonsterSpawnerComponent::GetSpawnRule(ERoomType RoomType) const
+{
+	return SpawnDataAsset ? SpawnDataAsset->FindRule(RoomType) : nullptr;
 }
 
 TArray<FRoomMonsterSpawnPick> URoomMonsterSpawnerComponent::BuildMonsterSpawnList(
@@ -542,10 +601,12 @@ bool URoomMonsterSpawnerComponent::IsSpawnLocationFree(TSubclassOf<ACharacter> M
 
 FRandomStream URoomMonsterSpawnerComponent::MakeRoomRandomStream(
 	const FRoomData& RoomData,
-	int32 MapSeed) const
+	int32 MapSeed,
+	int32 RandomSalt) const
 {
 	int32 Seed = MapSeed;
 	Seed = HashCombineFast(Seed, GetTypeHash(RoomData.GridPos));
 	Seed = HashCombineFast(Seed, 0x5C2F913B);
+	Seed = HashCombineFast(Seed, RandomSalt);
 	return FRandomStream(Seed);
 }

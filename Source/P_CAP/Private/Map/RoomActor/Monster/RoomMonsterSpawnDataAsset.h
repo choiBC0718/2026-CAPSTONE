@@ -29,6 +29,37 @@ struct FRoomMonsterSpawnEntry
 	int32 MaxMonstersPerCell = 1;
 };
 
+UENUM(BlueprintType)
+enum class ERoomReinforcementTrigger : uint8
+{
+	WhenAliveMonsterCountBelow UMETA(DisplayName="When Alive Monster Count Below"),
+	AfterCombatTime UMETA(DisplayName="After Combat Time")
+};
+
+USTRUCT(BlueprintType)
+struct FRoomReinforcementRule
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement")
+	ERoomReinforcementTrigger Trigger = ERoomReinforcementTrigger::WhenAliveMonsterCountBelow;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement", meta=(ClampMin="0"))
+	FIntPoint ScoreRange = FIntPoint(4, 6);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement", meta=(ClampMin="0.0"))
+	float DelayAfterTriggered = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement", meta=(ClampMin="0"))
+	int32 AliveMonsterThreshold = 2;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement", meta=(ClampMin="0.0"))
+	float CombatTime = 20.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement")
+	bool bRequiredForRoomClear = true;
+};
+
 USTRUCT(BlueprintType)
 struct FRoomMonsterSpawnRule
 {
@@ -42,6 +73,18 @@ struct FRoomMonsterSpawnRule
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room")
 	TArray<FRoomMonsterSpawnEntry> MonsterPool;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Reinforcement")
+	TArray<FRoomReinforcementRule> Reinforcements;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Reinforcement", meta=(ClampMin="0"))
+	int32 MaxReinforcementCount = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Reinforcement", meta=(ClampMin="0"))
+	int32 MaxReinforcementScore = 6;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Reinforcement", meta=(ClampMin="0.0"))
+	float MinReinforcementInterval = 3.f;
 };
 
 UCLASS(BlueprintType)

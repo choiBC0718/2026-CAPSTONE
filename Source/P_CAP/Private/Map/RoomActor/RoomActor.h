@@ -7,6 +7,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "TimerManager.h"
 #include "Map/RoomActor/Interior/RoomDecorationSet.h"
 #include "Map/RoomActor/Interior/RoomInteriorGenerator.h"
 #include "Map/RoomActor/Interior/RoomInteriorData.h"
@@ -304,6 +305,22 @@ private:
 	bool bRoomCleared = false;
 	UPROPERTY()
 	bool bMonstersSpawned = false;
+	UPROPERTY()
+	bool bEncounterStarted = false;
+	TArray<bool> bReinforcementTriggered;
+	TArray<bool> bReinforcementPending;
+	TArray<bool> bReinforcementSkipped;
+	UPROPERTY()
+	int32 TriggeredReinforcementCount = 0;
+	UPROPERTY()
+	int32 UsedReinforcementScore = 0;
+	UPROPERTY()
+	float EncounterStartTime = 0.f;
+	UPROPERTY()
+	float LastReinforcementTime = -FLT_MAX;
+	UPROPERTY()
+	TObjectPtr<AActor> CurrentCombatTarget;
+	TArray<FTimerHandle> ReinforcementTimerHandles;
 
 	UFUNCTION()
 	void OnRoomEnterTriggerBeginOverlap(
@@ -326,6 +343,14 @@ private:
 	void CheckRoomClear();
 	bool ShouldLockPortalsForCombat() const;
 	void HandleCombatRoomCleared();
+	void InitializeReinforcementState();
+	void CheckReinforcements();
+	bool TryQueueReinforcement(int32 ReinforcementIndex);
+	void SpawnQueuedReinforcement(int32 ReinforcementIndex);
+	bool CanTriggerReinforcement(const FRoomMonsterSpawnRule& SpawnRule, const FRoomReinforcementRule& Reinforcement) const;
+	bool IsReinforcementTriggerSatisfied(const FRoomReinforcementRule& Reinforcement) const;
+	bool AreRequiredReinforcementsResolved() const;
+	int32 GetEstimatedReinforcementScore(const FRoomReinforcementRule& Reinforcement) const;
 	void SetSpawnedDoorsPortalEnabled(bool bEnabled);
 	void SpawnRoomMonsters();
 	void ApplyBaseFloorVisibility();

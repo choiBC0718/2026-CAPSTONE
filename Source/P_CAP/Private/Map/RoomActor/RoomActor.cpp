@@ -130,6 +130,16 @@ void ARoomActor::InitializeRoom(
 	bRoomActivated = false;
 	bRoomCleared = false;
 	bMonstersSpawned = false;
+	bEncounterStarted = false;
+	bReinforcementTriggered.Empty();
+	bReinforcementPending.Empty();
+	bReinforcementSkipped.Empty();
+	ReinforcementTimerHandles.Empty();
+	TriggeredReinforcementCount = 0;
+	UsedReinforcementScore = 0;
+	EncounterStartTime = 0.f;
+	LastReinforcementTime = -FLT_MAX;
+	CurrentCombatTarget = nullptr;
 	ApplyFloorMeshScale();
 	UpdateRoomEnterTriggerExtent();
 
@@ -182,6 +192,7 @@ void ARoomActor::ApplyPersistentClearedState()
 {
 	bRoomCleared = true;
 	bMonstersSpawned = true;
+	bEncounterStarted = true;
 
 	if (MonsterSpawnerComponent)
 	{
@@ -200,6 +211,7 @@ void ARoomActor::ActivateRoom(AActor* TargetActor)
 	}
 
 	bRoomActivated = true;
+	CurrentCombatTarget = TargetActor;
 
 	if (bRoomCleared)
 	{
@@ -234,6 +246,7 @@ void ARoomActor::DeactivateRoom()
 	}
 
 	bRoomActivated = false;
+	CurrentCombatTarget = nullptr;
 	if (MonsterSpawnerComponent)
 	{
 		MonsterSpawnerComponent->DeactivateSpawnedMonsters();
@@ -250,6 +263,10 @@ void ARoomActor::SpawnRoomMonsters()
 	}
 
 	bMonstersSpawned = true;
+	bEncounterStarted = true;
+	EncounterStartTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+	InitializeReinforcementState();
+
 	MonsterSpawnerComponent->SpawnMonsters(
 		CachedRoomData,
 		CachedInteriorLayout,
@@ -382,7 +399,11 @@ void ARoomActor::CheckRoomClear()
 		return;
 	}
 
-	if (MonsterSpawnerComponent && MonsterSpawnerComponent->AreAllSpawnedMonstersDefeated())
+	CheckReinforcements();
+
+	if (MonsterSpawnerComponent &&
+		MonsterSpawnerComponent->AreAllSpawnedMonstersDefeated() &&
+		AreRequiredReinforcementsResolved())
 	{
 		bRoomCleared = true;
 		HandleCombatRoomCleared();
@@ -396,7 +417,220 @@ bool ARoomActor::ShouldLockPortalsForCombat() const
 {
 	return CachedRoomData.RoomType == ERoomType::Normal &&
 		MonsterSpawnerComponent &&
-		MonsterSpawnerComponent->HasSpawnedMonsters();
+		(MonsterSpawnerComponent->HasSpawnedMonsters() || !AreRequiredReinforcementsResolved());
+}
+
+void ARoomActor::InitializeReinforcementState()
+{
+	const FRoomMonsterSpawnRule* SpawnRule = MonsterSpawnerComponent ? MonsterSpawnerComponent->GetSpawnRule(CachedRoomData.RoomType) : nullptr;
+	const int32 ReinforcementCount = SpawnRule ? SpawnRule->Reinforcements.Num() : 0;
+
+	bReinforcementTriggered.Init(false, ReinforcementCount);
+	bReinforcementPending.Init(false, ReinforcementCount);
+	bReinforcementSkipped.Init(false, ReinforcementCount);
+	ReinforcementTimerHandles.SetNum(ReinforcementCount);
+	TriggeredReinforcementCount = 0;
+	UsedReinforcementScore = 0;
+	LastReinforcementTime = -FLT_MAX;
+}
+
+void ARoomActor::CheckReinforcements()
+{
+	const FRoomMonsterSpawnRule* SpawnRule = MonsterSpawnerComponent ? MonsterSpawnerComponent->GetSpawnRule(CachedRoomData.RoomType) : nullptr;
+	if (!SpawnRule || SpawnRule->Reinforcements.IsEmpty())
+	{
+		return;
+	}
+
+	for (int32 ReinforcementIndex = 0; ReinforcementIndex < SpawnRule->Reinforcements.Num(); ++ReinforcementIndex)
+	{
+		if (!bReinforcementTriggered.IsValidIndex(ReinforcementIndex) ||
+			!bReinforcementPending.IsValidIndex(ReinforcementIndex) ||
+			!bReinforcementSkipped.IsValidIndex(ReinforcementIndex))
+		{
+			continue;
+		}
+
+		if (bReinforcementTriggered[ReinforcementIndex] ||
+			bReinforcementPending[ReinforcementIndex] ||
+			bReinforcementSkipped[ReinforcementIndex])
+		{
+			continue;
+		}
+
+		const FRoomReinforcementRule& Reinforcement = SpawnRule->Reinforcements[ReinforcementIndex];
+		if (!CanTriggerReinforcement(*SpawnRule, Reinforcement))
+		{
+			continue;
+		}
+
+		if (!IsReinforcementTriggerSatisfied(Reinforcement))
+		{
+			continue;
+		}
+
+		TryQueueReinforcement(ReinforcementIndex);
+		return;
+	}
+}
+
+bool ARoomActor::TryQueueReinforcement(int32 ReinforcementIndex)
+{
+	const FRoomMonsterSpawnRule* SpawnRule = MonsterSpawnerComponent ? MonsterSpawnerComponent->GetSpawnRule(CachedRoomData.RoomType) : nullptr;
+	if (!SpawnRule || !SpawnRule->Reinforcements.IsValidIndex(ReinforcementIndex) || !bReinforcementPending.IsValidIndex(ReinforcementIndex))
+	{
+		return false;
+	}
+
+	const FRoomReinforcementRule& Reinforcement = SpawnRule->Reinforcements[ReinforcementIndex];
+	bReinforcementPending[ReinforcementIndex] = true;
+
+	if (Reinforcement.DelayAfterTriggered <= 0.f)
+	{
+		SpawnQueuedReinforcement(ReinforcementIndex);
+		return true;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		FTimerDelegate TimerDelegate;
+		TimerDelegate.BindUObject(this, &ARoomActor::SpawnQueuedReinforcement, ReinforcementIndex);
+		World->GetTimerManager().SetTimer(ReinforcementTimerHandles[ReinforcementIndex], TimerDelegate, Reinforcement.DelayAfterTriggered, false);
+		return true;
+	}
+
+	SpawnQueuedReinforcement(ReinforcementIndex);
+	return true;
+}
+
+void ARoomActor::SpawnQueuedReinforcement(int32 ReinforcementIndex)
+{
+	if (!MonsterSpawnerComponent || bRoomCleared)
+	{
+		return;
+	}
+
+	const FRoomMonsterSpawnRule* SpawnRule = MonsterSpawnerComponent->GetSpawnRule(CachedRoomData.RoomType);
+	if (!SpawnRule || !SpawnRule->Reinforcements.IsValidIndex(ReinforcementIndex))
+	{
+		return;
+	}
+
+	if (!bReinforcementTriggered.IsValidIndex(ReinforcementIndex) ||
+		!bReinforcementPending.IsValidIndex(ReinforcementIndex) ||
+		!bReinforcementSkipped.IsValidIndex(ReinforcementIndex))
+	{
+		return;
+	}
+
+	if (bReinforcementTriggered[ReinforcementIndex] || bReinforcementSkipped[ReinforcementIndex])
+	{
+		bReinforcementPending[ReinforcementIndex] = false;
+		return;
+	}
+
+	const FRoomReinforcementRule& Reinforcement = SpawnRule->Reinforcements[ReinforcementIndex];
+	if (!CanTriggerReinforcement(*SpawnRule, Reinforcement))
+	{
+		bReinforcementPending[ReinforcementIndex] = false;
+		return;
+	}
+
+	const int32 SpawnedCount = MonsterSpawnerComponent->SpawnReinforcement(
+		CachedRoomData,
+		CachedInteriorLayout,
+		CachedMapSeed,
+		GetActorTransform(),
+		CachedTendency,
+		ReinforcementIndex);
+
+	bReinforcementTriggered[ReinforcementIndex] = true;
+	bReinforcementPending[ReinforcementIndex] = false;
+	++TriggeredReinforcementCount;
+	UsedReinforcementScore += GetEstimatedReinforcementScore(Reinforcement);
+	LastReinforcementTime = GetWorld() ? GetWorld()->GetTimeSeconds() : LastReinforcementTime;
+
+	if (SpawnedCount > 0 && CurrentCombatTarget)
+	{
+		MonsterSpawnerComponent->ActivateSpawnedMonsters(CurrentCombatTarget);
+	}
+}
+
+bool ARoomActor::CanTriggerReinforcement(
+	const FRoomMonsterSpawnRule& SpawnRule,
+	const FRoomReinforcementRule& Reinforcement) const
+{
+	if (TriggeredReinforcementCount >= SpawnRule.MaxReinforcementCount)
+	{
+		return false;
+	}
+
+	const int32 ReinforcementScore = GetEstimatedReinforcementScore(Reinforcement);
+	if (SpawnRule.MaxReinforcementScore > 0 && UsedReinforcementScore + ReinforcementScore > SpawnRule.MaxReinforcementScore)
+	{
+		return false;
+	}
+
+	if (GetWorld() && LastReinforcementTime > -FLT_MAX * 0.5f)
+	{
+		const float ElapsedSinceLastReinforcement = GetWorld()->GetTimeSeconds() - LastReinforcementTime;
+		if (ElapsedSinceLastReinforcement < SpawnRule.MinReinforcementInterval)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool ARoomActor::IsReinforcementTriggerSatisfied(const FRoomReinforcementRule& Reinforcement) const
+{
+	if (!MonsterSpawnerComponent)
+	{
+		return false;
+	}
+
+	switch (Reinforcement.Trigger)
+	{
+	case ERoomReinforcementTrigger::WhenAliveMonsterCountBelow:
+		return MonsterSpawnerComponent->GetAliveSpawnedMonsterCount() <= Reinforcement.AliveMonsterThreshold;
+
+	case ERoomReinforcementTrigger::AfterCombatTime:
+		return GetWorld() && bEncounterStarted && GetWorld()->GetTimeSeconds() - EncounterStartTime >= Reinforcement.CombatTime;
+
+	default:
+		return false;
+	}
+}
+
+bool ARoomActor::AreRequiredReinforcementsResolved() const
+{
+	const FRoomMonsterSpawnRule* SpawnRule = MonsterSpawnerComponent ? MonsterSpawnerComponent->GetSpawnRule(CachedRoomData.RoomType) : nullptr;
+	if (!SpawnRule)
+	{
+		return true;
+	}
+
+	for (int32 ReinforcementIndex = 0; ReinforcementIndex < SpawnRule->Reinforcements.Num(); ++ReinforcementIndex)
+	{
+		const FRoomReinforcementRule& Reinforcement = SpawnRule->Reinforcements[ReinforcementIndex];
+		if (!Reinforcement.bRequiredForRoomClear)
+		{
+			continue;
+		}
+
+		if (!bReinforcementTriggered.IsValidIndex(ReinforcementIndex) || !bReinforcementTriggered[ReinforcementIndex])
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+int32 ARoomActor::GetEstimatedReinforcementScore(const FRoomReinforcementRule& Reinforcement) const
+{
+	return FMath::Max(0, FMath::Max(Reinforcement.ScoreRange.X, Reinforcement.ScoreRange.Y));
 }
 
 void ARoomActor::HandleCombatRoomCleared()
@@ -489,6 +723,11 @@ FTransform ARoomActor::GetStageExitSpawnTransform() const
 void ARoomActor::Destroyed()
 {
 	/* 방이 제거될 때 함께 생성한 객체들도 정리 */
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearAllTimersForObject(this);
+	}
+
 	ClearSpawnedDoors();
 	ClearSpawnedInteriorTemplate();
 	ClearSpawnedVisualFloorTiles();
