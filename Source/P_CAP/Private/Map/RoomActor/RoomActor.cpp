@@ -552,6 +552,27 @@ void ARoomActor::SpawnQueuedReinforcement(int32 ReinforcementIndex)
 
 	if (SpawnedCount > 0 && CurrentCombatTarget)
 	{
+		if (Reinforcement.ActivationDelayAfterSpawn <= 0.f)
+		{
+			ActivateSpawnedReinforcementMonsters();
+		}
+		else if (UWorld* World = GetWorld())
+		{
+			FTimerHandle ActivationTimerHandle;
+			World->GetTimerManager().SetTimer(
+				ActivationTimerHandle,
+				this,
+				&ARoomActor::ActivateSpawnedReinforcementMonsters,
+				Reinforcement.ActivationDelayAfterSpawn,
+				false);
+		}
+	}
+}
+
+void ARoomActor::ActivateSpawnedReinforcementMonsters()
+{
+	if (MonsterSpawnerComponent && CurrentCombatTarget)
+	{
 		MonsterSpawnerComponent->ActivateSpawnedMonsters(CurrentCombatTarget);
 	}
 }

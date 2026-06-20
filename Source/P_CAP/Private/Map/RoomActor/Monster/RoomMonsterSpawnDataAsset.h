@@ -50,6 +50,9 @@ struct FRoomReinforcementRule
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement", meta=(ClampMin="0.0"))
 	float DelayAfterTriggered = 1.f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement", meta=(ClampMin="0.0"))
+	float ActivationDelayAfterSpawn = 0.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement", meta=(ClampMin="0"))
 	int32 AliveMonsterThreshold = 2;
 
@@ -58,6 +61,18 @@ struct FRoomReinforcementRule
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement")
 	bool bRequiredForRoomClear = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement|VFX")
+	TObjectPtr<class UNiagaraSystem> SpawnVFX;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement|VFX")
+	FVector SpawnVFXOffset = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement|VFX")
+	FVector SpawnVFXScale = FVector::OneVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement|VFX")
+	TObjectPtr<class USoundBase> SpawnSound;
 };
 
 USTRUCT(BlueprintType)

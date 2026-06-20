@@ -7,7 +7,9 @@
 #include "Components/CapsuleComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
+#include "Kismet/GameplayStatics.h"
 #include "Map/RoomActor/Monster/RoomMonsterSpawnDataAsset.h"
+#include "NiagaraFunctionLibrary.h"
 
 namespace
 {
@@ -64,8 +66,9 @@ int32 URoomMonsterSpawnerComponent::SpawnReinforcement(
 	}
 
 	FRoomMonsterSpawnRule ReinforcementSpawnRule = *SpawnRule;
-	ReinforcementSpawnRule.ScoreRange = SpawnRule->Reinforcements[ReinforcementIndex].ScoreRange;
-	return SpawnMonstersFromRule(RoomData, InteriorLayout, MapSeed, RoomTransform, Tendency, ReinforcementSpawnRule, ReinforcementIndex + 1, false);
+	const FRoomReinforcementRule& ReinforcementRule = SpawnRule->Reinforcements[ReinforcementIndex];
+	ReinforcementSpawnRule.ScoreRange = ReinforcementRule.ScoreRange;
+	return SpawnMonstersFromRule(RoomData, InteriorLayout, MapSeed, RoomTransform, Tendency, ReinforcementSpawnRule, ReinforcementIndex + 1, false, &ReinforcementRule);
 }
 
 int32 URoomMonsterSpawnerComponent::SpawnMonstersFromRule(
@@ -76,7 +79,8 @@ int32 URoomMonsterSpawnerComponent::SpawnMonstersFromRule(
 	const FPlayerTendencyModifier& Tendency,
 	const FRoomMonsterSpawnRule& SpawnRule,
 	int32 RandomSalt,
-	bool bClearExisting)
+	bool bClearExisting,
+	const FRoomReinforcementRule* ReinforcementRule)
 {
 	if (bClearExisting)
 	{
@@ -209,6 +213,28 @@ int32 URoomMonsterSpawnerComponent::SpawnMonstersFromRule(
 			SpawnedMonster->SpawnDefaultController();
 			SpawnedMonsters.Add(SpawnedMonster);
 			++SpawnedCount;
+
+			if (ReinforcementRule)
+			{
+				const FVector EffectLocation = WorldLocation + ReinforcementRule->SpawnVFXOffset;
+				if (ReinforcementRule->SpawnVFX)
+				{
+					UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+						World,
+						ReinforcementRule->SpawnVFX,
+						EffectLocation,
+						SpawnedMonster->GetActorRotation(),
+						ReinforcementRule->SpawnVFXScale);
+				}
+
+				if (ReinforcementRule->SpawnSound)
+				{
+					UGameplayStatics::PlaySoundAtLocation(
+						World,
+						ReinforcementRule->SpawnSound,
+						EffectLocation);
+				}
+			}
 		}
 	}
 

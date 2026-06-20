@@ -347,6 +347,7 @@ private:
 	void CheckReinforcements();
 	bool TryQueueReinforcement(int32 ReinforcementIndex);
 	void SpawnQueuedReinforcement(int32 ReinforcementIndex);
+	void ActivateSpawnedReinforcementMonsters();
 	bool CanTriggerReinforcement(const FRoomMonsterSpawnRule& SpawnRule, const FRoomReinforcementRule& Reinforcement) const;
 	bool IsReinforcementTriggerSatisfied(const FRoomReinforcementRule& Reinforcement) const;
 	bool AreRequiredReinforcementsResolved() const;

@@ -92,7 +92,8 @@ private:
 		const FPlayerTendencyModifier& Tendency,
 		const FRoomMonsterSpawnRule& SpawnRule,
 		int32 RandomSalt,
-		bool bClearExisting);
+		bool bClearExisting,
+		const FRoomReinforcementRule* ReinforcementRule = nullptr);
 
 	const FRoomMonsterSpawnEntry* PickMonsterEntry(
 		const FRoomMonsterSpawnRule& SpawnRule,
