@@ -56,7 +56,7 @@ void UExecCalc_PhysicalDamage::Execute_Implementation(const FGameplayEffectCusto
 	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(CriticalDamageCapture, EvalParams, CriticalDamage);
 	
 	PhysicalDamage = FMath::Max<float>(0.f, PhysicalDamage);
-	CriticalDamage = FMath::Max<float>(1.0f, CriticalDamage);
+	CriticalDamage = FMath::Max<float>(0.f, CriticalDamage);
 
 	// 설정한 데미지 기본 값 가져오기 (덧셈 연산)
 	float BaseDamage = Spec.GetSetByCallerMagnitude(DamageBaseDataTag, false, 0.f);

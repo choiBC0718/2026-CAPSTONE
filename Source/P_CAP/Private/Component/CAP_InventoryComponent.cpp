@@ -161,24 +161,32 @@ void UCAP_InventoryComponent::RecalculateAllSynergies()
 
 void UCAP_InventoryComponent::ClearAllSynergies()
 {
-	// 기존 시너지 효과 제거
 	OwnerASC->RemoveActiveGameplayEffect(SynergyAddMasterHandle);
 	OwnerASC->RemoveActiveGameplayEffect(SynergyMulMasterHandle);
 	SynergyAddMasterHandle.Invalidate();
 	SynergyMulMasterHandle.Invalidate();
+
+	// 스택 유지를 위해 살려두되, 중복 발동을 막기 위해 트리거만 미리 끊어둡니다.
+	if (UCAP_AbilitySystemComponent* CASC = Cast<UCAP_AbilitySystemComponent>(OwnerASC))
+	{
+		for (auto& Pair : ActiveSynergyInstances)
+		{
+			if (ICAP_BehaviorStateProvider* Provider = Cast<ICAP_BehaviorStateProvider>(Pair.Value))
+			{
+				for (UCAP_ItemBehaviorBase* Behavior : Provider->GetBehaviors())
+				{
+					if (Behavior) Behavior->OnUnequipped(Provider, CASC);
+				}
+			}
+		}
+	}
 
 	for (const FGameplayAbilitySpecHandle& Handle : GrantedSynergyAbilityHandles)
 		if (Handle.IsValid())
 			OwnerASC->ClearAbility(Handle);
 	
 	GrantedSynergyAbilityHandles.Empty();
-
-	for (auto& Pair: ActiveSynergyInstances)
-		if (Pair.Value)
-			Pair.Value->MarkAsGarbage();
 	
-	ActiveSynergyInstances.Empty();
-
 	if (SynergyLoadHandle.IsValid() && SynergyLoadHandle->IsActive())
 		SynergyLoadHandle->CancelHandle();
 }
@@ -186,51 +194,56 @@ void UCAP_InventoryComponent::ClearAllSynergies()
 void UCAP_InventoryComponent::OnSynergyDataLoaded()
 {
 	if (!OwnerASC) return;
-
 	UWorld* World = GetWorld();
-	if (!World || !World->GetGameInstance())
-		return;
+	if (!World || !World->GetGameInstance()) return;
 	UCAP_SynergySubsystem* SynergySubsystem = World->GetGameInstance()->GetSubsystem<UCAP_SynergySubsystem>();
-	if (!SynergySubsystem)
-		return;
+	if (!SynergySubsystem) return;
 	
 	TMap<FGameplayTag, float> AddModifiers;
 	TMap<FGameplayTag, float> MulModifiers;
+
+	// 이번 계산에서 하나라도 레벨 조건을 만족하여 살아남은 시너지 태그를 기록합니다.
+	TSet<FGameplayTag> ActiveTagsThisFrame;
 
 	for (const auto& Pair : CurrentSynergyCounts)
 	{
 		FGameplayTag SynTag = Pair.Key;
 		int32 Count = Pair.Value;
 
-		if (Count <=0 || !SynergySubsystem->SynergyMap.Contains(SynTag))
-			continue;
+		if (Count <= 0 || !SynergySubsystem->SynergyMap.Contains(SynTag)) continue;
 
 		UCAP_SynergyDataAsset* SynergyDA = SynergySubsystem->SynergyMap[SynTag].Get();
-		if (!SynergyDA)
-			continue;
+		if (!SynergyDA) continue;
 
-		TArray<TSubclassOf<UCAP_ItemBehaviorBase>> BehaviorsToGrant;
+		TArray<UCAP_ItemBehaviorBase*> BehaviorsToGrant;
 		for (const FSynergyLevelData& LvData : SynergyDA->SynergyLevels)
 		{
 			if (Count >= LvData.RequiredCount)
 			{
 				for (const FStatModifier& Mod : LvData.StatModifiers)
 				{
-					if (Mod.IsMultiplier)
-						MulModifiers.FindOrAdd(Mod.StatTag) += Mod.Value;
-					else
-						AddModifiers.FindOrAdd(Mod.StatTag) += Mod.Value;
+					if (Mod.IsMultiplier) MulModifiers.FindOrAdd(Mod.StatTag) += Mod.Value;
+					else AddModifiers.FindOrAdd(Mod.StatTag) += Mod.Value;
 				}
-				for (TSubclassOf<UCAP_ItemBehaviorBase> BehaviorClass : LvData.GrantedBehaviors)
-					if (BehaviorClass)
-						BehaviorsToGrant.AddUnique(BehaviorClass);
+				for (UCAP_ItemBehaviorBase* BehaviorTemplate : LvData.GrantedBehaviors)
+				{
+					if (BehaviorTemplate) BehaviorsToGrant.AddUnique(BehaviorTemplate);
+				}
 			}
 		}
+
 		if (BehaviorsToGrant.Num() > 0)
 		{
-			UCAP_SynergyInstance* SynInstance = NewObject<UCAP_SynergyInstance>(this);
+			ActiveTagsThisFrame.Add(SynTag); // 이 태그는 활성화 성공
+
+			// 무조건 NewObject를 하지 않고, 기존 객체가 있으면 재활용합니다
+			UCAP_SynergyInstance* SynInstance = ActiveSynergyInstances.FindRef(SynTag);
+			if (!SynInstance)
+			{
+				SynInstance = NewObject<UCAP_SynergyInstance>(this);
+				ActiveSynergyInstances.Add(SynTag, SynInstance);
+			}
 			SynInstance->InitializeSynergy(SynTag, Count, BehaviorsToGrant);
-			ActiveSynergyInstances.Add(SynTag, SynInstance);
 
 			FGameplayAbilitySpec Spec(UCAP_ItemGameplayAbility::StaticClass(), 1, INDEX_NONE, SynInstance);
 			FGameplayAbilitySpecHandle Handle = OwnerASC->GiveAbility(Spec);
@@ -242,6 +255,38 @@ void UCAP_InventoryComponent::OnSynergyDataLoaded()
 			}
 		}
 	}
+
+	// 이번 계산에서 RequiredCount에 도달하지 못해 완전히 꺼져야 하는 시너지 색출 및 즉시 처형
+	TArray<FGameplayTag> TagsToKill;
+	for (auto& Pair : ActiveSynergyInstances)
+	{
+		if (!ActiveTagsThisFrame.Contains(Pair.Key))
+		{
+			TagsToKill.Add(Pair.Key);
+		}
+	}
+
+	for (const FGameplayTag& DeadTag : TagsToKill)
+	{
+		UCAP_SynergyInstance* DeadInstance = ActiveSynergyInstances[DeadTag];
+		if (DeadInstance)
+		{
+			// 허공에 남아버린 잔재 GE를 플레이어 몸에서 찾아서 즉각 찢어버림 (즉시 효과 제거)
+			FGameplayEffectQuery Query;
+			TArray<FActiveGameplayEffectHandle> ActiveEffects = OwnerASC->GetActiveEffects(Query);
+			for (const FActiveGameplayEffectHandle& Handle : ActiveEffects)
+			{
+				const FActiveGameplayEffect* ActiveGE = OwnerASC->GetActiveGameplayEffect(Handle);
+				if (ActiveGE && ActiveGE->Spec.GetEffectContext().GetSourceObject() == DeadInstance)
+				{
+					OwnerASC->RemoveActiveGameplayEffect(Handle);
+				}
+			}
+			DeadInstance->MarkAsGarbage();
+		}
+		ActiveSynergyInstances.Remove(DeadTag);
+	}
+
 	FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
 	Context.AddSourceObject(this);
 	
@@ -329,6 +374,18 @@ void UCAP_InventoryComponent::RemoveItemAbility(class UCAP_ItemInstance* ItemIns
 {
 	if (!ItemInst || !OwnerASC)
 		return;
+
+	if (ICAP_BehaviorStateProvider* Provider = Cast<ICAP_BehaviorStateProvider>(ItemInst))
+	{
+		if (UCAP_AbilitySystemComponent* CASC = Cast<UCAP_AbilitySystemComponent>(OwnerASC))
+		{
+			for (UCAP_ItemBehaviorBase* Behavior : Provider->GetBehaviors())
+			{
+				if (Behavior)
+					Behavior->OnUnequipped(Provider, CASC);
+			}
+		}
+	}
 	
 	if (FGameplayAbilitySpecHandle* HandlePtr = GrantedItemAbilityMap.Find(ItemInst))
 	{

@@ -29,6 +29,7 @@ void UGA_WeaponSwap::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 		{
 			WeaponComp->SwapWeapon();
 			ApplySwapCooldown();
+			BroadcastTriggerEvent(FGameplayTag::RequestGameplayTag("Item.Trigger.Cast.Swap"));
 		}
 	}
 	K2_EndAbility();

@@ -50,7 +50,7 @@ void UItemBehavior_ApplyBuffToSelf::OnEventReceived(ICAP_BehaviorStateProvider* 
 	{
 		if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
 			if (Cooldown > 0.f)
-				InvComp->OnItemEffectTriggered.Broadcast(StateProvider->GetProviderObject(),BehaviorTag,Cooldown,0.f,0);
+				InvComp->OnItemEffectTriggered.Broadcast(StateProvider->GetProviderObject(),BehaviorTag,Cooldown,Duration,0);
 	}
 }
 
@@ -106,6 +106,11 @@ void UItemBehavior_ApplyBuffToSelf::ApplyBuffWithStack(ICAP_BehaviorStateProvide
 	SpecHandle.Data->SetSetByCallerMagnitude(TargetStatTag, FinalMagnitude);
 	SpecHandle.Data->DynamicGrantedTags.AddTag(FGameplayTag::RequestGameplayTag("UI.Buff"));
 
+	if (BehaviorTag.IsValid())
+	{
+		SpecHandle.Data->DynamicGrantedTags.AddTag(BehaviorTag);
+	}
+	
 	if (Duration>0.f)
 	{
 		SpecHandle.Data->SetSetByCallerMagnitude(DurationTag, Duration);
@@ -132,9 +137,12 @@ int32 UItemBehavior_ApplyBuffToSelf::GetExistingStackCount(ICAP_BehaviorStatePro
 		// 출처 (SourceObject가 이 효과를 부른 아이템 ItemInst와 동일한지 체크 (다른 인스턴스라면 패스)
 		if (ActiveGE && ActiveGE->Spec.GetEffectContext().GetSourceObject() == StateProvider->GetProviderObject())
 		{
-			OutHandle = Handle;
-			FoundStack = static_cast<int32>(ActiveGE->Spec.GetSetByCallerMagnitude(StackTag,false,0.f));
-			break;
+			if (ActiveGE->Spec.DynamicGrantedTags.HasTagExact(BehaviorTag))
+			{
+				OutHandle = Handle;
+				FoundStack = static_cast<int32>(ActiveGE->Spec.GetSetByCallerMagnitude(StackTag, false, 0.f));
+				break;
+			}
 		}
 	}
 	return FoundStack;

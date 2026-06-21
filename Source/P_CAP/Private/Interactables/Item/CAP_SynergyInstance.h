@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Interface/CAP_BehaviorStateProvider.h"
+#include "Interface/CAP_BuffVisualInterface.h"
 #include "UObject/NoExportTypes.h"
 #include "CAP_SynergyInstance.generated.h"
 
@@ -12,12 +13,15 @@
  * 
  */
 UCLASS()
-class UCAP_SynergyInstance : public UObject, public ICAP_BehaviorStateProvider
+class UCAP_SynergyInstance : public UObject, public ICAP_BehaviorStateProvider, public ICAP_BuffVisualInterface
 {
 	GENERATED_BODY()
 
 public:
-	void InitializeSynergy(FGameplayTag InSynergyTag, int32 InLv, const TArray<TSubclassOf<UCAP_ItemBehaviorBase>>& BehaviorClasses);
+	void InitializeSynergy(FGameplayTag InSynergyTag, int32 InLv, const TArray<UCAP_ItemBehaviorBase*>& BehaviorClasses);
+
+	virtual FBuffDisplayData GetBuffDisplayData(const FGameplayTag& EffectTag) const override;
+	virtual FGameplayTag GetUniqueVisualID() const override {return SynergyTag;}
 	
 	//Behavior State Provider 인터페이스
 	virtual float GetBehaviorLastTriggerTime(const UCAP_ItemBehaviorBase* Behavior) const override;

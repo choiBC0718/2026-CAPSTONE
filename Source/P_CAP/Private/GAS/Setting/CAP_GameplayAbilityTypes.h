@@ -22,6 +22,13 @@ enum class EAbilityInputID : uint8
 };
 
 UENUM(BlueprintType)
+enum class ESkillDamageType : uint8
+{
+	Physical,
+	Magical,
+};
+
+UENUM(BlueprintType)
 enum class EItemGrade : uint8
 {
 	Normal			UMETA(DisplayName = "일반"),
@@ -94,4 +101,21 @@ struct TStructOpsTypeTraits<FCAP_GameplayEffectContext> : public TStructOpsTypeT
 		WithNetSerializer = true,
 		WithCopy = true
 	};
+};
+
+USTRUCT(BlueprintType)
+struct FDamageCalculationData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly)
+	ESkillDamageType DamageType = ESkillDamageType::Physical;
+	
+	UPROPERTY(EditDefaultsOnly)
+	FGameplayAttribute ReferenceAttribute;
+	
+	UPROPERTY(EditDefaultsOnly)
+	float BaseValue = 0.f;
+	UPROPERTY(EditDefaultsOnly)
+	float Multiplier = 1.f;
 };

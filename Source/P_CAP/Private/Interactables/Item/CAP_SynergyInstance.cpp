@@ -3,20 +3,38 @@
 
 #include "Interactables/Item/CAP_SynergyInstance.h"
 
+#include "Framework/Subsystem/CAP_SynergySubsystem.h"
 #include "GAS/ItemBehavior/CAP_ItemBehaviorBase.h"
 
 void UCAP_SynergyInstance::InitializeSynergy(FGameplayTag InSynergyTag, int32 InLv,
-                                             const TArray<TSubclassOf<UCAP_ItemBehaviorBase>>& BehaviorClasses)
+                                             const TArray<UCAP_ItemBehaviorBase*>& BehaviorClasses)
 {
 	SynergyTag = InSynergyTag;
 	SynergyLv = InLv;
 
-	for (TSubclassOf<UCAP_ItemBehaviorBase> ClassType : BehaviorClasses)
+	for (UCAP_ItemBehaviorBase* TemplateBehavior : BehaviorClasses)
 	{
-		if (ClassType)
-			if (UCAP_ItemBehaviorBase* NewBehavior = NewObject<UCAP_ItemBehaviorBase>(this, ClassType))
+		if (TemplateBehavior)
+			if (UCAP_ItemBehaviorBase* NewBehavior = DuplicateObject<UCAP_ItemBehaviorBase>(TemplateBehavior, this))
 				InstancedBehaviors.Add(NewBehavior);
 	}
+}
+
+FBuffDisplayData UCAP_SynergyInstance::GetBuffDisplayData(const FGameplayTag& EffectTag) const
+{
+	FBuffDisplayData Data;
+	if (UWorld* World = GetWorld())
+	{
+		if (UCAP_SynergySubsystem* SynSubsys = World->GetGameInstance()->GetSubsystem<UCAP_SynergySubsystem>())
+		{
+			if (SynSubsys->SynergyMap.Contains(SynergyTag))
+			{
+				if (UCAP_SynergyDataAsset* SynDA = SynSubsys->SynergyMap[SynergyTag].LoadSynchronous())
+					Data.Icon = SynDA->SynergyIcon;
+			}
+		}
+	}
+	return Data;
 }
 
 float UCAP_SynergyInstance::GetBehaviorLastTriggerTime(const UCAP_ItemBehaviorBase* Behavior) const

@@ -37,6 +37,7 @@ public:
 	
 	//Buff Visual 인터페이스
 	virtual FBuffDisplayData GetBuffDisplayData(const FGameplayTag& EffectTag) const override;
+	virtual FGameplayTag GetUniqueVisualID() const override {return FGameplayTag();}
 
 	//Behavior State Provider 인터페이스
 	virtual float GetBehaviorLastTriggerTime(const UCAP_ItemBehaviorBase* Behavior) const override;

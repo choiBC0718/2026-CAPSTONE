@@ -32,4 +32,5 @@ class ICAP_BuffVisualInterface
 
 public:
 	virtual FBuffDisplayData GetBuffDisplayData(const FGameplayTag& EffectTag) const = 0;
+	virtual FGameplayTag GetUniqueVisualID() const = 0;
 };

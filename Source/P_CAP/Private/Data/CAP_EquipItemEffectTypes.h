@@ -21,8 +21,8 @@ struct FSynergyLevelData
 	TArray<FStatModifier> StatModifiers;
 
 	// 패시브 능력 시너지인 경우
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	TArray<TSubclassOf<class UCAP_ItemBehaviorBase>> GrantedBehaviors;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Instanced)
+	TArray<class UCAP_ItemBehaviorBase*> GrantedBehaviors;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	FText LevelDescription;
