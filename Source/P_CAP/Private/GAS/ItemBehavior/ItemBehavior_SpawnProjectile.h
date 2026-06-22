@@ -86,5 +86,5 @@ public:
 	virtual void OnEventReceived(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC, const struct FGameplayEventData* Payload) const override;
 private:
 	bool CheckTriggerCondition(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const;
-	USceneComponent* FindNearestTarget(const FVector& Origin, class UWorld* World, AActor* IgnoredActor) const;
+	TArray<USceneComponent*> FindNearestTarget(const FVector& Origin, class UWorld* World, AActor* IgnoredActor) const;
 };

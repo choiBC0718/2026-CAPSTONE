@@ -26,8 +26,6 @@ ACAP_Character::ACAP_Character()
 	TargetEffectWidgetComp->SetRelativeLocation(FVector(0.f, 0.f, -60.f));
 	TargetEffectWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);
 
-	GetCapsuleComponent()->SetCollisionProfileName(FName("Character"));
-
 	CAPAbilitySystemComponent = CreateDefaultSubobject<UCAP_AbilitySystemComponent>("Ability System Component");
 	CAPAttributeSet = CreateDefaultSubobject<UCAP_AttributeSet>("Attribute Set");
 
@@ -51,6 +49,45 @@ void ACAP_Character::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
+
+void ACAP_Character::SetGenericTeamId(const FGenericTeamId& TeamID)
+{
+	TeamId = TeamID;
+}
+
+FGenericTeamId ACAP_Character::GetGenericTeamId() const
+{
+	return TeamId;
+}
+
+ETeamAttitude::Type ACAP_Character::GetTeamAttitudeTowards(const AActor& Other) const
+{
+	const IGenericTeamAgentInterface* OtherTeamAgent = Cast<IGenericTeamAgentInterface>(&Other);
+	
+	if (!OtherTeamAgent)
+	{
+		if (const APawn* OtherPawn = Cast<APawn>(&Other))
+		{
+			OtherTeamAgent = Cast<IGenericTeamAgentInterface>(OtherPawn->GetController());
+		}
+	}
+	
+	if (OtherTeamAgent)
+	{
+		FGenericTeamId OtherTeamID = OtherTeamAgent->GetGenericTeamId();
+		
+		if (OtherTeamID == FGenericTeamId::NoTeam || TeamId == FGenericTeamId::NoTeam)
+			return ETeamAttitude::Neutral;
+		
+		if (OtherTeamID == TeamId)
+			return ETeamAttitude::Friendly;
+		else
+			return ETeamAttitude::Hostile;
+		
+	}
+
+	return ETeamAttitude::Neutral;
+}
 
 UAbilitySystemComponent* ACAP_Character::GetAbilitySystemComponent() const
 {

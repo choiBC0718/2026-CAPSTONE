@@ -5,6 +5,7 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Abilities/GameplayAbilityTypes.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "P_CAP/P_CAP.h"
@@ -43,6 +44,16 @@ void UANS_MeleeHitCheck::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequ
 			PrevLocs.Add(TargetMesh->GetSocketLocation(SocketName));
 		}
 	}
+	AActor* OwnerActor = MeshComp->GetOwner();
+	if (OwnerActor)
+	{
+		uint8 TeamIdVal = 255;
+		if (IGenericTeamAgentInterface* TeamAgent = Cast<IGenericTeamAgentInterface>(OwnerActor))
+			TeamIdVal = TeamAgent->GetGenericTeamId().GetId();
+		
+		ECollisionChannel TargetChannel = (TeamIdVal == 0) ? ECC_EnemyHitbox : ECC_PlayerHitbox;
+		TargetChannelMap.Add(MeshComp, TargetChannel);
+	}
 }
 
 void UANS_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
@@ -66,8 +77,9 @@ void UANS_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSeque
 
 	TSet<AActor*>* HitActors = HitActorsMap.Find(MeshComp);
 	TArray<FVector>* PrevLocs = PrevSocketLocationMap.Find(MeshComp);
+	ECollisionChannel* CachedChannel = TargetChannelMap.Find(MeshComp);
 
-	if (!HitActors || !PrevLocs || PrevLocs->Num() != TargetSocketNames.Num())
+	if (!HitActors || !CachedChannel || !PrevLocs || PrevLocs->Num() != TargetSocketNames.Num())
 		return;
 
 	AActor* OwnerActor = MeshComp->GetOwner();
@@ -75,7 +87,7 @@ void UANS_MeleeHitCheck::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSeque
 	IgnoreActors.Add(OwnerActor);
 
 	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
-	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Hitbox));
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(*CachedChannel));
 
 	EDrawDebugTrace::Type DrawDebugType = bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None;
 
@@ -155,6 +167,12 @@ void UANS_MeleeHitCheck::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequen
 	{
 		HitActorsMap.Remove(MeshComp);
 		PrevSocketLocationMap.Remove(MeshComp);
+	}
+	if (MeshComp)
+	{
+		HitActorsMap.Remove(MeshComp);
+		PrevSocketLocationMap.Remove(MeshComp);
+		TargetChannelMap.Remove(MeshComp);
 	}
 }
 

@@ -60,16 +60,16 @@ void UItemBehavior_SpawnProjectile::OnEventReceived(ICAP_BehaviorStateProvider* 
 	}
 
 	// 4. 추적 타겟 지정 (호밍 또는 확정 폴링용)
-	USceneComponent* TrackedTarget = nullptr;
+	TArray<USceneComponent*> TrackedTarget;
 	if (ProjectileType == EProjectileType::Homing || (ProjectileType == EProjectileType::Falling && !bIsRandomFalling))
 	{
 		if (Payload->TargetData.Num() > 0 && Payload->TargetData.Data[0]->GetHitResult())
 		{
 			if (AActor* HitActor = Payload->TargetData.Data[0]->GetHitResult()->GetActor())
-				TrackedTarget = HitActor->GetRootComponent();
+				TrackedTarget.Add(HitActor->GetRootComponent());
 		}
 		
-		if (!TrackedTarget)
+		if (TrackedTarget.Num()==0)
 		{
 			TrackedTarget = FindNearestTarget(Instigator->GetActorLocation(), World, Instigator);
 		}
@@ -81,6 +81,10 @@ void UItemBehavior_SpawnProjectile::OnEventReceived(ICAP_BehaviorStateProvider* 
 	{
 		FVector SpawnLoc = BaseLoc;
 		FVector LaunchDir = BaseDir;
+		USceneComponent* CurrentTarget = nullptr;
+
+		if (TrackedTarget.Num() > 0)
+			CurrentTarget = TrackedTarget[i%TrackedTarget.Num()];
 
 		// 타입별 위치 및 방향 계산
 		if (ProjectileType == EProjectileType::Falling)
@@ -96,8 +100,11 @@ void UItemBehavior_SpawnProjectile::OnEventReceived(ICAP_BehaviorStateProvider* 
 			else
 			{
 				// 머리 위 타격: 타겟이 있으면 타겟 위, 없으면 내 앞의 위
-				FVector TargetLoc = TrackedTarget ? TrackedTarget->GetComponentLocation() : BaseLoc;
-				SpawnLoc = TargetLoc + FVector(0.f, 0.f, FallingSpawnHeight);
+				FVector TargetLoc = CurrentTarget ? CurrentTarget->GetComponentLocation() : BaseLoc;
+				int32 DropOrder = TrackedTarget.Num() > 0 ? (i / TrackedTarget.Num()) : i;
+				
+				float HeightStagger = ProjectileSpeed * 0.15f; 
+				SpawnLoc = TargetLoc + FVector(0.f, 0.f, FallingSpawnHeight + (DropOrder * HeightStagger));
 			}
 		}
 		else // Straight or Homing
@@ -124,7 +131,7 @@ void UItemBehavior_SpawnProjectile::OnEventReceived(ICAP_BehaviorStateProvider* 
 			InitData.MaxDistance = MaxDistance;
 			InitData.ExplosionRadius = ExplosionRadius;
 			InitData.MaxHitCount = MaxHitCount;
-			InitData.HomingTarget = TrackedTarget;
+			InitData.HomingTarget = CurrentTarget;
 			InitData.DamageSpecHandle = DamageHandle;
 			InitData.CueTag = HitCueTag;
 			InitData.HitTriggerTag = FGameplayTag::RequestGameplayTag("Item.Trigger.Hit.Item");
@@ -171,35 +178,44 @@ bool UItemBehavior_SpawnProjectile::CheckTriggerCondition(ICAP_BehaviorStateProv
 	return true;
 }
 
-USceneComponent* UItemBehavior_SpawnProjectile::FindNearestTarget(const FVector& Origin, class UWorld* World, AActor* IgnoredActor) const
+TArray<USceneComponent*> UItemBehavior_SpawnProjectile::FindNearestTarget(const FVector& Origin, class UWorld* World, AActor* IgnoredActor) const
 {
+	TArray<USceneComponent*> ResultTargets;
 	TArray<FOverlapResult> Overlaps;
 	FCollisionObjectQueryParams ObjQueryParams;
 	
-	ObjQueryParams.AddObjectTypesToQuery(ECC_Hitbox); 
+	uint8 TeamIdVal = 255;
+	if (IGenericTeamAgentInterface* TeamAgent = Cast<IGenericTeamAgentInterface>(IgnoredActor))
+		TeamIdVal = TeamAgent->GetGenericTeamId().GetId();
+	
+	ECollisionChannel TargetChannel = (TeamIdVal == 0) ? ECC_EnemyHitbox : ECC_PlayerHitbox;
+	ObjQueryParams.AddObjectTypesToQuery(TargetChannel);
 
 	FCollisionShape SphereShape = FCollisionShape::MakeSphere(SearchRadius);
 
 	if (World->OverlapMultiByObjectType(Overlaps, Origin, FQuat::Identity, ObjQueryParams, SphereShape))
 	{
-		float MinDistSq = MAX_flt;
-		USceneComponent* BestTarget = nullptr;
-		
+		struct FTargetDist { USceneComponent* Comp; float DistSq; };
+		TArray<FTargetDist> TargetDists;
+
 		for (const FOverlapResult& Overlap : Overlaps)
 		{
 			AActor* Enemy = Overlap.GetActor();
-
 			if (Enemy && Enemy != IgnoredActor)
 			{
 				float DistSq = FVector::DistSquared(Origin, Enemy->GetActorLocation());
-				if (DistSq < MinDistSq)
-				{
-					MinDistSq = DistSq;
-					BestTarget = Enemy->GetRootComponent();
-				}
+				TargetDists.Add({Enemy->GetRootComponent(), DistSq});
 			}
 		}
-		return BestTarget;
+
+		TargetDists.Sort([](const FTargetDist& A, const FTargetDist& B) {
+			return A.DistSq < B.DistSq;
+		});
+
+		for (const FTargetDist& TD : TargetDists)
+		{
+			ResultTargets.Add(TD.Comp);
+		}
 	}
-	return nullptr;
+	return ResultTargets;
 }

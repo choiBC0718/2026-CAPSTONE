@@ -5,12 +5,13 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayEffectTypes.h"
+#include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
 #include "Interface/CAP_TargetUIInterface.h"
 #include "CAP_Character.generated.h"
 
 UCLASS()
-class ACAP_Character : public ACharacter, public IAbilitySystemInterface, public ICAP_TargetUIInterface
+class ACAP_Character : public ACharacter, public IAbilitySystemInterface, public ICAP_TargetUIInterface, public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -27,8 +28,14 @@ private:
 	class UCAP_AttributeSet* CAPAttributeSet;
 	UPROPERTY()
 	class UAIPerceptionStimuliSourceComponent* PerceptionStimuliSourceComponent;
-	
+
+	// ICAP_TargetUIInterface
 	virtual void UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack) override {}
+
+	// IGenericTeamAgentInterface
+	virtual void SetGenericTeamId(const FGenericTeamId& TeamID) override;
+	virtual FGenericTeamId GetGenericTeamId() const override;
+	virtual ETeamAttitude::Type GetTeamAttitudeTowards(const AActor& Other) const override;
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category="Widget")
@@ -40,6 +47,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Death")
 	bool bCanRespawn = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Team")
+	FGenericTeamId TeamId = FGenericTeamId::NoTeam;
 public:
 	bool IsDead() const;
 	bool IsAlive() const;

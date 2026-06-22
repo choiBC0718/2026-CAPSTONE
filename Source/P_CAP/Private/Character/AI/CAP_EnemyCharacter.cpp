@@ -41,6 +41,7 @@ ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 	SetActorTickEnabled(false);
 
 	bCanRespawn = false;
+	GetCapsuleComponent()->SetCollisionProfileName(FName("EnemyHitbox"));
 
 	HealthBarWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("Health Bar Widget Component"));
 	HealthBarWidgetComponent->SetupAttachment(GetRootComponent());
@@ -56,6 +57,8 @@ ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 	{
 		CoinRewardVFX = CoinDropVFXFinder.Object;
 	}
+	
+	TeamId = FGenericTeamId(1);
 }
 
 void ACAP_EnemyCharacter::BeginPlay()

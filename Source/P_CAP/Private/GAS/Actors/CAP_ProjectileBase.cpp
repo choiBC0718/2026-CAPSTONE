@@ -7,6 +7,7 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
 #include "GameplayCueManager.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/ProjectileMovementComponent.h"
@@ -57,7 +58,6 @@ void ACAP_ProjectileBase::InitProjectile(const FProjectileInitData& InitData)
 	HitGameplayCueTag	= InitData.CueTag;
 	HitTriggerTag		= InitData.HitTriggerTag;
 	MaxHitCount			= InitData.MaxHitCount;
-	TargetActorClass	= InitData.TargetActorClass;
 
 	FVector LaunchDir	= InitData.LaunchDir;
 	ProjMovementComp->InitialSpeed = ProjectileSpeed;
@@ -65,10 +65,19 @@ void ACAP_ProjectileBase::InitProjectile(const FProjectileInitData& InitData)
 
 	if (CollisionComp)
 	{
+		uint8 TeamIdVal = 255;
+		if (IGenericTeamAgentInterface* TeamAgent = Cast<IGenericTeamAgentInterface>(GetInstigator()))
+		{
+			TeamIdVal = TeamAgent->GetGenericTeamId().GetId();
+		}
+
+		FName ProfileName;
 		if (ProjectileType == EProjectileType::Falling || ProjectileType == EProjectileType::Arc)
-			CollisionComp->SetCollisionProfileName(FName("Projectile_Arc"));
+			ProfileName = (TeamIdVal == 0) ? FName("PlayerProj_AoE") : FName("EnemyProj_AoE");
 		else
-			CollisionComp->SetCollisionProfileName(FName("Projectile_Straight"));
+			ProfileName = (TeamIdVal == 0) ? FName("PlayerProj_Direct") : FName("EnemyProj_Direct");
+		
+		CollisionComp->SetCollisionProfileName(ProfileName);
 	}
 	
 	switch (ProjectileType)
@@ -152,7 +161,6 @@ void ACAP_ProjectileBase::SendLocalGameplayCue(const FHitResult& HitResult)
 void ACAP_ProjectileBase::ProcessStraightHit(AActor* OtherActor, const FHitResult& SweepResult)
 {
 	if (HitActors.Contains(OtherActor)) return;
-	if (!IsValidDamageTarget(OtherActor)) return;
 	HitActors.Add(OtherActor);
 
 	// 데미지 적용
@@ -196,7 +204,13 @@ void ACAP_ProjectileBase::ProcessExplosiveHit(const FHitResult& SweepResult)
 
 	TArray<FOverlapResult> Overlaps;
 	FCollisionObjectQueryParams ObjQueryParams;
-	ObjQueryParams.AddObjectTypesToQuery(ECC_Hitbox);
+	
+	uint8 TeamIdVal = 255;
+	if (IGenericTeamAgentInterface* TeamAgent = Cast<IGenericTeamAgentInterface>(GetInstigator()))
+		TeamIdVal = TeamAgent->GetGenericTeamId().GetId();
+	
+	ECollisionChannel TargetChannel = (TeamIdVal == 0) ? ECC_EnemyHitbox : ECC_PlayerHitbox;
+	ObjQueryParams.AddObjectTypesToQuery(TargetChannel);
 
 	FCollisionShape SphereShape = FCollisionShape::MakeSphere(ExplosionRadius);
 	TArray<TWeakObjectPtr<AActor>> HitActorsArray;
@@ -208,7 +222,7 @@ void ACAP_ProjectileBase::ProcessExplosiveHit(const FHitResult& SweepResult)
 		for (const FOverlapResult& Overlap : Overlaps)
 		{
 			AActor* OverlapActor = Overlap.GetActor();
-			if (OverlapActor && OverlapActor != GetOwner() && IsValidDamageTarget(OverlapActor) && !HitActorsArray.Contains(OverlapActor))
+			if (OverlapActor && OverlapActor != GetOwner() && !HitActorsArray.Contains(OverlapActor))
 			{
 				HitActorsArray.Add(OverlapActor);
 				UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OverlapActor);
@@ -235,16 +249,6 @@ void ACAP_ProjectileBase::ProcessExplosiveHit(const FHitResult& SweepResult)
 
 	SendLocalGameplayCue(SweepResult);
 	Destroy();
-}
-
-bool ACAP_ProjectileBase::IsValidDamageTarget(AActor* TargetActor) const
-{
-	if (!IsValid(TargetActor))
-	{
-		return false;
-	}
-
-	return !TargetActorClass || TargetActor->IsA(TargetActorClass);
 }
 
 void ACAP_ProjectileBase::StraightTypeInit()
