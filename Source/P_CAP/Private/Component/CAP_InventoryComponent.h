@@ -11,6 +11,8 @@
 #include "CAP_InventoryComponent.generated.h"
 
 
+class UCAP_SynergyInstance;
+
 USTRUCT()
 struct FActiveGEHandleArray
 {	// UPROPERTY() Map의 Value로 사용하기 위한 구조체
@@ -24,7 +26,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInventoryChanged, class UCAP_Ite
 // 인벤토리 가득 참 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInventoryFull, class UCAP_ItemInstance*, OverflowItem);
 // 아이템 효과 발동 델리게이트
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FOnItemEffectTriggered, class UCAP_ItemInstance*, ItemInst, FGameplayTag, DynamicTag, float,Cooldown,float,Duration,int32,Stacks);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FOnItemEffectTriggered, UObject*, SourceObject, FGameplayTag, DynamicTag, float,Cooldown,float,Duration,int32,Stacks);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class UCAP_InventoryComponent : public UActorComponent
@@ -37,7 +39,6 @@ public:
 	
 	FORCEINLINE int GetCapacity() const { return Capacity; }
 
-	bool AddItem(class UCAP_ItemInstance* NewItem);
 	const TArray<class UCAP_ItemInstance*>& GetInventoryItems() const {return InventoryItems;}
 	
 	UPROPERTY()
@@ -48,11 +49,11 @@ public:
 	FOnItemEffectTriggered OnItemEffectTriggered;
 	
 	bool SwapItem(class UCAP_ItemInstance* OldItem, class UCAP_ItemInstance* NewItem);
+	bool AddItem(class UCAP_ItemInstance* NewItem);
 	void RemoveItem(class UCAP_ItemInstance* ItemInst);
 	bool DisassembleItem(class UCAP_ItemInstance* ItemInst);
 
 	const TMap<FGameplayTag, int32> & GetCurrentSynergyCounts() const {return CurrentSynergyCounts;}
-	const TMap<FGameplayTag, FSynergyDataTable*>& GetSynergyDataCache() const {return SynergyDataCache;}
 
 	struct FInventorySaveData CreateSaveData() const;
 	
@@ -60,9 +61,6 @@ private:
 	// 아이템 장착 가능 수
 	UPROPERTY(EditDefaultsOnly, Category="Inventory")
 	int Capacity = 9;
-	// 참조할 시너지 데이터 테이블
-	UPROPERTY(EditDefaultsOnly, Category="Synergy")
-	UDataTable* SynergyDataTable;
 	
 	UPROPERTY()
 	class UAbilitySystemComponent* OwnerASC;
@@ -71,14 +69,6 @@ private:
 	
 	// 현재 Tag로 활성화 중인 시너지 총합
 	TMap<FGameplayTag, int32> CurrentSynergyCounts;
-	// 저장됐던 태그에 대한 개수
-	TMap<FGameplayTag, int32> CachedSynergyCounts;
-	// 현재 캐릭터에게 적용된 시너지 버프
-	TMap<FGameplayTag, TArray<FActiveGameplayEffectHandle>> AppliedSynergyHandles;
-
-	// 데이터 테이블 캐시
-	TMap<FGameplayTag, FSynergyDataTable*> SynergyDataCache;
-
 	
 	FGameplayTagContainer CachedItemDataTags;
 
@@ -98,15 +88,28 @@ private:
 	// 아이템 스킬 해제
 	void RemoveItemAbility(class UCAP_ItemInstance* ItemInst);
 
+	// 시너지 효과 업데이트
 	void UpdateItemSynergies(class UCAP_ItemDataBase* ItemDA, bool bIsAdded);
-	void UpdateSingleSynergyEffect(FGameplayTag Tag, int32 NewCount);
-
-	void ClearSynergyEffects(FGameplayTag Tag);
-	void ApplySynergyEffect(FGameplayTag Tag, TSubclassOf<UGameplayEffect> GE);
+	void RecalculateAllSynergies();
+	void ClearAllSynergies();
+	void OnSynergyDataLoaded();
 	
 	void TryRestoreSavedInventory();
 	void RestoreFromSaveData(const struct FInventorySaveData& InData);
 
 	void OnItemEquipped(UCAP_ItemInstance* ItemInst);
 	void OnItemUnequipped(class UCAP_ItemInstance* ItemInst);
+
+	FActiveGameplayEffectHandle SynergyAddMasterHandle;
+	FActiveGameplayEffectHandle SynergyMulMasterHandle;
+
+	// 아이템 효과 및 시너지 Stat Modifier 적용
+	void ApplyStatModifiers(const TMap<FGameplayTag, float>& Modifiers, bool bIsMul, const FGameplayEffectContextHandle& Context, FActiveGameplayEffectHandle& OutHandle);
+	
+	UPROPERTY()
+	TMap<FGameplayTag, UCAP_SynergyInstance*> ActiveSynergyInstances;
+	UPROPERTY()
+	TArray<FGameplayAbilitySpecHandle> GrantedSynergyAbilityHandles;
+
+	TSharedPtr<struct FStreamableHandle> SynergyLoadHandle;
 };

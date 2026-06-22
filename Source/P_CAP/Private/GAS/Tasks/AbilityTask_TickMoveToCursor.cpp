@@ -8,6 +8,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "P_CAP/P_CAP.h"
 
 UAbilityTask_TickMoveToCursor::UAbilityTask_TickMoveToCursor()
 {
@@ -32,7 +33,7 @@ void UAbilityTask_TickMoveToCursor::TickTask(float DeltaTime)
 		return;
 
 	FHitResult HitReuslt;
-	if (PC->GetHitResultUnderCursor(ECC_Vehicle, false, HitReuslt))
+	if (PC->GetHitResultUnderCursor(ECC_TargetGround, true, HitReuslt))
 	{
 		FVector StartLoc = Character->GetActorLocation();
 		FVector TargetLoc = HitReuslt.ImpactPoint;
@@ -55,7 +56,6 @@ void UAbilityTask_TickMoveToCursor::TickTask(float DeltaTime)
 
 			FRotator LookAtRot = UKismetMathLibrary::FindLookAtRotation(StartLoc, TargetLoc);
 			FRotator CurrentRot = Character->GetActorRotation();
-			// 회전 속도 800.f는 입맛에 맞게 조절하세요.
 			FRotator NewRot = FMath::RInterpConstantTo(CurrentRot, FRotator(0.f, LookAtRot.Yaw, 0.f), DeltaTime, 800.f); 
 			Character->SetActorRotation(NewRot);
 		}
@@ -77,7 +77,6 @@ void UAbilityTask_TickMoveToCursor::OnDestroy(bool bInOwnerFinished)
 	ACharacter* Character = Cast<ACharacter>(GetAvatarActor());
 	if (Character && Character->GetCharacterMovement() && OriginalMaxWalkSpeed > 0.f)
 	{
-		// 태스크가 끝나면 캐릭터의 속도를 스킬 쓰기 전으로 원상 복구합니다.
 		Character->GetCharacterMovement()->MaxWalkSpeed = OriginalMaxWalkSpeed;
 	}
 	Super::OnDestroy(bInOwnerFinished);

@@ -8,6 +8,7 @@
 #include "Widget/SlotWidgets/CAP_ItemSlotWidget.h"
 #include "CAP_ItemDetailPanelWidget.generated.h"
 
+class UCAP_SynergyDataAsset;
 /**
  * 
  */
@@ -41,4 +42,14 @@ private:
 
 	void AddFeatureIconToBox(TSoftObjectPtr<class UTexture2D> IconPtr);
 	void SetupUIContents(class UCAP_ItemInstance* ItemInst);
+
+	void AddSkillFeatureIcon(const struct FWeaponSkillData& SkillData);
+	void AddSynergyFeatureIcon(UCAP_SynergyDataAsset* SynergyDA);
+	
+protected:
+	UPROPERTY(EditDefaultsOnly, Category="Tooltip")
+	TSubclassOf<class UCAP_SkillToolTipWidget> SkillTooltipClass;
+
+	UPROPERTY(EditDefaultsOnly, Category="Tooltip")
+	TSubclassOf<class UCAP_SynergyToolTipWidget> SynergyTooltipClass;
 };

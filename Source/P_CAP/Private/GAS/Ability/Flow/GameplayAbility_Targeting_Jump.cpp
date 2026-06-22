@@ -73,7 +73,7 @@ void UGameplayAbility_Targeting_Jump::EndAbility(const FGameplayAbilitySpecHandl
 			
 			bool bIsOverlapping = UKismetSystemLibrary::SphereTraceSingle(
 				Player, EndLoc, EndLoc, Capsule->GetScaledCapsuleRadius() + 10.f, 
-				UEngineTypes::ConvertToTraceType(ECC_Hitbox), false, ActorsToIgnore, 
+				UEngineTypes::ConvertToTraceType(ECC_EnemyHitbox), false, ActorsToIgnore, 
 				EDrawDebugTrace::None, HitResult, true);
 			
 			if (bIsOverlapping)
@@ -87,7 +87,7 @@ void UGameplayAbility_Targeting_Jump::EndAbility(const FGameplayAbilitySpecHandl
 				Player->SetActorLocation(SnapLocation, false, nullptr, ETeleportType::TeleportPhysics);
 			}
 
-			Capsule->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Block);
+			Capsule->SetCollisionResponseToChannel(ECC_EnemyHitbox, ECR_Block);
 		}
 		bIsCollisionIgnored = false;
 	}
@@ -145,7 +145,7 @@ void UGameplayAbility_Targeting_Jump::OnJumpTagReceived(FGameplayEventData Paylo
 		LookRot.Roll = 0.f;
 		Player->SetActorRotation(LookRot);
 
-		Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Ignore);
+		Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_EnemyHitbox, ECR_Ignore);
 		bIsCollisionIgnored = true;
 		
 		UAbilityTask_ApplyRootMotionMoveToForce* MoveTask = UAbilityTask_ApplyRootMotionMoveToForce::ApplyRootMotionMoveToForce(

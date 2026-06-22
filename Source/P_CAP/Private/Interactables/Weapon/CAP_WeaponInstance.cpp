@@ -168,6 +168,33 @@ void UCAP_WeaponInstance::RestoreFromSaveData(const FWeaponSaveData& InData)
 	}
 }
 
+bool UCAP_WeaponInstance::RerollRandomSkill()
+{
+	if (!GetWeaponDA())
+		return false;
+
+	TArray<FDataTableRowHandle> AvailableHandles = GetWeaponDA()->ActiveAbilityArray;
+	if (AvailableHandles.Num() <= 0)
+		return false;
+	
+	ActiveSkillRowNames.Empty();
+	GrantedActiveSkills.Empty();
+	const int32 SkillsToGrant = GetSkillCountByGrade(GetCurrentGrade());
+	for (int32 i=0 ; i<SkillsToGrant ; i++)
+	{
+		if (AvailableHandles.Num() <= 0)
+			break;
+		int32 RandIdx = FMath::RandRange(0, AvailableHandles.Num()-1);
+		if (FWeaponSkillData* SkillRow = AvailableHandles[RandIdx].GetRow<FWeaponSkillData>(""))
+		{
+			GrantedActiveSkills.Add(*SkillRow);
+			ActiveSkillRowNames.Add(AvailableHandles[RandIdx].RowName);
+		}
+		AvailableHandles.RemoveAt(RandIdx);
+	}
+	return true;
+}
+
 int32 UCAP_WeaponInstance::GetSkillCountByGrade(EItemGrade Grade)
 {
 	switch (Grade)

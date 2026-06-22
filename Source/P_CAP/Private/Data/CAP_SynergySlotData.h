@@ -6,6 +6,7 @@
 #include "CAP_EquipItemEffectTypes.h"
 #include "CAP_SynergySlotData.generated.h"
 
+class UCAP_SynergyDataAsset;
 /**
  * 
  */
@@ -15,6 +16,12 @@ class UCAP_SynergySlotData : public UObject
 	GENERATED_BODY()
 
 public:
-	FSynergyDataTable SynergyData;
-	int32 CurrentCount=0;
+	UPROPERTY()
+	FGameplayTag SynergyTag;
+
+	UPROPERTY()
+	UCAP_SynergyDataAsset* SynergyDA;
+
+	UPROPERTY()
+	int32 CurrentCount = 0;
 };

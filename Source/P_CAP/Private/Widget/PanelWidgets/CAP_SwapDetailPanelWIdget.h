@@ -30,7 +30,11 @@ protected:
 
 	FText GetGradeText(EItemGrade Grade) const;
 	void AddFeatureIconToBox(TSoftObjectPtr<class UTexture2D> IconPtr);
+	void AddSynergyFeatureIcon(class UCAP_SynergyDataAsset* SynergyDA);
 
+	UPROPERTY(EditDefaultsOnly, Category="Tooltip")
+	TSubclassOf<class UCAP_SynergyToolTipWidget> SynergyTooltipClass;
+	
 	UPROPERTY(EditDefaultsOnly, Category="Setting")
 	FVector2D SkillSynergyIconSize = FVector2D(125.f);
 };

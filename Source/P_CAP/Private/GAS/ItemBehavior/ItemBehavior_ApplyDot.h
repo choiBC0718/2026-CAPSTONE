@@ -39,16 +39,16 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="Value")
 	float Duration = 0.f;
 
-	virtual void OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const override;
-	virtual void OnUnequipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const override;
+	virtual void OnEquipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const override;
+	virtual void OnUnequipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const override;
 
 protected:
-	virtual void OnEventReceived(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, const struct FGameplayEventData* Payload) const override;
+	virtual void OnEventReceived(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC, const struct FGameplayEventData* Payload) const override;
 
 private:
-	bool CheckTriggerCondition(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
-	void ApplyDoTToSingleTarget(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC) const;
+	bool CheckTriggerCondition(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const;
+	void ApplyDoTToSingleTarget(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC) const;
 	
 	// DynamicTag를 기반으로 기존 핸들을 찾는 특수 검색 함수
-	int32 GetExistingDoTStackCount(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> MasterGE, FActiveGameplayEffectHandle& OutHandle) const;
+	int32 GetExistingDoTStackCount(ICAP_BehaviorStateProvider* StateProvider, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> MasterGE, FActiveGameplayEffectHandle& OutHandle) const;
 };

@@ -41,7 +41,7 @@ private:
 
 	// 효과 발동시 호출될 함수
 	UFUNCTION()
-	void OnEffectTriggered(class UCAP_ItemInstance* ItemInst, FGameplayTag DynamicTag, float Cooldown, float Duration, int32 Stacks);
+	void OnEffectTriggered(UObject* SourceObj, FGameplayTag DynamicTag, float Cooldown, float Duration, int32 Stacks);
 
 	// 아이템 해제 감지용
 	UFUNCTION()

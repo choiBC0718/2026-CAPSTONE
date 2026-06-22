@@ -180,7 +180,12 @@ class USceneComponent* UGA_Payload_SpawnProjectile::FindHomingTarget(const FVect
 	
 	TArray<FOverlapResult> Overlaps;
 	FCollisionObjectQueryParams ObjQueryParams;
-	ObjQueryParams.AddObjectTypesToQuery(ECC_Hitbox);
+	
+	uint8 TeamIdVal = 255;
+	if (IGenericTeamAgentInterface* TeamAgent = Cast<IGenericTeamAgentInterface>(AvatarActor))
+		TeamIdVal = TeamAgent->GetGenericTeamId().GetId();
+	ECollisionChannel TargetChannel = (TeamIdVal == 0) ? ECC_EnemyHitbox : ECC_PlayerHitbox;
+	ObjQueryParams.AddObjectTypesToQuery(TargetChannel);
 
 	FCollisionShape SphereShape = FCollisionShape::MakeSphere(HomingSearchRadius);
 	bool bHit = GetWorld()->OverlapMultiByObjectType(Overlaps, SearchOrigin, FQuat::Identity, ObjQueryParams, SphereShape);

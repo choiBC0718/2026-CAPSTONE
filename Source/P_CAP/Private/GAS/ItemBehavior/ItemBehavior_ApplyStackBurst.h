@@ -35,17 +35,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="Value")
 	float Magnitude=0.f;
 
-	virtual void OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const override;
-	virtual void OnUnequipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const override;
+	virtual void OnEquipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const override;
+	virtual void OnUnequipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const override;
 
 protected:
-	virtual void OnEventReceived(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, const struct FGameplayEventData* Payload) const override;
+	virtual void OnEventReceived(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC, const struct FGameplayEventData* Payload) const override;
 
 private:
-	bool CheckTriggerCondition(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
-	void ApplyBurstLogicToSingleTarget(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC) const;
+	bool CheckTriggerCondition(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const;
+	void ApplyBurstLogicToSingleTarget(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC) const;
 	
-	int32 GetExistingMarkStackCount(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> MarkGE, FActiveGameplayEffectHandle& OutHandle) const;
-
-	mutable TMap<TWeakObjectPtr<AActor>, float> TargetCooldownMap;
+	int32 GetExistingMarkStackCount(ICAP_BehaviorStateProvider* StateProvider, UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> MarkGE, FActiveGameplayEffectHandle& OutHandle) const;
 };

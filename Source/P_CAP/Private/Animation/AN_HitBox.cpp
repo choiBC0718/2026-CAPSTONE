@@ -4,6 +4,7 @@
 #include "Animation/AN_HitBox.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
+#include "Character/Player/CAP_PlayerCharacter.h"
 #include "Engine/OverlapResult.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "P_CAP/P_CAP.h"
@@ -42,7 +43,12 @@ void UAN_HitBox::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Ani
 
 	TArray<FOverlapResult> OverlapResults;
 	FCollisionObjectQueryParams ObjQueryParams;
-	ObjQueryParams.AddObjectTypesToQuery(ECC_Hitbox);
+	uint8 TeamIdVal = 255;
+	if (IGenericTeamAgentInterface* TeamAgent = Cast<IGenericTeamAgentInterface>(OwnerActor))
+		TeamIdVal = TeamAgent->GetGenericTeamId().GetId();
+	
+	ECollisionChannel TargetChannel = (TeamIdVal == 0) ? ECC_EnemyHitbox : ECC_PlayerHitbox;
+	ObjQueryParams.AddObjectTypesToQuery(TargetChannel);
 
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(OwnerActor);

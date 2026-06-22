@@ -34,11 +34,13 @@ void AAnalysisObstacle::BeginPlay()
 	// Blueprint 덮어쓰기 방지 — 메시는 완전 비충돌, Zone들은 순수 Overlap Trigger
 	MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	OuterZone->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	OuterZone->SetCollisionResponseToAllChannels(ECR_Overlap);
+	OuterZone->SetCollisionProfileName(FName("ObstacleTrigger"));
+	//OuterZone->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	//OuterZone->SetCollisionResponseToAllChannels(ECR_Overlap);
 
-	InnerZone->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	InnerZone->SetCollisionResponseToAllChannels(ECR_Overlap);
+	InnerZone->SetCollisionProfileName(FName("ObstacleTrigger"));
+	//InnerZone->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	//InnerZone->SetCollisionResponseToAllChannels(ECR_Overlap);
 
 	OuterZone->SetBoxExtent(OuterZoneExtent);
 	InnerZone->SetBoxExtent(InnerZoneExtent);

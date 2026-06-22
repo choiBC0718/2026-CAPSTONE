@@ -41,6 +41,7 @@ ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 	SetActorTickEnabled(false);
 
 	bCanRespawn = false;
+	GetCapsuleComponent()->SetCollisionProfileName(FName("EnemyHitbox"));
 
 	HealthBarWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("Health Bar Widget Component"));
 	HealthBarWidgetComponent->SetupAttachment(GetRootComponent());
@@ -51,11 +52,13 @@ ACAP_EnemyCharacter::ACAP_EnemyCharacter()
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 
 	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> CoinDropVFXFinder(
-		TEXT("/Game/_Workspace/7_Monster/CoinDrop/NS_CoinDrop.NS_CoinDrop"));
+		TEXT("/Game/_Workspace/7_Monster/Reward/CoinDrop/NS_CoinDrop.NS_CoinDrop"));
 	if (CoinDropVFXFinder.Succeeded())
 	{
 		CoinRewardVFX = CoinDropVFXFinder.Object;
 	}
+	
+	TeamId = FGenericTeamId(1);
 }
 
 void ACAP_EnemyCharacter::BeginPlay()
@@ -324,7 +327,6 @@ void ACAP_EnemyCharacter::StartDeathDissolve()
 	{
 		return;
 	}
-
 	DeathDissolveDynamicMaterials.Empty();
 
 	const int32 MaterialCount = MeshComponent->GetNumMaterials();

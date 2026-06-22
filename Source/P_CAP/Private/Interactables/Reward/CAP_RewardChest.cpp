@@ -74,6 +74,7 @@ void ACAP_RewardChest::Interact(AActor* InsActor, EInteractAction ActionType)
 		DropVFXComponent->SetVisibility(false, true);
 	}
 	SpawnReward();
+	InteractionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 UCAP_ItemDataBase* ACAP_RewardChest::GetRandomDropData(UDataTable* TargetDataTable)

@@ -6,10 +6,11 @@
 #include "GameplayEffect.h"
 #include "GameplayEffectTypes.h"
 #include "GameplayTagContainer.h"
+#include "Interface/CAP_BehaviorStateProvider.h"
 #include "CAP_ItemBehaviorBase.generated.h"
 
+class UCAP_AbilitySystemComponent;
 class UAbilitySystemComponent;
-class UCAP_ItemInstance;
 /**
  * 아이템의 개별 특수 효과 모듈
  * EditInlineNew + DefaultToInstanced로 DA에서 조립하도록
@@ -23,21 +24,21 @@ class UCAP_ItemBehaviorBase : public UObject
 public:
 	UCAP_ItemBehaviorBase();
 	//아이템 장착 시 호출  
-	virtual void OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
+	virtual void OnEquipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const {}
 	//아이템 해제 시 호출
-	virtual void OnUnequipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
+	virtual void OnUnequipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const {}
 	
 protected:
 	// 아이템이 장착될 때 트리거 태그를 들을 수 있도록 ASC에 태그 주파수 설정
-	void BindGameplayEvent(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, FGameplayTag EventTag) const;
+	void BindGameplayEvent(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC, FGameplayTag EventTag) const;
 	// 아이템이 해제되면 들을 필요가 없어지므로 주파수 연결 해제
-	void UnbindGameplayEvents(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
+	void UnbindGameplayEvents(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const;
 
 	// 자식 클래스에서 실제 효과 로직을 구현
-	virtual void OnEventReceived(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, const struct FGameplayEventData* Payload) const {}
+	virtual void OnEventReceived(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC, const struct FGameplayEventData* Payload) const {}
 	// 쿨타임 체크, 통과 시 최근 발동 시간 갱신
-	bool IsOnCooldown(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
-	void ConsumeCooldown(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
+	bool IsOnCooldown(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const;
+	void ConsumeCooldown(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const;
 	
 	void InitGameplayEffectToDefault(const FGameplayEffectSpecHandle& SpecHandle, TSubclassOf<UGameplayEffect> BuffGE, float DefaultVal=0.f) const;
 
@@ -54,5 +55,5 @@ protected:
 	
 private:
 	// ASC 델리게이트와 연결될 내부 콜백 함수
-	void InternalEventCallback(const struct FGameplayEventData* Payload, UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const;
+	void InternalEventCallback(const struct FGameplayEventData* Payload, ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const;
 };

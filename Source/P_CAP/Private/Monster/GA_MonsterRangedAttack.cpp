@@ -179,7 +179,7 @@ bool UGA_MonsterRangedAttack::SpawnProjectileAtTarget(const FGameplayEventData& 
 	InitData.MaxHitCount = MaxHitCount;
 	InitData.ArcTension = ArcTension;
 	InitData.DamageSpecHandle = MakeDamageSpec();
-	InitData.TargetActorClass = ACAP_PlayerCharacter::StaticClass();
+
 	if (const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0))
 	{
 		InitData.TargetLocation = PlayerPawn->GetActorLocation();

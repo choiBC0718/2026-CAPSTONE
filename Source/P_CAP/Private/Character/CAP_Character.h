@@ -5,18 +5,20 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayEffectTypes.h"
+#include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
 #include "Interface/CAP_TargetUIInterface.h"
 #include "CAP_Character.generated.h"
 
 UCLASS()
-class ACAP_Character : public ACharacter, public IAbilitySystemInterface, public ICAP_TargetUIInterface
+class ACAP_Character : public ACharacter, public IAbilitySystemInterface, public ICAP_TargetUIInterface, public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
 public:
 	ACAP_Character();
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
 	/**		Components		**/
@@ -26,8 +28,14 @@ private:
 	class UCAP_AttributeSet* CAPAttributeSet;
 	UPROPERTY()
 	class UAIPerceptionStimuliSourceComponent* PerceptionStimuliSourceComponent;
-	
+
+	// ICAP_TargetUIInterface
 	virtual void UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack) override {}
+
+	// IGenericTeamAgentInterface
+	virtual void SetGenericTeamId(const FGenericTeamId& TeamID) override;
+	virtual FGenericTeamId GetGenericTeamId() const override;
+	virtual ETeamAttitude::Type GetTeamAttitudeTowards(const AActor& Other) const override;
 
 protected:
 	UPROPERTY(VisibleAnywhere, Category="Widget")
@@ -39,6 +47,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Death")
 	bool bCanRespawn = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Team")
+	FGenericTeamId TeamId = FGenericTeamId::NoTeam;
 public:
 	bool IsDead() const;
 	bool IsAlive() const;
@@ -68,4 +78,16 @@ protected:
 	void Respawn();
 	virtual void OnRespawn() {};
 	void SetAIPerceptionStimuliSourceEnabled(bool bIsEnabled);
+
+public:
+	virtual void PlayHitFeedback();
+	
+protected:
+	UPROPERTY(EditDefaultsOnly, Category="Feedback")
+	class UMaterialInterface* HitOverlayMaterial;
+	UPROPERTY(EditDefaultsOnly, Category="Feedback")
+	float HitFlashDuration = 0.1f;
+
+	FTimerHandle HitFlashTimerHandle;
+	void StopHitFeedback();
 };
