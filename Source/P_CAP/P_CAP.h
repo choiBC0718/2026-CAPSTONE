@@ -8,3 +8,4 @@
 #define ECC_PlayerHitbox	ECC_GameTraceChannel9
 #define ECC_Pet				ECC_GameTraceChannel5
 #define ECC_TargetGround	ECC_GameTraceChannel6
+#define ECC_Projectile		ECC_GameTraceChannel1

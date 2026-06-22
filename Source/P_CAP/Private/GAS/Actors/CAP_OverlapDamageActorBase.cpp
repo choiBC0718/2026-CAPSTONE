@@ -8,6 +8,7 @@
 #include "AbilitySystemGlobals.h"
 #include "GameplayCueManager.h"
 #include "Components/SphereComponent.h"
+#include "P_CAP/P_CAP.h"
 
 ACAP_OverlapDamageActorBase::ACAP_OverlapDamageActorBase()
 {
@@ -15,7 +16,8 @@ ACAP_OverlapDamageActorBase::ACAP_OverlapDamageActorBase()
 
 	CollisionComp = CreateDefaultSubobject<USphereComponent>("CollisionComponent");
 	SetRootComponent(CollisionComp);
-	CollisionComp->SetCollisionProfileName(FName("Projectile_Straight"));
+	CollisionComp->SetCollisionProfileName(FName("Projectile_AoE"));
+	CollisionComp->SetCollisionResponseToChannel(ECC_EnemyHitbox, ECR_Overlap);
 }
 
 void ACAP_OverlapDamageActorBase::InitSkillActor(const FOverlapDamageActorInitData& InitData)
