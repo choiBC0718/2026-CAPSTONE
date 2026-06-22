@@ -1035,7 +1035,7 @@ void ARoomActor::GenerateAndSpawnInterior()
 	CachedInteriorLayout = Layout;
 
 	SpawnDecorations(CachedInteriorLayout);
-	SpawnObstaclesByTendency(CachedTendency);
+	//SpawnObstaclesByTendency(CachedTendency);
 	FRoomInteriorDebug::DrawCells(GetWorld(), GetActorTransform(), GetActorQuat(), CachedInteriorLayout, PathZOffset, bDrawInteriorCellDebug);
 }
 

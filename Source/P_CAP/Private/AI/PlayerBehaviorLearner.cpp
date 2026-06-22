@@ -23,6 +23,11 @@ void APlayerBehaviorLearner::BeginPlay()
 
 void APlayerBehaviorLearner::ProcessPlayerData(FPlayerBehaviorData PlayerDataPoint)
 {
+    if (GetWorld() && GetWorld()->GetMapName().Contains(TEXT("Assessment")))
+    {
+        return;
+    }
+
     if (PlayerDataPoint.PlayTime < MinValidPlayTimeRatio)
     {
         UE_LOG(LogTemp, Warning, TEXT("[Learner] 비정상 런 무시 (PlayTime=%.3f, 최소=%.3f)"),
