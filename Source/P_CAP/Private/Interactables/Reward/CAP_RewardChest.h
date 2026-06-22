@@ -7,6 +7,9 @@
 #include "Interactables/CAP_InteractableBase.h"
 #include "CAP_RewardChest.generated.h"
 
+class UNiagaraSystem;
+class UNiagaraComponent;
+
 UENUM(BlueprintType)
 enum class ERewardChestType : uint8
 {
@@ -81,9 +84,24 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chest|Data")
 	TSubclassOf<class ACAP_InteractableBase> GoldActorClass;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chest|VFX")
+	TMap<EChestGrade, TObjectPtr<UNiagaraSystem>> DropVFXMap;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chest|VFX")
+	FVector DropVFXOffset = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chest|VFX")
+	FVector DropVFXScale = FVector::OneVector;
+
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UChildActorComponent* VisualChildActor;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNiagaraComponent> DropVFXComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chest|VFX")
+	bool bHideDropVFXAfterOpen = true;
 	
 protected:
 	virtual FInteractionPayload GetInteractionPayload() const override;
@@ -99,6 +117,7 @@ protected:
 
 	void SpawnReward();
 	UCAP_ItemDataBase* GetRandomDropData(UDataTable* TargetDataTable);
+	void UpdateDropVFXComponent();
 	
 	void SpawnItem();
 	void SpawnWeapon();

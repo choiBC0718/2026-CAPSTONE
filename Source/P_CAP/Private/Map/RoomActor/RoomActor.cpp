@@ -14,6 +14,7 @@
 #include "Map/RoomActor/Interior/RoomInteriorTemplateActor.h"
 #include "Map/RoomActor/RoomSizeSettings.h"
 #include "Engine/World.h"
+#include "Engine/OverlapResult.h"
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
@@ -83,7 +84,17 @@ void ARoomActor::SpawnRewardChest()
 		return;
 	}
 	
-	FVector SpawnLoc = GetActorTransform().GetLocation() + FVector(0.f, 0.f, 150.f);
+	FVector SpawnLoc = FVector::ZeroVector;
+	if (!TryGetRewardChestSpawnLocation(SpawnLoc))
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("RoomActor: failed to find free reward chest spawn location in Room(%d,%d)."),
+			CachedRoomData.GridPos.X,
+			CachedRoomData.GridPos.Y);
+		return;
+	}
 	FRotator SpawnRot = FRotator::ZeroRotator;
 	FTransform SpawnTransform(SpawnRot, SpawnLoc);
 	
@@ -105,7 +116,16 @@ void ARoomActor::SpawnRewardChest()
 		SelectedType = ERewardChestType::Item;		break;
 	}
 	
-	if (ACAP_RewardChest* RewardChest = GetWorld()->SpawnActorDeferred<ACAP_RewardChest>(RewardChestClass, SpawnTransform))
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
+
+	if (ACAP_RewardChest* RewardChest = GetWorld()->SpawnActorDeferred<ACAP_RewardChest>(
+		RewardChestClass,
+		SpawnTransform,
+		this,
+		nullptr,
+		SpawnParams.SpawnCollisionHandlingOverride))
 	{
 		RewardChest->ChestType = SelectedType;
 		RewardChest->ChestGrade = SelectedGrade;
@@ -410,6 +430,214 @@ void ARoomActor::CheckRoomClear()
 		SetActorTickEnabled(false);
 		SpawnRewardChest();
 	}
+}
+
+bool ARoomActor::TryGetRewardChestSpawnLocation(FVector& OutSpawnLocation) const
+{
+	if (CachedInteriorLayout.CellSize <= 0.f || CachedInteriorLayout.Cells.IsEmpty())
+	{
+		return false;
+	}
+
+	if (ShouldTryRewardChestCenterSpawn() && TryGetRewardChestCenterSpawnLocation(OutSpawnLocation))
+	{
+		return true;
+	}
+
+	const FVector2D GridCenter(
+		(CachedInteriorLayout.GridWidth - 1) * 0.5f,
+		(CachedInteriorLayout.GridHeight - 1) * 0.5f);
+
+	const FRoomInteriorCell* BestCell = nullptr;
+	float BestDistanceSquared = TNumericLimits<float>::Max();
+
+	for (const FRoomInteriorCell& Cell : CachedInteriorLayout.Cells)
+	{
+		if (!IsRewardSpawnCellUsable(Cell))
+		{
+			continue;
+		}
+
+		const FVector2D CellPoint(Cell.Coord.X, Cell.Coord.Y);
+		const float DistanceSquared = FVector2D::DistSquared(CellPoint, GridCenter);
+		if (DistanceSquared < BestDistanceSquared)
+		{
+			BestDistanceSquared = DistanceSquared;
+			BestCell = &Cell;
+		}
+	}
+
+	if (!BestCell)
+	{
+		return false;
+	}
+
+	const FVector LocalSpawnLocation = GetInteriorCellLocalCenter(BestCell->Coord) + FVector(0.f, 0.f, RewardChestSpawnZOffset);
+	OutSpawnLocation = GetActorTransform().TransformPosition(LocalSpawnLocation);
+	return true;
+}
+
+bool ARoomActor::ShouldTryRewardChestCenterSpawn() const
+{
+	return !SelectedInteriorTemplateClass || SelectedInteriorTemplateRule.bAllowRewardChestCenterSpawn;
+}
+
+bool ARoomActor::TryGetRewardChestCenterSpawnLocation(FVector& OutSpawnLocation) const
+{
+	const FVector LocalCenter = FVector::ZeroVector;
+	if (IsLocalPointInsideInteriorTemplateExclusion(LocalCenter))
+	{
+		return false;
+	}
+
+	const FVector WorldSpawnLocation = GetActorTransform().TransformPosition(
+		LocalCenter + FVector(0.f, 0.f, RewardChestSpawnZOffset));
+	if (!IsRewardChestSpawnLocationFree(WorldSpawnLocation))
+	{
+		return false;
+	}
+
+	OutSpawnLocation = WorldSpawnLocation;
+	return true;
+}
+
+FVector ARoomActor::GetInteriorCellLocalCenter(const FIntPoint& CellCoord) const
+{
+	const float GridWorldSizeX = CachedInteriorLayout.GridWidth * CachedInteriorLayout.CellSize;
+	const float GridWorldSizeY = CachedInteriorLayout.GridHeight * CachedInteriorLayout.CellSize;
+	const FVector GridMin(-GridWorldSizeX * 0.5f, -GridWorldSizeY * 0.5f, 0.f);
+
+	return FVector(
+		GridMin.X + (CellCoord.X * CachedInteriorLayout.CellSize) + (CachedInteriorLayout.CellSize * 0.5f),
+		GridMin.Y + (CellCoord.Y * CachedInteriorLayout.CellSize) + (CachedInteriorLayout.CellSize * 0.5f),
+		0.f);
+}
+
+bool ARoomActor::IsRewardSpawnCellUsable(const FRoomInteriorCell& Cell) const
+{
+	if (Cell.Type != ERoomInteriorCellType::Empty && Cell.Type != ERoomInteriorCellType::ReservedPath)
+	{
+		return false;
+	}
+
+	if (IsRewardSpawnCellInsideBlockedCenterArea(Cell))
+	{
+		return false;
+	}
+
+	const FVector LocalCenter = GetInteriorCellLocalCenter(Cell.Coord);
+	if (IsLocalPointInsideInteriorTemplateExclusion(LocalCenter))
+	{
+		return false;
+	}
+
+	const FVector WorldSpawnLocation = GetActorTransform().TransformPosition(LocalCenter + FVector(0.f, 0.f, RewardChestSpawnZOffset));
+	return IsRewardChestSpawnLocationFree(WorldSpawnLocation);
+}
+
+bool ARoomActor::IsRewardSpawnCellInsideBlockedCenterArea(const FRoomInteriorCell& Cell) const
+{
+	if (ShouldTryRewardChestCenterSpawn())
+	{
+		return false;
+	}
+
+	const int32 ExclusionRadius = FMath::Max(0, SelectedInteriorTemplateRule.RewardChestCenterExclusionRadiusInCells);
+	if (ExclusionRadius <= 0)
+	{
+		return false;
+	}
+
+	const FVector2D GridCenter(
+		(CachedInteriorLayout.GridWidth - 1) * 0.5f,
+		(CachedInteriorLayout.GridHeight - 1) * 0.5f);
+	const int32 DistanceX = FMath::RoundToInt(FMath::Abs(static_cast<float>(Cell.Coord.X) - GridCenter.X));
+	const int32 DistanceY = FMath::RoundToInt(FMath::Abs(static_cast<float>(Cell.Coord.Y) - GridCenter.Y));
+	return FMath::Max(DistanceX, DistanceY) <= ExclusionRadius;
+}
+
+bool ARoomActor::IsRewardChestSpawnLocationFree(const FVector& WorldLocation) const
+{
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+
+	const float Radius = FMath::Max(1.f, RewardChestSpawnCollisionRadius);
+	const float HalfHeight = FMath::Max(Radius, RewardChestSpawnCollisionHalfHeight);
+	const FCollisionShape SpawnShape = FCollisionShape::MakeCapsule(Radius, HalfHeight);
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(RoomRewardChestSpawnOverlap), false, this);
+	QueryParams.bFindInitialOverlaps = true;
+	QueryParams.AddIgnoredActor(this);
+
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_PhysicsBody);
+
+	TArray<FOverlapResult> OverlapResults;
+	const bool bHasOverlap = World->OverlapMultiByObjectType(
+		OverlapResults,
+		WorldLocation,
+		FQuat::Identity,
+		ObjectQueryParams,
+		SpawnShape,
+		QueryParams);
+
+	if (!bHasOverlap)
+	{
+		return true;
+	}
+
+	for (const FOverlapResult& OverlapResult : OverlapResults)
+	{
+		const UPrimitiveComponent* OverlappedComponent = OverlapResult.GetComponent();
+		const AActor* OverlappedActor = OverlapResult.GetActor();
+		if (!OverlappedComponent || OverlappedActor == this)
+		{
+			continue;
+		}
+
+		if (OverlappedComponent->GetCollisionEnabled() != ECollisionEnabled::NoCollision)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool ARoomActor::IsLocalPointInsideInteriorTemplateExclusion(const FVector& LocalPoint) const
+{
+	const ARoomInteriorTemplateActor* TemplateActor = SpawnedInteriorTemplateActor.Get();
+	if (!TemplateActor)
+	{
+		return false;
+	}
+
+	TArray<FRoomInteriorFloorExclusionBox> ExclusionBoxes;
+	TemplateActor->GetAllFloorExclusionBoxes(ExclusionBoxes);
+	if (ExclusionBoxes.IsEmpty())
+	{
+		return false;
+	}
+
+	const FVector TemplateLocalPoint = TemplateActor->GetActorTransform().InverseTransformPosition(
+		GetActorTransform().TransformPosition(LocalPoint));
+
+	for (const FRoomInteriorFloorExclusionBox& ExclusionBox : ExclusionBoxes)
+	{
+		const FVector Delta = TemplateLocalPoint - ExclusionBox.Center;
+		if (FMath::Abs(Delta.X) <= ExclusionBox.Extent.X &&
+			FMath::Abs(Delta.Y) <= ExclusionBox.Extent.Y)
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 bool ARoomActor::ShouldLockPortalsForCombat() const

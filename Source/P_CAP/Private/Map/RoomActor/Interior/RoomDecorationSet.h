@@ -27,6 +27,12 @@ struct FRoomTemplateDecorationRule
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Template", meta=(ClampMin="0.0"))
 	float Weight = 1.f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reward")
+	bool bAllowRewardChestCenterSpawn = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reward", meta=(ClampMin="0", EditCondition="!bAllowRewardChestCenterSpawn"))
+	int32 RewardChestCenterExclusionRadiusInCells = 2;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Small Decoration", meta=(ClampMin="0"))
 	int32 MinSmallDecorCount = 3;
 

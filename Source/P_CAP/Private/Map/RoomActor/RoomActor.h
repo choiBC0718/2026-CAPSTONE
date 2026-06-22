@@ -92,6 +92,15 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category="Room|Reward")
 	TSubclassOf<class ACAP_RewardChest> RewardChestClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Reward", meta=(ClampMin="0.0"))
+	float RewardChestSpawnZOffset = 150.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Reward", meta=(ClampMin="1.0"))
+	float RewardChestSpawnCollisionRadius = 120.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Room|Reward", meta=(ClampMin="1.0"))
+	float RewardChestSpawnCollisionHalfHeight = 120.f;
 	
 protected:
 	virtual void BeginPlay() override;
@@ -340,6 +349,14 @@ private:
 	void ApplyFloorMeshScale();
 	void CheckPlayerInsideRoom();
 	void CheckRoomClear();
+	bool TryGetRewardChestSpawnLocation(FVector& OutSpawnLocation) const;
+	bool ShouldTryRewardChestCenterSpawn() const;
+	bool TryGetRewardChestCenterSpawnLocation(FVector& OutSpawnLocation) const;
+	FVector GetInteriorCellLocalCenter(const FIntPoint& CellCoord) const;
+	bool IsRewardSpawnCellUsable(const FRoomInteriorCell& Cell) const;
+	bool IsRewardSpawnCellInsideBlockedCenterArea(const FRoomInteriorCell& Cell) const;
+	bool IsRewardChestSpawnLocationFree(const FVector& WorldLocation) const;
+	bool IsLocalPointInsideInteriorTemplateExclusion(const FVector& LocalPoint) const;
 	bool ShouldLockPortalsForCombat() const;
 	void HandleCombatRoomCleared();
 	void InitializeReinforcementState();

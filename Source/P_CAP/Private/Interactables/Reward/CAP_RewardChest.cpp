@@ -6,6 +6,8 @@
 #include "Components/SphereComponent.h"
 #include "Interactables/Item/CAP_WorldItem.h"
 #include "Interactables/Weapon/CAP_WorldWeapon.h"
+#include "NiagaraComponent.h"
+#include "NiagaraSystem.h"
 
 ACAP_RewardChest::ACAP_RewardChest()
 {
@@ -17,6 +19,10 @@ ACAP_RewardChest::ACAP_RewardChest()
 	VisualChildActor = CreateDefaultSubobject<UChildActorComponent>(TEXT("VisualChildActor"));
 	VisualChildActor->SetupAttachment(InteractionSphere);
 
+	DropVFXComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("DropVFXComponent"));
+	DropVFXComponent->SetupAttachment(RootComponent);
+	DropVFXComponent->SetAutoActivate(false);
+
 	GoldSpawnCountMap.Add(EChestGrade::Normal, 1);
 	GoldSpawnCountMap.Add(EChestGrade::Rare, 3);
 	GoldSpawnCountMap.Add(EChestGrade::Epic, 5);
@@ -26,6 +32,7 @@ ACAP_RewardChest::ACAP_RewardChest()
 void ACAP_RewardChest::BeginPlay()
 {
 	Super::BeginPlay();
+	UpdateDropVFXComponent();
 }
 
 void ACAP_RewardChest::OnConstruction(const FTransform& Transform)
@@ -48,6 +55,8 @@ void ACAP_RewardChest::OnConstruction(const FTransform& Transform)
 			}
 		}
 	}
+
+	UpdateDropVFXComponent();
 }
 
 void ACAP_RewardChest::Interact(AActor* InsActor, EInteractAction ActionType)
@@ -58,6 +67,11 @@ void ACAP_RewardChest::Interact(AActor* InsActor, EInteractAction ActionType)
 	if (ACAP_ChestVisualBase* VisualBase = Cast<ACAP_ChestVisualBase>(VisualChildActor->GetChildActor()))
 	{
 		VisualBase->PlayOpenAnim();
+	}
+	if (bHideDropVFXAfterOpen && DropVFXComponent)
+	{
+		DropVFXComponent->Deactivate();
+		DropVFXComponent->SetVisibility(false, true);
 	}
 	SpawnReward();
 }
@@ -121,6 +135,30 @@ void ACAP_RewardChest::SpawnReward()
 		SpawnGold();
 		break;
 	}
+}
+
+void ACAP_RewardChest::UpdateDropVFXComponent()
+{
+	if (!DropVFXComponent)
+	{
+		return;
+	}
+
+	const TObjectPtr<UNiagaraSystem>* FoundVFX = DropVFXMap.Find(ChestGrade);
+	UNiagaraSystem* DropVFX = FoundVFX ? FoundVFX->Get() : nullptr;
+	DropVFXComponent->SetAsset(DropVFX);
+	DropVFXComponent->SetRelativeLocation(DropVFXOffset);
+	DropVFXComponent->SetRelativeScale3D(DropVFXScale);
+
+	if (!DropVFX || bIsOpened)
+	{
+		DropVFXComponent->Deactivate();
+		DropVFXComponent->SetVisibility(false, true);
+		return;
+	}
+
+	DropVFXComponent->SetVisibility(true, true);
+	DropVFXComponent->Activate(true);
 }
 
 void ACAP_RewardChest::SpawnItem()
@@ -215,6 +253,8 @@ void ACAP_RewardChest::SpawnGold()
 		FRotator SpawnRotation = FRotator::ZeroRotator;
 
 		if (GoldActorClass)
+		{
 			GetWorld()->SpawnActor<ACAP_InteractableBase>(GoldActorClass, SpawnLoc, SpawnRotation);
+		}
 	}
 }
