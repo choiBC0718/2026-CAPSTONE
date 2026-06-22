@@ -34,7 +34,7 @@ ADoorActor::ADoorActor()
 	TriggerBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	TriggerBox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	TriggerBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-	TriggerBox->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Overlap);
+	TriggerBox->SetCollisionResponseToChannel(ECC_PlayerHitbox, ECR_Overlap);
 
 	BackBlocker = CreateDefaultSubobject<UBoxComponent>(TEXT("BackBlocker"));
 	BackBlocker->SetupAttachment(Root);
@@ -45,7 +45,8 @@ ADoorActor::ADoorActor()
 	BackBlocker->SetCollisionObjectType(ECC_WorldStatic);
 	BackBlocker->SetCollisionResponseToAllChannels(ECR_Block);
 	BackBlocker->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
-	BackBlocker->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_PlayerHitbox, ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_EnemyHitbox, ECR_Block);
 	BackBlocker->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	BackBlocker->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 }
@@ -137,7 +138,8 @@ void ADoorActor::ApplyBackBlockerSettings()
 	BackBlocker->SetCollisionObjectType(ECC_WorldStatic);
 	BackBlocker->SetCollisionResponseToAllChannels(ECR_Block);
 	BackBlocker->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
-	BackBlocker->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_PlayerHitbox, ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_EnemyHitbox, ECR_Block);
 	BackBlocker->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	BackBlocker->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 }
@@ -165,7 +167,8 @@ void ADoorActor::ApplyDirectionBasedBackBlockerSettings()
 	BackBlocker->SetCollisionObjectType(ECC_WorldStatic);
 	BackBlocker->SetCollisionResponseToAllChannels(ECR_Block);
 	BackBlocker->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
-	BackBlocker->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_PlayerHitbox, ECR_Block);
+	BackBlocker->SetCollisionResponseToChannel(ECC_EnemyHitbox, ECR_Block);
 	BackBlocker->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	BackBlocker->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 }

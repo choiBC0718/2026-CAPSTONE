@@ -7,24 +7,21 @@
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
-#include "Interactables/Item/CAP_ItemInstance.h"
 #include "Interface/CAP_TargetUIInterface.h"
 
-void UItemBehavior_ApplyStackBurst::OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+void UItemBehavior_ApplyStackBurst::OnEquipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	Super::OnEquipped(ItemInst, ASC);
-	BindGameplayEvent(ItemInst,ASC,TriggerEventTag);
+	BindGameplayEvent(StateProvider,ASC,TriggerEventTag);
 }
 
-void UItemBehavior_ApplyStackBurst::OnUnequipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+void UItemBehavior_ApplyStackBurst::OnUnequipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	UnbindGameplayEvents(ItemInst,ASC);
-	Super::OnUnequipped(ItemInst, ASC);
+	UnbindGameplayEvents(StateProvider,ASC);
 }
 
-void UItemBehavior_ApplyStackBurst::OnEventReceived(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC,const struct FGameplayEventData* Payload) const
+void UItemBehavior_ApplyStackBurst::OnEventReceived(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC,const struct FGameplayEventData* Payload) const
 {
-	if (!Payload || !CheckTriggerCondition(ItemInst, ASC))
+	if (!Payload || !CheckTriggerCondition(StateProvider, ASC))
 		return;
 
 	TArray<AActor*> TargetActors = UAbilitySystemBlueprintLibrary::GetAllActorsFromTargetData(Payload->TargetData);
@@ -38,11 +35,11 @@ void UItemBehavior_ApplyStackBurst::OnEventReceived(UCAP_ItemInstance* ItemInst,
 		UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Actor);
 		if (!TargetASC || TargetASC == ASC)
 			continue;
-		ApplyBurstLogicToSingleTarget(ItemInst, ASC, TargetASC);
+		ApplyBurstLogicToSingleTarget(StateProvider, ASC, TargetASC);
 	}
 }
 
-bool UItemBehavior_ApplyStackBurst::CheckTriggerCondition(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+bool UItemBehavior_ApplyStackBurst::CheckTriggerCondition(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
 	if (FMath::RandRange(0.f,100.f)>TriggerChance)
 		return false;
@@ -50,10 +47,9 @@ bool UItemBehavior_ApplyStackBurst::CheckTriggerCondition(UCAP_ItemInstance* Ite
 	return true;
 }
 
-void UItemBehavior_ApplyStackBurst::ApplyBurstLogicToSingleTarget(UCAP_ItemInstance* ItemInst,UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC) const
+void UItemBehavior_ApplyStackBurst::ApplyBurstLogicToSingleTarget(ICAP_BehaviorStateProvider* StateProvider,UCAP_AbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC) const
 {
-	UCAP_AbilitySystemComponent* CAP_ASC = ItemInst->GetCachedASC();
-	if (!CAP_ASC || !CAP_ASC->GetGenerics())
+	if (!SourceASC || !SourceASC->GetGenerics())
 		return;
 	
 	AActor* TargetActor = TargetASC->GetAvatarActor();
@@ -62,25 +58,17 @@ void UItemBehavior_ApplyStackBurst::ApplyBurstLogicToSingleTarget(UCAP_ItemInsta
 		return;
 
 	float CurrentTime = TargetActor->GetWorld()->GetTimeSeconds();
-	TWeakObjectPtr<AActor> WeakTarget(TargetActor);
-	for (auto It = TargetCooldownMap.CreateIterator(); It; ++It)
-	{
-		if (!It.Key().IsValid() || It.Value() <= CurrentTime)
-		{
-			It.RemoveCurrent();
-		}
-	}
-	if (TargetCooldownMap.Contains(WeakTarget))
-		return; 
+	float TargetLastTime = StateProvider->GetBehaviorTargetCooldown(this, TargetActor);
+	if (TargetLastTime > CurrentTime)
+		return;
 	
-	
-	TSubclassOf<UGameplayEffect> MasterMarkGE = CAP_ASC->GetGenerics()->GetItemMarkGE();
-	TSubclassOf<UGameplayEffect> MasterInstantDamageGE = CAP_ASC->GetGenerics()->GetInstantDamageGE(DamageType);
+	TSubclassOf<UGameplayEffect> MasterMarkGE = SourceASC->GetGenerics()->GetItemMarkGE();
+	TSubclassOf<UGameplayEffect> MasterInstantDamageGE = SourceASC->GetGenerics()->GetInstantDamageGE(DamageType);
 	if (!MasterMarkGE || !MasterInstantDamageGE)
 		return;
 
 	FActiveGameplayEffectHandle ExistingHandle;
-	int32 CurrentItemStack = GetExistingMarkStackCount(ItemInst,TargetASC,MasterMarkGE,ExistingHandle);
+	int32 CurrentItemStack = GetExistingMarkStackCount(StateProvider,TargetASC,MasterMarkGE,ExistingHandle);
 	
 	if (CurrentItemStack +1 >= BurstStackCount)
 	{	//Burst 로직
@@ -88,7 +76,7 @@ void UItemBehavior_ApplyStackBurst::ApplyBurstLogicToSingleTarget(UCAP_ItemInsta
 			TargetASC->RemoveActiveGameplayEffect(ExistingHandle);
 
 		FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
-		Context.AddSourceObject(ItemInst);
+		Context.AddSourceObject(StateProvider->GetProviderObject());
 		FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(MasterInstantDamageGE, 1.f, Context);
 
 		if (SpecHandle.IsValid())
@@ -97,7 +85,7 @@ void UItemBehavior_ApplyStackBurst::ApplyBurstLogicToSingleTarget(UCAP_ItemInsta
 			SpecHandle.Data->SetSetByCallerMagnitude(DamageMultiplierTag, Magnitude);
 			SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 		}
-		TargetCooldownMap.Add(WeakTarget, CurrentTime+Cooldown);
+		StateProvider->SetBehaviorTargetCooldown(this, TargetActor, CurrentTime+Cooldown);
 		TargetUI->UpdateStackUI(BehaviorTag, 0, BurstStackCount);
 	}
 	else
@@ -108,7 +96,7 @@ void UItemBehavior_ApplyStackBurst::ApplyBurstLogicToSingleTarget(UCAP_ItemInsta
 		else
 		{
 			FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
-			Context.AddSourceObject(ItemInst);
+			Context.AddSourceObject(StateProvider->GetProviderObject());
 			FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(MasterMarkGE, 1.f, Context);
 
 			if (SpecHandle.IsValid())
@@ -124,7 +112,7 @@ void UItemBehavior_ApplyStackBurst::ApplyBurstLogicToSingleTarget(UCAP_ItemInsta
 	}
 }
 
-int32 UItemBehavior_ApplyStackBurst::GetExistingMarkStackCount(UCAP_ItemInstance* ItemInst,
+int32 UItemBehavior_ApplyStackBurst::GetExistingMarkStackCount(ICAP_BehaviorStateProvider* StateProvider,
 	UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> MarkGE,FActiveGameplayEffectHandle& OutHandle) const
 {
 	int32 FoundStack = 0;
@@ -136,7 +124,7 @@ int32 UItemBehavior_ApplyStackBurst::GetExistingMarkStackCount(UCAP_ItemInstance
 	for (const FActiveGameplayEffectHandle& Handle : ActiveEffects)
 	{
 		const FActiveGameplayEffect* ActiveGE = TargetASC->GetActiveGameplayEffect(Handle);
-		if (ActiveGE && ActiveGE->Spec.GetEffectContext().GetSourceObject() == ItemInst)
+		if (ActiveGE && ActiveGE->Spec.GetEffectContext().GetSourceObject() == StateProvider->GetProviderObject())
 		{
 			if (BehaviorTag.IsValid() && !ActiveGE->Spec.DynamicGrantedTags.HasTagExact(BehaviorTag))
 				continue;

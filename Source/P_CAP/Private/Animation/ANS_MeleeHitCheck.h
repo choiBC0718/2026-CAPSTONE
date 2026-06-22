@@ -53,4 +53,5 @@ private:
 
 	// 캐릭터에 설정된 무기 메쉬 Get
 	class USkeletalMeshComponent* GetWeaponMesh(USkeletalMeshComponent* CharacterMesh) const;
+	TMap<USkeletalMeshComponent*, ECollisionChannel> TargetChannelMap;
 };

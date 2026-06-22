@@ -12,7 +12,7 @@ UENUM(BlueprintType)
 enum class EBuffSourceType :uint8
 {
 	ASC_Effect,
-	Item_Effect,
+	Provider_Effect,
 };
 
 USTRUCT(BlueprintType)
@@ -21,19 +21,20 @@ struct FBuffSlotID
 	GENERATED_BODY()
 
 	UPROPERTY()
-	EBuffSourceType SourceType = EBuffSourceType::Item_Effect;
+	EBuffSourceType SourceType = EBuffSourceType::Provider_Effect;
 	UPROPERTY()
 	FActiveGameplayEffectHandle ActiveGEHandle;
 	UPROPERTY()
-	TObjectPtr<class UCAP_ItemInstance> ItemInst = nullptr;
+	FGameplayTag UniqueID;
 	UPROPERTY()
-	FGameplayTag ItemDynamicTag;
+	FGameplayTag DynamicTag;
 	
 	bool operator==(const FBuffSlotID& Other) const
 	{
-		if (SourceType != Other.SourceType)	return false;
-		if (SourceType == EBuffSourceType::ASC_Effect)	return ActiveGEHandle==Other.ActiveGEHandle;
-		return (ItemInst == Other.ItemInst) && (ItemDynamicTag == Other.ItemDynamicTag);
+		if (SourceType != Other.SourceType) return false;
+		if (SourceType == EBuffSourceType::ASC_Effect) return ActiveGEHandle == Other.ActiveGEHandle;
+		
+		return (UniqueID == Other.UniqueID) && (DynamicTag == Other.DynamicTag);
 	}
 };
 
@@ -56,7 +57,4 @@ struct FBuffUIData
 	float MaxDuration=0.f;
 	UPROPERTY()
 	float RemainingDuration =0.f;
-	
-	UPROPERTY()
-	bool bIsDebuff=false;
 };

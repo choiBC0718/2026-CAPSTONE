@@ -167,7 +167,7 @@ TArray<class USceneComponent*> ACAP_AoESpawner::FindEnemyRootComponent()
 	TArray<USceneComponent*> ValidTargets;
 	TArray<FOverlapResult> Overlaps;
 	FCollisionObjectQueryParams ObjQueryParams;
-	ObjQueryParams.AddObjectTypesToQuery(ECC_Hitbox);
+	ObjQueryParams.AddObjectTypesToQuery(ECC_EnemyHitbox);
 
 	FCollisionShape SphereShape = FCollisionShape::MakeSphere(SetupData.SpawnAreaRadius);
 	bool bHit = GetWorld()->OverlapMultiByObjectType(Overlaps, GetActorLocation(), FQuat::Identity, ObjQueryParams, SphereShape);

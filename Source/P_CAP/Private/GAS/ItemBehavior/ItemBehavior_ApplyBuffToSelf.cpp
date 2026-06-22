@@ -10,21 +10,18 @@
 #include "Component/CAP_InventoryComponent.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
-#include "Interactables/Item/CAP_ItemInstance.h"
 
-void UItemBehavior_ApplyBuffToSelf::OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+void UItemBehavior_ApplyBuffToSelf::OnEquipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	Super::OnEquipped(ItemInst,ASC);
-	BindGameplayEvent(ItemInst,ASC,TriggerEventTag);
+	BindGameplayEvent(StateProvider,ASC,TriggerEventTag);
 }
 
-void UItemBehavior_ApplyBuffToSelf::OnUnequipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+void UItemBehavior_ApplyBuffToSelf::OnUnequipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	UnbindGameplayEvents(ItemInst,ASC);
-	Super::OnUnequipped(ItemInst,ASC);
+	UnbindGameplayEvents(StateProvider,ASC);
 }
 
-void UItemBehavior_ApplyBuffToSelf::OnEventReceived(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, const struct FGameplayEventData* Payload) const
+void UItemBehavior_ApplyBuffToSelf::OnEventReceived(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC, const struct FGameplayEventData* Payload) const
 {
 	if (!TargetStatTag.IsValid())
 	{
@@ -32,12 +29,12 @@ void UItemBehavior_ApplyBuffToSelf::OnEventReceived(UCAP_ItemInstance* ItemInst,
 		return;
 	}
 	
-	if (!CheckTriggerCondition(ItemInst,ASC))
+	if (!CheckTriggerCondition(StateProvider,ASC))
 		return;
 
 	// 기존 스택 확인 & 파괴용 핸들
 	FActiveGameplayEffectHandle ExistingHandle;
-	int32 CurrentItemStack = GetExistingStackCount(ItemInst,ASC,ExistingHandle);
+	int32 CurrentItemStack = GetExistingStackCount(StateProvider,ASC,ExistingHandle);
 	// 최대치 넘지 않게 설정
 	int32 TargetStackCount = FMath::Min(CurrentItemStack+1, MaxStackCount);
 	
@@ -47,43 +44,43 @@ void UItemBehavior_ApplyBuffToSelf::OnEventReceived(UCAP_ItemInstance* ItemInst,
 		ASC->RemoveActiveGameplayEffect(ExistingHandle);
 	}
 	
-	ApplyBuffWithStack(ItemInst,ASC,TargetStackCount);
+	ApplyBuffWithStack(StateProvider,ASC,TargetStackCount);
 
 	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(ASC->GetAvatarActor()))
 	{
 		if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
 			if (Cooldown > 0.f)
-				InvComp->OnItemEffectTriggered.Broadcast(ItemInst,BehaviorTag,Cooldown,0.f,0);
+				InvComp->OnItemEffectTriggered.Broadcast(StateProvider->GetProviderObject(),BehaviorTag,Cooldown,Duration,0);
 	}
 }
 
-bool UItemBehavior_ApplyBuffToSelf::CheckTriggerCondition(UCAP_ItemInstance* ItemInst,UAbilitySystemComponent* ASC) const
+bool UItemBehavior_ApplyBuffToSelf::CheckTriggerCondition(ICAP_BehaviorStateProvider* StateProvider,UCAP_AbilitySystemComponent* ASC) const
 {
-	if (IsOnCooldown(ItemInst,ASC))
+	if (IsOnCooldown(StateProvider,ASC))
 		return false;
 	if (FMath::RandRange(0.f,100.f)>TriggerChance)
 		return false;
+
+	StateProvider->AddBehaviorCount(this,1);
+	int32 CurrentCount = StateProvider->GetBehaviorCount(this);
 	
-	int32& CurrentCount = ItemInst->BehaviorCounters.FindOrAdd(this);
-	CurrentCount++;
 	if (CurrentCount < RequiredTriggerCount)
 		return false;
 
-	ConsumeCooldown(ItemInst, ASC);
-	CurrentCount=0;
+	ConsumeCooldown(StateProvider, ASC);
+	StateProvider->ResetBehaviorCount(this);
 	return true;
 }
 
-void UItemBehavior_ApplyBuffToSelf::ApplyBuffWithStack(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC, int32 TargetStackCount) const
+void UItemBehavior_ApplyBuffToSelf::ApplyBuffWithStack(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC, int32 TargetStackCount) const
 {
-	UCAP_AbilitySystemComponent* CAP_ASC = ItemInst->GetCachedASC();
-	if (!CAP_ASC || !CAP_ASC->GetGenerics())	return;
+	if (!ASC || !ASC->GetGenerics())	return;
 	
-	TSubclassOf<UGameplayEffect> DurationBuffGE = CAP_ASC->GetGenerics()->GetStatGE(false,bIsMultiplier);
+	TSubclassOf<UGameplayEffect> DurationBuffGE = ASC->GetGenerics()->GetStatGE(false,bIsMultiplier);
 	if (!DurationBuffGE)	return;
 	
 	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
-	Context.AddSourceObject(ItemInst);
+	Context.AddSourceObject(StateProvider->GetProviderObject());
 
 	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DurationBuffGE, 1.f, Context);
 	if (!SpecHandle.IsValid())
@@ -109,6 +106,11 @@ void UItemBehavior_ApplyBuffToSelf::ApplyBuffWithStack(UCAP_ItemInstance* ItemIn
 	SpecHandle.Data->SetSetByCallerMagnitude(TargetStatTag, FinalMagnitude);
 	SpecHandle.Data->DynamicGrantedTags.AddTag(FGameplayTag::RequestGameplayTag("UI.Buff"));
 
+	if (BehaviorTag.IsValid())
+	{
+		SpecHandle.Data->DynamicGrantedTags.AddTag(BehaviorTag);
+	}
+	
 	if (Duration>0.f)
 	{
 		SpecHandle.Data->SetSetByCallerMagnitude(DurationTag, Duration);
@@ -117,11 +119,10 @@ void UItemBehavior_ApplyBuffToSelf::ApplyBuffWithStack(UCAP_ItemInstance* ItemIn
 	ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 }
 
-int32 UItemBehavior_ApplyBuffToSelf::GetExistingStackCount(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC,FActiveGameplayEffectHandle& OutHandle) const
+int32 UItemBehavior_ApplyBuffToSelf::GetExistingStackCount(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC,FActiveGameplayEffectHandle& OutHandle) const
 {
-	UCAP_AbilitySystemComponent* CAP_ASC = ItemInst->GetCachedASC();
-	if (!CAP_ASC || !CAP_ASC->GetGenerics())	return 0;
-	TSubclassOf<UGameplayEffect> DurationBuffGE = CAP_ASC->GetGenerics()->GetStatGE(false,bIsMultiplier);
+	if (!ASC || !ASC->GetGenerics())	return 0;
+	TSubclassOf<UGameplayEffect> DurationBuffGE = ASC->GetGenerics()->GetStatGE(false,bIsMultiplier);
 	if (!DurationBuffGE)	return 0;
 	
 	int32 FoundStack =0;
@@ -134,11 +135,14 @@ int32 UItemBehavior_ApplyBuffToSelf::GetExistingStackCount(UCAP_ItemInstance* It
 	{
 		const FActiveGameplayEffect* ActiveGE = ASC->GetActiveGameplayEffect(Handle);
 		// 출처 (SourceObject가 이 효과를 부른 아이템 ItemInst와 동일한지 체크 (다른 인스턴스라면 패스)
-		if (ActiveGE && ActiveGE->Spec.GetEffectContext().GetSourceObject() == ItemInst)
+		if (ActiveGE && ActiveGE->Spec.GetEffectContext().GetSourceObject() == StateProvider->GetProviderObject())
 		{
-			OutHandle = Handle;
-			FoundStack = static_cast<int32>(ActiveGE->Spec.GetSetByCallerMagnitude(StackTag,false,0.f));
-			break;
+			if (ActiveGE->Spec.DynamicGrantedTags.HasTagExact(BehaviorTag))
+			{
+				OutHandle = Handle;
+				FoundStack = static_cast<int32>(ActiveGE->Spec.GetSetByCallerMagnitude(StackTag, false, 0.f));
+				break;
+			}
 		}
 	}
 	return FoundStack;

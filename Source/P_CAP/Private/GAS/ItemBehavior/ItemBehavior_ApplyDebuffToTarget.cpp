@@ -8,26 +8,23 @@
 #include "Component/CAP_InventoryComponent.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
 #include "GAS/CAP_AbilitySystemComponent.h"
-#include "Interactables/Item/CAP_ItemInstance.h"
 
-void UItemBehavior_ApplyDebuffToTarget::OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+void UItemBehavior_ApplyDebuffToTarget::OnEquipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	Super::OnEquipped(ItemInst, ASC);
-	BindGameplayEvent(ItemInst,ASC,TriggerEventTag);
+	BindGameplayEvent(StateProvider,ASC,TriggerEventTag);
 }
 
-void UItemBehavior_ApplyDebuffToTarget::OnUnequipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+void UItemBehavior_ApplyDebuffToTarget::OnUnequipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	UnbindGameplayEvents(ItemInst,ASC);
-	Super::OnUnequipped(ItemInst, ASC);
+	UnbindGameplayEvents(StateProvider,ASC);
 }
 
-void UItemBehavior_ApplyDebuffToTarget::OnEventReceived(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC,const struct FGameplayEventData* Payload) const
+void UItemBehavior_ApplyDebuffToTarget::OnEventReceived(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC,const struct FGameplayEventData* Payload) const
 {
 	if (!TargetStatTag.IsValid() || !Payload)
 		return;
 
-	if (!CheckTriggerCondition(ItemInst,ASC))
+	if (!CheckTriggerCondition(StateProvider,ASC))
 		return;
 
 	TArray<AActor*> TargetActors = UAbilitySystemBlueprintLibrary::GetAllActorsFromTargetData(Payload->TargetData);
@@ -39,39 +36,39 @@ void UItemBehavior_ApplyDebuffToTarget::OnEventReceived(UCAP_ItemInstance* ItemI
 		UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Actor);
 		if (!TargetASC || TargetASC == ASC)
 			continue;
-		ApplyDebuffToSingleTarget(ItemInst,ASC,TargetASC);
+		ApplyDebuffToSingleTarget(StateProvider,ASC,TargetASC);
 	}
 	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(ASC->GetAvatarActor()))
 	{
 		if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
-			InvComp->OnItemEffectTriggered.Broadcast(ItemInst,BehaviorTag,Cooldown,0.f,0);
+			InvComp->OnItemEffectTriggered.Broadcast(StateProvider->GetProviderObject(),BehaviorTag,Cooldown,0.f,0);
 	}
 }
 
-bool UItemBehavior_ApplyDebuffToTarget::CheckTriggerCondition(UCAP_ItemInstance* ItemInst,UAbilitySystemComponent* ASC) const
+bool UItemBehavior_ApplyDebuffToTarget::CheckTriggerCondition(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	if (IsOnCooldown(ItemInst,ASC))
+	if (IsOnCooldown(StateProvider,ASC))
 		return false;
 	if (FMath::RandRange(0.f,100.f)>TriggerChance)
 		return false;
+
+	StateProvider->AddBehaviorCount(this,1);
+	int32 CurrentCount = StateProvider->GetBehaviorCount(this);
 	
-	int32& CurrentCount = ItemInst->BehaviorCounters.FindOrAdd(this);
-	CurrentCount++;
 	if (CurrentCount < RequiredTriggerCount)
 		return false;
 
-	ConsumeCooldown(ItemInst,ASC);
-	CurrentCount=0;
+	ConsumeCooldown(StateProvider,ASC);
+	StateProvider->ResetBehaviorCount(this);
 	return true;
 }
 
-void UItemBehavior_ApplyDebuffToTarget::ApplyDebuffToSingleTarget(UCAP_ItemInstance* ItemInst,UAbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC) const
+void UItemBehavior_ApplyDebuffToTarget::ApplyDebuffToSingleTarget(ICAP_BehaviorStateProvider* StateProvider,UCAP_AbilitySystemComponent* SourceASC, UAbilitySystemComponent* TargetASC) const
 {
-	UCAP_AbilitySystemComponent* CAP_ASC = ItemInst->GetCachedASC();
-	if (!CAP_ASC || !CAP_ASC->GetGenerics())
+	if (!SourceASC || !SourceASC->GetGenerics())
 		return;
 	
-	TSubclassOf<UGameplayEffect> DurationDebuffGE = CAP_ASC->GetGenerics()->GetStatGE(false,false);
+	TSubclassOf<UGameplayEffect> DurationDebuffGE = SourceASC->GetGenerics()->GetStatGE(false,false);
 	if (!DurationDebuffGE)
 		return;
 	if (!ScaleAttribute.IsValid())
@@ -81,14 +78,14 @@ void UItemBehavior_ApplyDebuffToTarget::ApplyDebuffToSingleTarget(UCAP_ItemInsta
 	}
 
 	// 타겟에게 적용되던 GE가 있으면 삭제하고 새로운 GE 부여
-	FActiveGameplayEffectHandle ExistingHandle = GetExistingDebuffHandle(ItemInst,TargetASC,DurationDebuffGE);
+	FActiveGameplayEffectHandle ExistingHandle = GetExistingDebuffHandle(StateProvider,TargetASC,DurationDebuffGE);
 	if (ExistingHandle.IsValid())
 	{
 		TargetASC->RemoveActiveGameplayEffect(ExistingHandle);
 	}
 	
 	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
-	Context.AddSourceObject(ItemInst);
+	Context.AddSourceObject(StateProvider->GetProviderObject());
 	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(DurationDebuffGE, 1.f, Context);
 	if (!SpecHandle.IsValid())
 		return;
@@ -107,7 +104,7 @@ void UItemBehavior_ApplyDebuffToTarget::ApplyDebuffToSingleTarget(UCAP_ItemInsta
 	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 }
 
-FActiveGameplayEffectHandle UItemBehavior_ApplyDebuffToTarget::GetExistingDebuffHandle(UCAP_ItemInstance* ItemInst,
+FActiveGameplayEffectHandle UItemBehavior_ApplyDebuffToTarget::GetExistingDebuffHandle(ICAP_BehaviorStateProvider* StateProvider,
 	UAbilitySystemComponent* TargetASC, TSubclassOf<UGameplayEffect> MasterGE) const
 {
 	FActiveGameplayEffectHandle FoundHandle;
@@ -118,7 +115,7 @@ FActiveGameplayEffectHandle UItemBehavior_ApplyDebuffToTarget::GetExistingDebuff
 	for (const FActiveGameplayEffectHandle& Handle : ActiveEffects)
 	{
 		const FActiveGameplayEffect* ActiveGE = TargetASC->GetActiveGameplayEffect(Handle);
-		if (ActiveGE && ActiveGE->Spec.GetEffectContext().GetSourceObject() == ItemInst)
+		if (ActiveGE && ActiveGE->Spec.GetEffectContext().GetSourceObject() == StateProvider->GetProviderObject())
 		{
 			FoundHandle = Handle;
 			break;

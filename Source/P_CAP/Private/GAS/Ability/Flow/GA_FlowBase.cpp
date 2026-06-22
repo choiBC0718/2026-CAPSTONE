@@ -31,6 +31,8 @@ UGA_FlowBase::UGA_FlowBase()
 	
 	TriggerCastBasicTag = UCAP_AbilitySystemStatics::GetItemTriggerCastBasic();
 	TriggerCastAbilityTag = UCAP_AbilitySystemStatics::GetItemTriggerCastAbility();
+
+	BlockAbilitiesWithTag.AddTag(UCAP_AbilitySystemStatics::GetBasicAttackTag());
 }
 
 void UGA_FlowBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
@@ -100,7 +102,7 @@ void UGA_FlowBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGa
 			
 			bool bIsOverlapping = UKismetSystemLibrary::SphereTraceSingle(
 				Player, EndLoc, EndLoc, Capsule->GetScaledCapsuleRadius() + 10.f, 
-				UEngineTypes::ConvertToTraceType(ECC_Hitbox), false, ActorsToIgnore, 
+				UEngineTypes::ConvertToTraceType(ECC_EnemyHitbox), false, ActorsToIgnore, 
 				EDrawDebugTrace::None, HitResult, true);
 			
 			if (bIsOverlapping)
@@ -112,7 +114,7 @@ void UGA_FlowBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGa
 				FVector SnapLocation = EndLoc + (PushDir * (Capsule->GetScaledCapsuleRadius() * 2.0f));
 				Player->SetActorLocation(SnapLocation, false, nullptr, ETeleportType::TeleportPhysics);
 			}
-			Capsule->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Block);
+			Capsule->SetCollisionResponseToChannel(ECC_EnemyHitbox, ECR_Block);
 		}
 		bIsCollisionIgnored = false;
 	}
@@ -179,7 +181,7 @@ void UGA_FlowBase::OnRMSTagReceived(FGameplayEventData Payload)
 	{
 		if (RMSNotify->bIgnoreHitboxCollision)
 		{
-			Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Ignore);
+			Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_EnemyHitbox, ECR_Ignore);
 			bIsCollisionIgnored = true;
 		}
 		FVector ForwardDir = Player->GetActorForwardVector();

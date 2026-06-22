@@ -32,7 +32,7 @@ void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const F
 		return;
 	}
 	if (ACAP_PlayerCharacter* Player =GetPlayerCharacterFromActorInfo())
-		Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Ignore);
+		Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_EnemyHitbox, ECR_Ignore);
 	
 
 	UAbilityTask_RotateToCursor* RotToCursor = UAbilityTask_RotateToCursor::SmoothRotateToMouse(this, 2000.f);
@@ -80,7 +80,7 @@ void UGA_Dodge::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGamep
 	const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
 	if (ACAP_PlayerCharacter* Player =GetPlayerCharacterFromActorInfo())
-		Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Block);
+		Player->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_EnemyHitbox, ECR_Block);
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 

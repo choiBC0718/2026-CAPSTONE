@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CAP_WeaponDataAsset.h"
 #include "GameplayEffect.h"
 #include "Engine/DataAsset.h"
+#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "CAP_AbilitySystemGenerics.generated.h"
 
 /**
@@ -27,6 +27,7 @@ public:
 	FORCEINLINE const UDataTable* GetWeaponStatDataTable() const {return WeaponStatDataTable;}
 
 	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemMarkGE() const {return MasterMarkGE;}
+	FORCEINLINE TSubclassOf<class UGameplayEffect> GetItemDamageGE() const {return ItemDamageGE;}
 	FORCEINLINE TSubclassOf<class UGameplayEffect> GetCooldownEffect() const {return MasterCooldownGE;}
 
 	TSubclassOf<UGameplayEffect> GetInstantDamageGE(ESkillDamageType Type) const;
@@ -87,4 +88,6 @@ private:
 	// 아이템 효과를 부여할때 어떤 아이템이 어떤 효과를 일으켰는지 구분하기 위한 GE
 	UPROPERTY(EditDefaultsOnly, Category="Master GE|Item Master GE")
 	TSubclassOf<class UGameplayEffect> MasterMarkGE;
+	UPROPERTY(EditDefaultsOnly, Category="Master GE|Item Master GE")
+	TSubclassOf<class UGameplayEffect> ItemDamageGE;
 };

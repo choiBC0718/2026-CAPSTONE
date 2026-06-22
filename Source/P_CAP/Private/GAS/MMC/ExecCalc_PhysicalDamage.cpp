@@ -5,6 +5,7 @@
 
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
+#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 
 UExecCalc_PhysicalDamage::UExecCalc_PhysicalDamage()
 {
@@ -55,7 +56,7 @@ void UExecCalc_PhysicalDamage::Execute_Implementation(const FGameplayEffectCusto
 	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(CriticalDamageCapture, EvalParams, CriticalDamage);
 	
 	PhysicalDamage = FMath::Max<float>(0.f, PhysicalDamage);
-	CriticalDamage = FMath::Max<float>(1.0f, CriticalDamage);
+	CriticalDamage = FMath::Max<float>(0.f, CriticalDamage);
 
 	// 설정한 데미지 기본 값 가져오기 (덧셈 연산)
 	float BaseDamage = Spec.GetSetByCallerMagnitude(DamageBaseDataTag, false, 0.f);
@@ -73,14 +74,20 @@ void UExecCalc_PhysicalDamage::Execute_Implementation(const FGameplayEffectCusto
 	float FinalDamage = TotalAttackPow * DiffAmp;
 	
 	// 크리티컬 계산
+	bool bCriticalHit = false;
 	if (CriticalChance > 0.0f)
 	{
 		if (FMath::RandRange(0.0f, 100.0f) <= CriticalChance)
 		{
 			FinalDamage *= CriticalDamage;
+			bCriticalHit = true;
 		}
 	}
-	UE_LOG(LogTemp,Warning,TEXT(" 최종 데미지 : %f"), FinalDamage);
+	if (FCAP_GameplayEffectContext* CContext = static_cast<FCAP_GameplayEffectContext*>(Spec.GetContext().Get()))
+		CContext->bIsCritical = bCriticalHit;
+	
+	FinalDamage = FMath::RoundToInt(FinalDamage);
+	//UE_LOG(LogTemp,Warning,TEXT(" 최종 데미지 : %f"), FinalDamage);
 
 	// 최종 데미지를 Damage 어트리뷰트에
 	OutExecutionOutput.AddOutputModifier(FGameplayModifierEvaluatedData(UCAP_AttributeSet::GetDamageAttribute(), EGameplayModOp::Additive, FinalDamage));

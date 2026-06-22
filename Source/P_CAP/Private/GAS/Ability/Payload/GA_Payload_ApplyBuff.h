@@ -34,6 +34,7 @@ class UGA_Payload_ApplyBuff : public UGA_PayloadBase, public ICAP_BuffVisualInte
 
 public:
 	virtual FBuffDisplayData GetBuffDisplayData(const FGameplayTag& EffectTag) const override;
+	virtual FGameplayTag GetUniqueVisualID() const override {return FGameplayTag();}
 	
 protected:
 	virtual void ExecutePayloadLogic(const FGameplayEventData& EventData) override;

@@ -7,7 +7,6 @@
 #include "Blueprint/UserWidget.h"
 #include "CAP_ItemSynergyPanelWidget.generated.h"
 
-struct FSynergyDataTable;
 /**
  * 
  */
@@ -17,7 +16,7 @@ class UCAP_ItemSynergyPanelWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	void RefreshSynergyList(const TMap<FGameplayTag, int32>& CurrentCounts, const TMap<FGameplayTag, FSynergyDataTable*>& SynergyCache);
+	void RefreshSynergyList(const TMap<FGameplayTag, int32>& CurrentCounts);
 	
 private:
 	UPROPERTY(meta=(BindWidget))

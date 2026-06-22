@@ -28,8 +28,8 @@ public:
 	UPROPERTY(EditDefaultsOnly)
 	float DamageMultiplier = 0.f;
 
-	virtual void OnEquipped(class UCAP_ItemInstance* ItemInst, class UAbilitySystemComponent* ASC) const override;
-	virtual void OnUnequipped(class UCAP_ItemInstance* ItemInst, class UAbilitySystemComponent* ASC) const override;
+	virtual void OnEquipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const override;
+	virtual void OnUnequipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const override;
 
 protected:
 	// 스폰된 펫의 메모리 포인터 관리 (장착 해제 시 파괴하기 위함)

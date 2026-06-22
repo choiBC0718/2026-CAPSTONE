@@ -9,6 +9,7 @@
 #include "Component/CAP_InventoryComponent.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "Interactables/Item/CAP_ItemInstance.h"
+#include "Interactables/Item/CAP_SynergyInstance.h"
 #include "Widget/SlotWidgets/CAP_ItemEffectSlot.h"
 
 void UCAP_BuffListPanelWidget::NativeConstruct()
@@ -121,7 +122,6 @@ void UCAP_BuffListPanelWidget::OnGEAdded(UAbilitySystemComponent* ASC, const FGa
 	UIData.RemainingDuration = Spec.GetDuration();
 	UIData.MaxCooldown = 0.f;
 	UIData.RemainingCooldown = 0.f;
-	UIData.bIsDebuff = GrantedTags.HasTag(DebuffTag);
 	
 	AddOrUpdateBuffSlot(SlotID, UIData);
 }
@@ -134,28 +134,27 @@ void UCAP_BuffListPanelWidget::OnGERemoved(const FActiveGameplayEffect& EffectRe
 	RemoveBuffSlot(SlotID);
 }
 
-void UCAP_BuffListPanelWidget::OnEffectTriggered(class UCAP_ItemInstance* ItemInst, FGameplayTag DynamicTag,
-                                                 float Cooldown, float Duration, int32 Stacks)
+void UCAP_BuffListPanelWidget::OnEffectTriggered(UObject* SourceObj, FGameplayTag DynamicTag, float Cooldown, float Duration, int32 Stacks)
 {
-	if (!ItemInst)
-		return;
+	if (!SourceObj)	return;
+	ICAP_BuffVisualInterface* VisualInterface = Cast<ICAP_BuffVisualInterface>(SourceObj);
+	if (!VisualInterface)	return;
 	
 	FBuffSlotID SlotID;
-	SlotID.SourceType = EBuffSourceType::Item_Effect;
-	SlotID.ItemInst = ItemInst;
-	SlotID.ItemDynamicTag = DynamicTag;
-
 	FBuffUIData UIData;
-	if (UCAP_ItemDataBase* ItemDA = ItemInst->GetItemDA())
-	{
-		UIData.Icon = ItemDA->ItemIcon;
-	}
+	
+	SlotID.SourceType = EBuffSourceType::Provider_Effect;
+	SlotID.UniqueID = VisualInterface->GetUniqueVisualID();
+	SlotID.DynamicTag = DynamicTag;
+	
+	FBuffDisplayData InterfaceData = VisualInterface->GetBuffDisplayData(DynamicTag);
+	UIData.Icon = InterfaceData.Icon;
+	
 	UIData.Stacks = Stacks;
 	UIData.MaxDuration = Duration;
 	UIData.RemainingDuration = Duration;
 	UIData.MaxCooldown = Cooldown;
 	UIData.RemainingCooldown = Cooldown;
-	UIData.bIsDebuff = false; // 아이템 특수효과는 보통 버프
 	
 	AddOrUpdateBuffSlot(SlotID, UIData);
 }
@@ -172,7 +171,7 @@ void UCAP_BuffListPanelWidget::HandleInventoryChanged(class UCAP_ItemInstance* C
 		if (IsValid(TargetSlot))
 		{
 			FBuffSlotID ID = TargetSlot->GetSlotID();
-			if (ID.SourceType == EBuffSourceType::Item_Effect && ID.ItemInst == ChangedItem)
+			if (ID.SourceType == EBuffSourceType::Provider_Effect /*&& ID.SourceObject == ChangedItem*/)
 			{
 				TargetSlot->RemoveFromParent();
 				ActiveSlots.RemoveAt(i);

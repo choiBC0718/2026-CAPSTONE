@@ -27,7 +27,7 @@ AStageExitActor::AStageExitActor()
 	TriggerBox->SetGenerateOverlapEvents(true);
 	TriggerBox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	TriggerBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-	TriggerBox->SetCollisionResponseToChannel(ECC_Hitbox, ECR_Overlap);
+	TriggerBox->SetCollisionResponseToChannel(ECC_PlayerHitbox, ECR_Overlap);
 
 	PortalMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PortalMesh"));
 	PortalMesh->SetupAttachment(Root);

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GAS/Ability/CAP_GameplayAbility.h"
-#include "Data/CAP_WeaponDataAsset.h"
+#include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "GA_MonsterBasicAttack.generated.h"
 
 USTRUCT(BlueprintType)

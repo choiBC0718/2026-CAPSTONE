@@ -15,6 +15,7 @@
 #include "Component/CAP_InventoryComponent.h"
 #include "Component/CAP_WeaponComponent.h"
 #include "AI/BaseMonster.h"         // 몬스터 타격 판별을 위해 추가
+#include "Components/CapsuleComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Framework/GameMode/CAP_StageGameMode.h"
 #include "Framework/Subsystem/CAP_ProgressionSubsystem.h"
@@ -24,6 +25,8 @@
 
 ACAP_PlayerCharacter::ACAP_PlayerCharacter()
 {
+	GetCapsuleComponent()->SetCollisionProfileName(FName("PlayerHitbox"));
+	
     SpringArm = CreateDefaultSubobject<USpringArmComponent>("Spring Arm Comp");
     SpringArm->SetupAttachment(GetRootComponent());
     SpringArm->bUsePawnControlRotation = false;
@@ -46,6 +49,8 @@ ACAP_PlayerCharacter::ACAP_PlayerCharacter()
     GetCharacterMovement()->bOrientRotationToMovement = true;
 
     PlayerTracker = CreateDefaultSubobject<UPlayerTrackerComponent>(TEXT("Player Tracker"));
+
+	TeamId = FGenericTeamId(0);
 }
 
 void ACAP_PlayerCharacter::PawnClientRestart()

@@ -19,12 +19,6 @@ enum class EStatusEffectType : uint8
 	Stun		UMETA(DisplayName = "Stun"),
 };
 
-UENUM(BlueprintType)
-enum class ESkillDamageType : uint8
-{
-	Physical,
-	Magical,
-};
 
 /** 무기 데이터 에셋에서 무기마다 설정할 Ability 구조체 */
 USTRUCT(BlueprintType)

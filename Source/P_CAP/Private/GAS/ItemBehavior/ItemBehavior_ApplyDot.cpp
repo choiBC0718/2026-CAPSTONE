@@ -7,23 +7,20 @@
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
 #include "Component/CAP_InventoryComponent.h"
-#include "Interactables/Item/CAP_ItemInstance.h"
 
-void UItemBehavior_ApplyDot::OnEquipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+void UItemBehavior_ApplyDot::OnEquipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	Super::OnEquipped(ItemInst, ASC);
-	BindGameplayEvent(ItemInst,ASC,TriggerEventTag);
+	BindGameplayEvent(StateProvider,ASC,TriggerEventTag);
 }
 
-void UItemBehavior_ApplyDot::OnUnequipped(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+void UItemBehavior_ApplyDot::OnUnequipped(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	UnbindGameplayEvents(ItemInst,ASC);
-	Super::OnUnequipped(ItemInst, ASC);
+	UnbindGameplayEvents(StateProvider,ASC);
 }
 
-void UItemBehavior_ApplyDot::OnEventReceived(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC,	const struct FGameplayEventData* Payload) const
+void UItemBehavior_ApplyDot::OnEventReceived(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC,	const struct FGameplayEventData* Payload) const
 {
-	if (!CheckTriggerCondition(ItemInst, ASC))
+	if (!CheckTriggerCondition(StateProvider, ASC))
 		return;
 	
 	TArray<AActor*> TargetActors = UAbilitySystemBlueprintLibrary::GetAllActorsFromTargetData(Payload->TargetData);
@@ -35,38 +32,37 @@ void UItemBehavior_ApplyDot::OnEventReceived(UCAP_ItemInstance* ItemInst, UAbili
 		UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Actor);
 		if (!TargetASC || TargetASC == ASC)
 			continue;
-		ApplyDoTToSingleTarget(ItemInst, ASC, TargetASC);
+		ApplyDoTToSingleTarget(StateProvider, ASC, TargetASC);
 	}
 	if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(ASC->GetAvatarActor()))
 	{
 		if (UCAP_InventoryComponent* InvComp = Player->GetInventoryComponent())
-			InvComp->OnItemEffectTriggered.Broadcast(ItemInst,TriggerEventTag,Cooldown,0.f,0);
+			InvComp->OnItemEffectTriggered.Broadcast(StateProvider->GetProviderObject(),TriggerEventTag,Cooldown,0.f,0);
 	}
 }
 
-bool UItemBehavior_ApplyDot::CheckTriggerCondition(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* ASC) const
+bool UItemBehavior_ApplyDot::CheckTriggerCondition(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* ASC) const
 {
-	if (IsOnCooldown(ItemInst,ASC))
+	if (IsOnCooldown(StateProvider,ASC))
 		return false;
 	if (FMath::RandRange(0.f,100.f)>TriggerChance)
 		return false;
 
-	ConsumeCooldown(ItemInst, ASC);
+	ConsumeCooldown(StateProvider, ASC);
 	return true;
 }
 
-void UItemBehavior_ApplyDot::ApplyDoTToSingleTarget(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* SourceASC,UAbilitySystemComponent* TargetASC) const
+void UItemBehavior_ApplyDot::ApplyDoTToSingleTarget(ICAP_BehaviorStateProvider* StateProvider, UCAP_AbilitySystemComponent* SourceASC,UAbilitySystemComponent* TargetASC) const
 {
-	UCAP_AbilitySystemComponent* CAP_ASC = ItemInst->GetCachedASC();
-	if (!CAP_ASC || !CAP_ASC->GetGenerics())
+	if (!SourceASC || !SourceASC->GetGenerics())
 		return;
-	TSubclassOf<UGameplayEffect> MasterDotEffect = CAP_ASC->GetGenerics()->GetDurationDamageGE(DamageType);
+	TSubclassOf<UGameplayEffect> MasterDotEffect = SourceASC->GetGenerics()->GetDurationDamageGE(DamageType);
 	if (!MasterDotEffect)
 		return;
 
 	// 현재 적용중인 GE핸들 확인 먼저
 	FActiveGameplayEffectHandle ExistingHandle;
-	int32 CurrentItemStack = GetExistingDoTStackCount(ItemInst, TargetASC, MasterDotEffect, ExistingHandle);
+	int32 CurrentItemStack = GetExistingDoTStackCount(StateProvider, TargetASC, MasterDotEffect, ExistingHandle);
 	int32 TargetStackCount = FMath::Min(CurrentItemStack+1, MaxStackCount);
 
 	// 기존 핸들 있으면 수치만 덮어씌워
@@ -84,7 +80,7 @@ void UItemBehavior_ApplyDot::ApplyDoTToSingleTarget(UCAP_ItemInstance* ItemInst,
 	}
 	
 	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
-	Context.AddSourceObject(ItemInst);
+	Context.AddSourceObject(StateProvider->GetProviderObject());
 	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(MasterDotEffect, 1.f, Context);
 	if (!SpecHandle.IsValid())
 		return;
@@ -105,7 +101,7 @@ void UItemBehavior_ApplyDot::ApplyDoTToSingleTarget(UCAP_ItemInstance* ItemInst,
 	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 }
 
-int32 UItemBehavior_ApplyDot::GetExistingDoTStackCount(UCAP_ItemInstance* ItemInst, UAbilitySystemComponent* TargetASC,	TSubclassOf<UGameplayEffect> MasterGE, FActiveGameplayEffectHandle& OutHandle) const
+int32 UItemBehavior_ApplyDot::GetExistingDoTStackCount(ICAP_BehaviorStateProvider* StateProvider, UAbilitySystemComponent* TargetASC,	TSubclassOf<UGameplayEffect> MasterGE, FActiveGameplayEffectHandle& OutHandle) const
 {
 	int32 FoundStack = 0;
 
@@ -116,7 +112,7 @@ int32 UItemBehavior_ApplyDot::GetExistingDoTStackCount(UCAP_ItemInstance* ItemIn
 	for (const FActiveGameplayEffectHandle& Handle : ActiveEffects)
 	{
 		const FActiveGameplayEffect* ActiveGE = TargetASC->GetActiveGameplayEffect(Handle);
-		if (ActiveGE && ActiveGE->Spec.GetEffectContext().GetSourceObject() == ItemInst)
+		if (ActiveGE && ActiveGE->Spec.GetEffectContext().GetSourceObject() == StateProvider->GetProviderObject())
 		{
 			// 태그가 다르면 건너 뛰어
 			if (BehaviorTag.IsValid() && !ActiveGE->Spec.DynamicGrantedTags.HasTagExact(BehaviorTag))

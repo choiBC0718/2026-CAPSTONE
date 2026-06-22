@@ -1,0 +1,50 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+
+#include "Framework/Subsystem/CAP_DamageTextSubsystem.h"
+
+#include "Framework/CAP_UISettings.h"
+#include "GAS/Actors/CAP_DamageTextActor.h"
+
+void UCAP_DamageTextSubsystem::OnWorldBeginPlay(UWorld& InWorld)
+{
+	Super::OnWorldBeginPlay(InWorld);
+	TSubclassOf<ACAP_DamageTextActor> ActorClass = GetDefault<UCAP_UISettings>()->DamageTextActorClass;
+	if (!ActorClass)
+		return;
+
+	for (int i=0 ; i<50 ; i++)
+	{
+		ACAP_DamageTextActor* SpawnedActor = InWorld.SpawnActor<ACAP_DamageTextActor>(ActorClass);
+		if (SpawnedActor)
+		{
+			SpawnedActor->SetActorLocation(FVector(0.f, 0.f, -99999.f));
+			TextActorPool.Add(SpawnedActor);
+		}
+	}
+}
+
+void UCAP_DamageTextSubsystem::ShowDamage(AActor* TargetActor, float Damage, bool bIsCritical, bool bIsPlayer)
+{
+	if (!TargetActor)
+		return;
+	ACAP_DamageTextActor* TextActor = GetActorFromPool();
+	if (TextActor)
+	{
+		TextActor->SetActorLocation(TargetActor->GetActorLocation() + FVector(FMath::RandRange(-30.f,30.f),FMath::RandRange(-40.f,40.f),100.f));
+		TextActor->PlayDamageText(Damage,bIsCritical,bIsPlayer);
+	}
+}
+
+class ACAP_DamageTextActor* UCAP_DamageTextSubsystem::GetActorFromPool()
+{
+	for (ACAP_DamageTextActor* Actor : TextActorPool)
+	{
+		if (Actor && Actor->GetActorLocation().Z < -90000.f)
+		{
+			return Actor;
+		}
+	}
+	// 풀이 꽉 찼을 경우 확장 스폰 로직 추가 가능
+	return nullptr;
+}
