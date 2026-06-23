@@ -70,6 +70,9 @@ void UCAP_DialogueComponent::EndDialogue()
 
 	bIsCameraMoving = true;
 	SetComponentTickEnabled(true);
+	
+	if (FSlateApplication::IsInitialized())
+		FSlateApplication::Get().SetAllUserFocusToGameViewport();
 }
 
 ENPCActionResult UCAP_DialogueComponent::ExecuteSpecialAction(AActor* InteractActor)

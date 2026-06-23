@@ -45,6 +45,8 @@ void UCAP_DialogueWidget::OnAnimationFinished_Implementation(const UWidgetAnimat
 		if (APlayerController* PC = GetOwningPlayer())
 		{
 			Player->EnableInput(PC);
+			if (FSlateApplication::IsInitialized())
+				FSlateApplication::Get().SetAllUserFocusToGameViewport();
 		}
 	}
 	if (Animation == ChangeToCustomView && bIsCustomWidgetClosing)

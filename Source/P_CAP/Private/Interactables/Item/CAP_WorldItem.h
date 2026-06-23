@@ -26,7 +26,7 @@ public:
 	virtual void DropItem() override;
 	void InitializeItemData(UCAP_ItemDataAsset* NewItemDA);
 
-	UPROPERTY(EditDefaultsOnly, Category="Item Data")
+	UPROPERTY(EditAnywhere, Category="Item Data")
 	class UCAP_ItemDataAsset* ItemDA;
 
 	UPROPERTY(BlueprintReadWrite, Category="Item Data", meta=(ExposeOnSpawn="true"))
