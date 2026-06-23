@@ -23,8 +23,9 @@ class UCAP_AttributeSet : public UAttributeSet
 	GENERATED_BODY()
 
 public:
+	UCAP_AttributeSet();
+	
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
-	virtual void PreAttributeBaseChange(const FGameplayAttribute& Attribute, float& NewValue) const override;
 	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
 
 	void AdjustAttributeForMaxChange(FGameplayAttributeData& AffectedAttribute, const FGameplayAttributeData& MaxAttribute, float NewMaxValue, const FGameplayAttribute& AffectedAttributeProperty);
@@ -79,6 +80,7 @@ private:
 	UPROPERTY()
 	class UCAP_ProgressionSubsystem* CachedProgressionSubsystem;
 
-	bool bIsPlayerOwner = false;
-	bool bIsOwnerCached = false;
+	FGameplayTag DagameTakenTag;
+	FGameplayTag HealTag;
+	FGameplayTag IgnoreTag;
 };

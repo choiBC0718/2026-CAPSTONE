@@ -58,6 +58,7 @@ private:
 	
 	void DeadTagUpdated(FGameplayTag GameplayTag, int32 NewCount);
 	void MoveSpeedUpdated(const FOnAttributeChangeData& OnAttributeChangeData);
+	void OnGameplayEffectAppliedToTarget(UAbilitySystemComponent* AbilitySystemComponent, const FGameplayEffectSpec& GameplayEffectSpec, FActiveGameplayEffectHandle ActiveGameplayEffectHandle);
 
 	FTransform MeshRelativeTransform;
 	

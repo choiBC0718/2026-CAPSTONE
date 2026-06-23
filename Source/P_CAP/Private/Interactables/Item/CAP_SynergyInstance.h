@@ -38,6 +38,8 @@ public:
 	virtual const TArray<UCAP_ItemBehaviorBase*>& GetBehaviors() const override {return InstancedBehaviors;}
 	virtual UObject* GetProviderObject() override {return this;}
 
+	virtual TArray<FGameplayAbilitySpecHandle>* GetGrantedAbilityHandles(const UCAP_ItemBehaviorBase* Behavior) override;
+
 	FGameplayTag SynergyTag;
 	int32 SynergyLv=0;
 
@@ -49,4 +51,5 @@ private:
 	TMap<TPair<const UCAP_ItemBehaviorBase*, TWeakObjectPtr<AActor>>, float> TargetCooldowns;
 	UPROPERTY()	TMap<const UCAP_ItemBehaviorBase*, int32> BehaviorCounters;
 	UPROPERTY()	TMap<const UCAP_ItemBehaviorBase*, float> BehaviorLastTriggerTimes;
+	TMap<const UCAP_ItemBehaviorBase*, TArray<FGameplayAbilitySpecHandle>> GrantedAbilityHandlesMap;
 };

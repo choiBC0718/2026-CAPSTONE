@@ -39,7 +39,10 @@ public:
 
 	static FGameplayTag GetItemTriggerCastBasic();
 	static FGameplayTag GetItemTriggerCastAbility();
+	static FGameplayTag GetItemTriggerCastDodge();
 	static FGameplayTag GetItemTriggerHitBasic();
 	static FGameplayTag GetItemTriggerHitAbility();
-	static FGameplayTag GetItemTriggerCastDodge();
+	static FGameplayTag GetItemTriggerHitCritical();
+	static FGameplayTag GetItemTriggerDamageTaken();
+	static FGameplayTag GetItemTriggerHealed();
 };
