@@ -87,3 +87,10 @@ const TArray<UCAP_ItemBehaviorBase*>& UCAP_ItemInstance::GetBehaviors() const
 	return EmptyArray;
 }
 
+TArray<FGameplayAbilitySpecHandle>* UCAP_ItemInstance::GetGrantedAbilityHandles(const UCAP_ItemBehaviorBase* Behavior)
+{
+	if (!Behavior)
+		return nullptr;
+	return &GrantedAbilityHandlesMap.FindOrAdd(Behavior);
+}
+

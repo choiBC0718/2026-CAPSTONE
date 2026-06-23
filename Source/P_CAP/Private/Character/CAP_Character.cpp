@@ -3,6 +3,7 @@
 
 #include "Character/CAP_Character.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/WidgetComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -111,6 +112,8 @@ void ACAP_Character::BindGASChangeDelegates()
 		CAPAbilitySystemComponent->RegisterGameplayTagEvent(UCAP_AbilitySystemStatics::GetDeadStateTag()).AddUObject(this, &ACAP_Character::DeadTagUpdated);
 		
 		CAPAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(UCAP_AttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &ACAP_Character::MoveSpeedUpdated);
+		// 자신이 타겟에게 GE를 적용했을 때 발동되는 델리게이트
+		CAPAbilitySystemComponent->OnGameplayEffectAppliedDelegateToTarget.AddUObject(this, &ACAP_Character::OnGameplayEffectAppliedToTarget);
 	}
 }
 
@@ -132,6 +135,23 @@ void ACAP_Character::DeadTagUpdated(FGameplayTag GameplayTag, int32 NewCount)
 void ACAP_Character::MoveSpeedUpdated(const FOnAttributeChangeData& OnAttributeChangeData)
 {
 	GetCharacterMovement()->MaxWalkSpeed = OnAttributeChangeData.NewValue;
+}
+
+void ACAP_Character::OnGameplayEffectAppliedToTarget(UAbilitySystemComponent* TargetASC, const FGameplayEffectSpec& SpecApplied, FActiveGameplayEffectHandle ActiveHandle)
+{
+	if (!TargetASC)
+		return;
+
+	FGameplayTagContainer AssetTags = SpecApplied.DynamicGrantedTags;
+	if (AssetTags.HasTag(FGameplayTag::RequestGameplayTag("State.Debuff")))
+	{
+		FGameplayEventData Payload;
+		Payload.EventTag = AssetTags.First();
+		Payload.Instigator = this;
+		Payload.Target=TargetASC->GetAvatarActor();
+		Payload.TargetTags = AssetTags;
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, Payload.EventTag, Payload);
+	}
 }
 
 void ACAP_Character::StartDeathSequence()

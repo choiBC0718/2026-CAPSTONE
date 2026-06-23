@@ -103,6 +103,11 @@ FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerCastAbility()
 	return FGameplayTag::RequestGameplayTag("Item.Trigger.Cast.Ability");
 }
 
+FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerCastDodge()
+{
+	return FGameplayTag::RequestGameplayTag("Item.Trigger.Cast.Dodge");
+}
+
 FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerHitBasic()
 {
 	return FGameplayTag::RequestGameplayTag("Item.Trigger.Hit.Basic");
@@ -113,7 +118,17 @@ FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerHitAbility()
 	return FGameplayTag::RequestGameplayTag("Item.Trigger.Hit.Ability");
 }
 
-FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerCastDodge()
+FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerHitCritical()
 {
-	return FGameplayTag::RequestGameplayTag("Item.Trigger.Cast.Dodge");
+	return FGameplayTag::RequestGameplayTag("Item.Trigger.Hit.Critical");
+}
+
+FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerDamageTaken()
+{
+	return FGameplayTag::RequestGameplayTag("Item.Trigger.Hit.Taken");
+}
+
+FGameplayTag UCAP_AbilitySystemStatics::GetItemTriggerHealed()
+{
+	return FGameplayTag::RequestGameplayTag("Item.Trigger.Event.Heal");
 }

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GAS/Actors/CAP_AoESpawner.h"
+#include "GAS/Actors/CAP_ProjectileBase.h"
 #include "GAS/ItemBehavior/CAP_ItemBehaviorBase.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
 #include "ItemBehavior_SpawnProjectile.generated.h"

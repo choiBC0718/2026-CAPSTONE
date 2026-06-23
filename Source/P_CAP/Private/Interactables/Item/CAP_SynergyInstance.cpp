@@ -85,3 +85,11 @@ TArray<FDelegateHandle>* UCAP_SynergyInstance::GetBoundEventHandles(const UCAP_I
 {
 	return &BoundEventHandles.FindOrAdd(Behavior);
 }
+
+TArray<FGameplayAbilitySpecHandle>* UCAP_SynergyInstance::GetGrantedAbilityHandles(const UCAP_ItemBehaviorBase* Behavior)
+{
+	if (!Behavior)
+		return nullptr;
+		
+	return &GrantedAbilityHandlesMap.FindOrAdd(Behavior);
+}

@@ -24,7 +24,7 @@ struct FSynergyLevelData
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Instanced)
 	TArray<class UCAP_ItemBehaviorBase*> GrantedBehaviors;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta=(MultiLine=true))
 	FText LevelDescription;
 };
 
@@ -54,4 +54,54 @@ struct FDisassembleRewardRow : public FTableRowBase
 	ECurrencyType ItemCurrencyType = ECurrencyType::Gold;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Item")
 	int32 ItemRewardAmount = 0;
+};
+
+UENUM(BlueprintType)
+enum class ECompareOperator : uint8
+{
+	Equal,			// ==
+	GreaterThan,	// >
+	GreaterThanOrEqual, // >=
+	LessThan,		// <
+	LessThanOrEqual // <=
+};
+
+USTRUCT(BlueprintType)
+struct FItemConditionData
+{
+	GENERATED_BODY()
+
+	// 감시할 대상 스탯 (예: Health, Shield)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FGameplayAttribute MonitorAttribute;
+
+	// 비교 연산자
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	ECompareOperator Operator = ECompareOperator::LessThanOrEqual;
+
+	// 비율(%) 계산 여부
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	bool bIsPercentage = false;
+
+	// 비율 계산 시 분모가 될 최대치 스탯 (예: MaxHealth)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta=(EditCondition="bIsPercentage"))
+	FGameplayAttribute MaxAttribute;
+
+	// 발동 기준 수치 (비율이면 0.0 ~ 1.0, 아니면 절대값)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	float Threshold = 0.f;
+};
+
+USTRUCT(BlueprintType)
+struct FItemActionData
+{
+	GENERATED_BODY()
+
+	// 주입할 스탯 태그 및 수치 맵 (예: [Data.Stat.Armor : 30.0])
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TMap<FGameplayTag, float> StatModifiers;
+
+	// (선택) 조건 달성 시 1회성으로 터뜨릴 이벤트 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	FGameplayTag TriggerEventTag;
 };

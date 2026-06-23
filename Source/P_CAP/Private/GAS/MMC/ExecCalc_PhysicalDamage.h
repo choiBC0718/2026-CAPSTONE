@@ -28,4 +28,6 @@ private:
 	FGameplayTag DamageMultiplierDataTag;
 	FGameplayTag DamageBaseDataTag;
 	FGameplayTag ChargeMultiplierDataTag;
+
+	FGameplayTag CriticalTriggerTag;
 };

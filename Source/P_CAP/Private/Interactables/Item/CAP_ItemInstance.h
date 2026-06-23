@@ -53,10 +53,14 @@ public:
 	virtual TArray<FDelegateHandle>* GetBoundEventHandles(const UCAP_ItemBehaviorBase* Behavior) override;
 	virtual const TArray<UCAP_ItemBehaviorBase*>& GetBehaviors() const override;
 	virtual UObject* GetProviderObject() override {return this;}
+
+	virtual TArray<FGameplayAbilitySpecHandle>* GetGrantedAbilityHandles(const UCAP_ItemBehaviorBase* Behavior) override;
 	
 protected:
 	UPROPERTY()
 	UCAP_ItemDataBase* ItemDA;
 
 	EItemGrade CurrentGrade;
+
+	TMap<const UCAP_ItemBehaviorBase*, TArray<FGameplayAbilitySpecHandle>> GrantedAbilityHandlesMap;
 };

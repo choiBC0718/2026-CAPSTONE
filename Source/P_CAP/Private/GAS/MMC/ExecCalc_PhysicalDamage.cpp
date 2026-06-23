@@ -3,6 +3,7 @@
 
 #include "GAS/MMC/ExecCalc_PhysicalDamage.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
 #include "GAS/Setting/CAP_AttributeSet.h"
 #include "GAS/Setting/CAP_GameplayAbilityTypes.h"
@@ -33,6 +34,8 @@ UExecCalc_PhysicalDamage::UExecCalc_PhysicalDamage()
 	DamageMultiplierDataTag = UCAP_AbilitySystemStatics::GetDataDamageMultiplierTag();
 	DamageBaseDataTag = UCAP_AbilitySystemStatics::GetDataDamageBaseTag();
 	ChargeMultiplierDataTag = UCAP_AbilitySystemStatics::GetAbilityChargeTimeTag();
+
+	CriticalTriggerTag = UCAP_AbilitySystemStatics::GetItemTriggerHitCritical();
 }
 
 void UExecCalc_PhysicalDamage::Execute_Implementation(const FGameplayEffectCustomExecutionParameters& ExecutionParams,
@@ -81,6 +84,18 @@ void UExecCalc_PhysicalDamage::Execute_Implementation(const FGameplayEffectCusto
 		{
 			FinalDamage *= CriticalDamage;
 			bCriticalHit = true;
+
+			AActor* SourceActor = ExecutionParams.GetSourceAbilitySystemComponent()->GetAvatarActor();
+			AActor* TargetActor = ExecutionParams.GetTargetAbilitySystemComponent()->GetAvatarActor();
+			
+			if (SourceActor && TargetActor)
+			{
+				FGameplayEventData CritPayload;
+				CritPayload.EventTag = CriticalTriggerTag;
+				CritPayload.Instigator = SourceActor;
+				CritPayload.Target = TargetActor;
+				UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(SourceActor, CritPayload.EventTag, CritPayload);
+			}
 		}
 	}
 	if (FCAP_GameplayEffectContext* CContext = static_cast<FCAP_GameplayEffectContext*>(Spec.GetContext().Get()))

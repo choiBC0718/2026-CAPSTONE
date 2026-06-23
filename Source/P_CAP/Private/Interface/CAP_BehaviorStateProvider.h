@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayAbilitySpecHandle.h"
 #include "UObject/Interface.h"
 #include "CAP_BehaviorStateProvider.generated.h"
 
@@ -43,4 +44,6 @@ public:
 
 	// 자기 자신을 UObject 포인터로 반환 (델리게이트를 통해 UI로 쏠 때 식별용)
 	virtual UObject* GetProviderObject() = 0;
+
+	virtual TArray<FGameplayAbilitySpecHandle>* GetGrantedAbilityHandles(const UCAP_ItemBehaviorBase* Behavior) = 0;
 };
