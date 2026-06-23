@@ -73,18 +73,4 @@ public:
 	{
 		return ItemStatModifier;
 	}
-	
-	// 소환수 클래스 캐싱 배열
-	UPROPERTY()
-	TArray<TSubclassOf<class AActor>> CachedSummonClasses;
-#if WITH_EDITOR
-	// 에디터에서 속성 변경 시 캐싱 데이터 갱신
-	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
-	// 게임 실행 시 메모리에 로드될 때 호출되어 캐싱 데이터 갱신
-	virtual void PostLoad() override;
-
-private:
-	// 캐싱 로직
-	void UpdateCachedData();
 };

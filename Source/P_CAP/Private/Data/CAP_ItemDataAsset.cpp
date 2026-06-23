@@ -2,20 +2,3 @@
 
 
 #include "Data/CAP_ItemDataAsset.h"
-
-void UCAP_ItemDataAsset::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-	UpdateCachedData();
-}
-
-void UCAP_ItemDataAsset::PostLoad()
-{
-	Super::PostLoad();
-	UpdateCachedData();
-}
-
-void UCAP_ItemDataAsset::UpdateCachedData()
-{
-
-}
