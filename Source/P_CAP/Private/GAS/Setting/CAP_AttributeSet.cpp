@@ -112,7 +112,7 @@ void UCAP_AttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMo
 					CachedProgressionSubsystem->AddHealing(DeltaValue);
 				
 				FGameplayEventData HealPayload;
-				HealPayload.EventTag = FGameplayTag::RequestGameplayTag(FName("Event.Status.Healed"));
+				HealPayload.EventTag = HealTag;
 				HealPayload.Instigator = Instigator;
 				HealPayload.Target = Target;
 				HealPayload.EventMagnitude = DeltaValue;
