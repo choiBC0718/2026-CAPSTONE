@@ -32,7 +32,8 @@ public:
 		const FRoomInteriorLayout& InteriorLayout,
 		int32 MapSeed,
 		const FTransform& RoomTransform,
-		const FPlayerTendencyModifier& Tendency = FPlayerTendencyModifier{});
+		const FPlayerTendencyModifier& Tendency = FPlayerTendencyModifier{},
+		const TArray<TSubclassOf<ACharacter>>& RecentMonsterClasses = TArray<TSubclassOf<ACharacter>>{});
 
 	int32 SpawnReinforcement(
 		const FRoomData& RoomData,
@@ -50,6 +51,7 @@ public:
 	bool AreAllSpawnedMonstersDefeated() const;
 	int32 GetAliveSpawnedMonsterCount() const;
 	int32 GetNumSpawnedMonsters() const { return SpawnedMonsters.Num(); }
+	TArray<TSubclassOf<ACharacter>> GetSpawnedMonsterClasses() const;
 	const FRoomMonsterSpawnRule* GetSpawnRule(ERoomType RoomType) const;
 
 private:
@@ -80,9 +82,13 @@ private:
 	UPROPERTY()
 	TArray<TObjectPtr<ACharacter>> SpawnedMonsters;
 
+	UPROPERTY(Transient)
+	TArray<TSubclassOf<ACharacter>> RecentMonsterClassesForRoom;
+
 	TArray<FRoomMonsterSpawnPick> BuildMonsterSpawnList(
 		const FRoomMonsterSpawnRule& SpawnRule,
-		FRandomStream& RandomStream) const;
+		FRandomStream& RandomStream,
+		const TArray<TSubclassOf<ACharacter>>& RecentClasses) const;
 
 	int32 SpawnMonstersFromRule(
 		const FRoomData& RoomData,
@@ -93,13 +99,15 @@ private:
 		const FRoomMonsterSpawnRule& SpawnRule,
 		int32 RandomSalt,
 		bool bClearExisting,
+		const TArray<TSubclassOf<ACharacter>>& RecentClasses,
 		const FRoomReinforcementRule* ReinforcementRule = nullptr);
 
 	const FRoomMonsterSpawnEntry* PickMonsterEntry(
 		const FRoomMonsterSpawnRule& SpawnRule,
 		const TMap<TSubclassOf<ACharacter>, int32>& SelectedCounts,
 		int32 RemainingScore,
-		FRandomStream& RandomStream) const;
+		FRandomStream& RandomStream,
+		const TArray<TSubclassOf<ACharacter>>& RecentClasses) const;
 
 	TArray<FIntPoint> CollectSpawnableCells(const FRoomInteriorLayout& InteriorLayout) const;
 	bool IsNearReservedDoorCell(const FRoomInteriorLayout& InteriorLayout, const FIntPoint& CellCoord) const;

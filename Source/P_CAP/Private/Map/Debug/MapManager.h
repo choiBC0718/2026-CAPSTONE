@@ -50,6 +50,8 @@ public:
 
 	void GenerateStage(const FStageConfig& StageConfig);
 	void ClearCurrentStage();
+	const TArray<TSubclassOf<ACharacter>>& GetRecentMonsterClasses() const { return RecentMonsterClasses; }
+	void RecordRoomMonsterClasses(const TArray<TSubclassOf<ACharacter>>& MonsterClasses);
 
 	/* 가장 최근에 맵 생성에 적용된 K-Means 성향 — Blueprint 위젯에서 읽기용 */
 	UPROPERTY(BlueprintReadOnly, Category="AI Tendency")
@@ -151,6 +153,9 @@ private:
 	/* 좌표 기반 빠른 조회용 */
 	UPROPERTY()
 	TMap<FIntPoint, TObjectPtr<ARoomActor>> SpawnedRoomMap;
+
+	UPROPERTY()
+	TArray<TSubclassOf<ACharacter>> RecentMonsterClasses;
 
 	void BindInput();
 	void RegenerateWithRandomSeed();

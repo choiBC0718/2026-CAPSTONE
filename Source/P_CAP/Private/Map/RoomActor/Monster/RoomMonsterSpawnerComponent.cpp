@@ -40,15 +40,17 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 	const FRoomInteriorLayout& InteriorLayout,
 	int32 MapSeed,
 	const FTransform& RoomTransform,
-	const FPlayerTendencyModifier& Tendency)
+	const FPlayerTendencyModifier& Tendency,
+	const TArray<TSubclassOf<ACharacter>>& RecentMonsterClasses)
 {
+	RecentMonsterClassesForRoom = RecentMonsterClasses;
 	const FRoomMonsterSpawnRule* SpawnRule = GetSpawnRule(RoomData.RoomType);
 	if (!SpawnRule)
 	{
 		return;
 	}
 
-	SpawnMonstersFromRule(RoomData, InteriorLayout, MapSeed, RoomTransform, Tendency, *SpawnRule, 0, true);
+	SpawnMonstersFromRule(RoomData, InteriorLayout, MapSeed, RoomTransform, Tendency, *SpawnRule, 0, true, RecentMonsterClassesForRoom);
 }
 
 int32 URoomMonsterSpawnerComponent::SpawnReinforcement(
@@ -68,7 +70,7 @@ int32 URoomMonsterSpawnerComponent::SpawnReinforcement(
 	FRoomMonsterSpawnRule ReinforcementSpawnRule = *SpawnRule;
 	const FRoomReinforcementRule& ReinforcementRule = SpawnRule->Reinforcements[ReinforcementIndex];
 	ReinforcementSpawnRule.ScoreRange = ReinforcementRule.ScoreRange;
-	return SpawnMonstersFromRule(RoomData, InteriorLayout, MapSeed, RoomTransform, Tendency, ReinforcementSpawnRule, ReinforcementIndex + 1, false, &ReinforcementRule);
+	return SpawnMonstersFromRule(RoomData, InteriorLayout, MapSeed, RoomTransform, Tendency, ReinforcementSpawnRule, ReinforcementIndex + 1, false, RecentMonsterClassesForRoom, &ReinforcementRule);
 }
 
 int32 URoomMonsterSpawnerComponent::SpawnMonstersFromRule(
@@ -80,6 +82,7 @@ int32 URoomMonsterSpawnerComponent::SpawnMonstersFromRule(
 	const FRoomMonsterSpawnRule& SpawnRule,
 	int32 RandomSalt,
 	bool bClearExisting,
+	const TArray<TSubclassOf<ACharacter>>& RecentClasses,
 	const FRoomReinforcementRule* ReinforcementRule)
 {
 	if (bClearExisting)
@@ -107,7 +110,7 @@ int32 URoomMonsterSpawnerComponent::SpawnMonstersFromRule(
 		AdjustedRule.ScoreRange.X, AdjustedRule.ScoreRange.Y);
 
 	FRandomStream RandomStream = MakeRoomRandomStream(RoomData, MapSeed, RandomSalt);
-	TArray<FRoomMonsterSpawnPick> MonsterSpawnList = BuildMonsterSpawnList(AdjustedRule, RandomStream);
+	TArray<FRoomMonsterSpawnPick> MonsterSpawnList = BuildMonsterSpawnList(AdjustedRule, RandomStream, RecentClasses);
 	if (MonsterSpawnList.IsEmpty())
 	{
 		return 0;
@@ -241,6 +244,19 @@ int32 URoomMonsterSpawnerComponent::SpawnMonstersFromRule(
 	return SpawnedCount;
 }
 
+TArray<TSubclassOf<ACharacter>> URoomMonsterSpawnerComponent::GetSpawnedMonsterClasses() const
+{
+	TArray<TSubclassOf<ACharacter>> Classes;
+	for (const ACharacter* Monster : SpawnedMonsters)
+	{
+		if (IsValid(Monster))
+		{
+			Classes.AddUnique(Monster->GetClass());
+		}
+	}
+	return Classes;
+}
+
 void URoomMonsterSpawnerComponent::ClearSpawnedMonsters()
 {
 	for (ACharacter* Monster : SpawnedMonsters)
@@ -339,7 +355,8 @@ const FRoomMonsterSpawnRule* URoomMonsterSpawnerComponent::GetSpawnRule(ERoomTyp
 
 TArray<FRoomMonsterSpawnPick> URoomMonsterSpawnerComponent::BuildMonsterSpawnList(
 	const FRoomMonsterSpawnRule& SpawnRule,
-	FRandomStream& RandomStream) const
+	FRandomStream& RandomStream,
+	const TArray<TSubclassOf<ACharacter>>& RecentClasses) const
 {
 	TArray<FRoomMonsterSpawnPick> MonsterSpawnList;
 
@@ -359,7 +376,8 @@ TArray<FRoomMonsterSpawnPick> URoomMonsterSpawnerComponent::BuildMonsterSpawnLis
 			SpawnRule,
 			SelectedCounts,
 			RemainingScore,
-			RandomStream);
+			RandomStream,
+			RecentClasses);
 
 		if (!PickedEntry || !PickedEntry->MonsterClass)
 		{
@@ -381,7 +399,8 @@ const FRoomMonsterSpawnEntry* URoomMonsterSpawnerComponent::PickMonsterEntry(
 	const FRoomMonsterSpawnRule& SpawnRule,
 	const TMap<TSubclassOf<ACharacter>, int32>& SelectedCounts,
 	int32 RemainingScore,
-	FRandomStream& RandomStream) const
+	FRandomStream& RandomStream,
+	const TArray<TSubclassOf<ACharacter>>& RecentClasses) const
 {
 	int32 TotalWeight = 0;
 
@@ -398,7 +417,8 @@ const FRoomMonsterSpawnEntry* URoomMonsterSpawnerComponent::PickMonsterEntry(
 			continue;
 		}
 
-		TotalWeight += Entry.Weight;
+		const int32 RepeatWeightScale = RecentClasses.Contains(Entry.MonsterClass) ? 1 : 4;
+		TotalWeight += Entry.Weight * RepeatWeightScale;
 	}
 
 	if (TotalWeight <= 0)
@@ -422,7 +442,8 @@ const FRoomMonsterSpawnEntry* URoomMonsterSpawnerComponent::PickMonsterEntry(
 			continue;
 		}
 
-		RunningWeight += Entry.Weight;
+		const int32 RepeatWeightScale = RecentClasses.Contains(Entry.MonsterClass) ? 1 : 4;
+		RunningWeight += Entry.Weight * RepeatWeightScale;
 		if (RandomPick <= RunningWeight)
 		{
 			return &Entry;

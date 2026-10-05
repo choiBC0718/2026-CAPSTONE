@@ -32,6 +32,9 @@ struct FSpecialRoomReturnState
 	UPROPERTY(BlueprintReadOnly, Category="Special Room")
 	TObjectPtr<URoomMonsterSpawnDataAsset> MonsterSpawnDataAsset;
 
+	UPROPERTY()
+	TArray<TSubclassOf<ACharacter>> RecentMonsterClasses;
+
 	TSet<FIntPoint> ClearedRoomGridPositions;
 	TMap<FIntPoint, ECombatRoomRewardType> CombatRewardTypesByRoom;
 };

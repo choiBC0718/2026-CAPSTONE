@@ -125,16 +125,19 @@ void AMapManager::BindInput()
 void AMapManager::RegenerateWithRandomSeed()
 {
 	CurrentSeed = FMath::Rand();
+	RecentMonsterClasses.Empty();
 	GenerateMapAndSpawnRooms();
 }
 
 void AMapManager::RegenerateWithCurrentSeed()
 {
+	RecentMonsterClasses.Empty();
 	GenerateMapAndSpawnRooms();
 }
 
 void AMapManager::GenerateStage(const FStageConfig& StageConfig)
 {
+	RecentMonsterClasses.Empty();
 	CurrentRoomCount = StageConfig.RoomCount;
 	CurrentSeed = StageConfig.bUseRandomSeed ? FMath::Rand() : StageConfig.FixedSeed;
 	CurrentMonsterSpawnDataAsset = StageConfig.MonsterSpawnDataAsset;
@@ -545,6 +548,7 @@ bool AMapManager::TryRestoreSpecialRoomReturn()
 	CurrentSeed = ReturnState.Seed;
 	CurrentRoomCount = ReturnState.RoomCount;
 	CurrentMonsterSpawnDataAsset = ReturnState.MonsterSpawnDataAsset;
+	RecentMonsterClasses = ReturnState.RecentMonsterClasses;
 
 	GenerateMapAndSpawnRooms();
 	ApplySpecialRoomReturnState(ReturnState);
@@ -669,6 +673,7 @@ void AMapManager::SaveSpecialRoomReturnState(const FIntPoint& TargetRoomPos, EDo
 	ReturnState.SpecialRoomGridPos = TargetRoomPos;
 	ReturnState.ReturnEntryDirection = ExitDirection;
 	ReturnState.MonsterSpawnDataAsset = CurrentMonsterSpawnDataAsset;
+	ReturnState.RecentMonsterClasses = RecentMonsterClasses;
 
 	for (const TPair<FIntPoint, FRoomData>& Pair : CurrentLayout.Rooms)
 	{
@@ -697,6 +702,16 @@ void AMapManager::SaveSpecialRoomReturnState(const FIntPoint& TargetRoomPos, EDo
 	}
 
 	TransitionSubsystem->SaveReturnState(ReturnState);
+}
+
+void AMapManager::RecordRoomMonsterClasses(const TArray<TSubclassOf<ACharacter>>& MonsterClasses)
+{
+	if (MonsterClasses.IsEmpty())
+	{
+		return;
+	}
+
+	RecentMonsterClasses = MonsterClasses;
 }
 
 void AMapManager::OpenSpecialRoomLevelWithLoading(FName LevelName)

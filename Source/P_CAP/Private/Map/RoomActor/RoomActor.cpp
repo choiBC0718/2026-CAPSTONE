@@ -13,6 +13,7 @@
 #include "Map/RoomActor/Interior/RoomInteriorData.h"
 #include "Map/RoomActor/Interior/RoomInteriorTemplateActor.h"
 #include "Map/RoomActor/RoomSizeSettings.h"
+#include "Map/Debug/MapManager.h"
 #include "Engine/World.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/Pawn.h"
@@ -288,12 +289,24 @@ void ARoomActor::SpawnRoomMonsters()
 	EncounterStartTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
 	InitializeReinforcementState();
 
+	AMapManager* MapManager = Cast<AMapManager>(GetOwner());
+	const TArray<TSubclassOf<ACharacter>> EmptyRecentClasses;
+	const TArray<TSubclassOf<ACharacter>>& RecentClasses = MapManager
+		? MapManager->GetRecentMonsterClasses()
+		: EmptyRecentClasses;
+
 	MonsterSpawnerComponent->SpawnMonsters(
 		CachedRoomData,
 		CachedInteriorLayout,
 		CachedMapSeed,
 		GetActorTransform(),
-		CachedTendency);
+		CachedTendency,
+		RecentClasses);
+
+	if (MapManager)
+	{
+		MapManager->RecordRoomMonsterClasses(MonsterSpawnerComponent->GetSpawnedMonsterClasses());
+	}
 }
 
 void ARoomActor::OnRoomEnterTriggerBeginOverlap(
