@@ -49,12 +49,13 @@ public:
 	void RestoreGameplayInputState();
 
 	virtual void UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack) override;
+	
+	UPROPERTY(VisibleAnywhere, Category="View", BlueprintReadOnly)
+	class UCameraComponent* Camera;
 private:
 	/**		Components		**/
 	UPROPERTY(VisibleAnywhere, Category="View")
 	class USpringArmComponent* SpringArm;
-	UPROPERTY(VisibleAnywhere, Category="View")
-	class UCameraComponent* Camera;
 	UPROPERTY(VisibleAnywhere, Category="Weapon")
 	class UCAP_WeaponComponent* WeaponComponent;
 	UPROPERTY(VisibleAnywhere, Category="Inventory")

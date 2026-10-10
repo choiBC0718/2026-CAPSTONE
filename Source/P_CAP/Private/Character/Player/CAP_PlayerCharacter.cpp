@@ -331,6 +331,8 @@ void ACAP_PlayerCharacter::TryLoadProgressionData()
 	{
 		if (Data.bIsValid)
 		{
+			Subsys->SetIsRestoringData(true);
+			
 			if (UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent()))
 			{
 				if (Data.BonusMaxHealth > 0.f)
@@ -343,6 +345,7 @@ void ACAP_PlayerCharacter::TryLoadProgressionData()
 
 				ASC->RestoreHealthFromSave(Data.CurrentHealth);
 			}
+			Subsys->SetIsRestoringData(false);
 		}
 	}
 }
