@@ -3,6 +3,7 @@
 
 #include "Character/Player/CAP_PlayerController.h"
 #include "Widget/HUD/CAP_GameplayWidget.h"
+#include "Widget/HUD/CAP_MinimapWidget.h"
 #include "CAP_PlayerCharacter.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -52,6 +53,11 @@ void ACAP_PlayerController::SpawnGameplayWidget()
 	if (GameplayWidget)
 	{
 		GameplayWidget->AddToViewport();
+	}
+	MinimapWidget = CreateWidget<UCAP_MinimapWidget>(this, UCAP_MinimapWidget::StaticClass());
+	if (MinimapWidget)
+	{
+		MinimapWidget->AddToViewport(5);
 	}
 }
 

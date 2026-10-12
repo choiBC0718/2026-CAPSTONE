@@ -30,6 +30,8 @@ private:
 	TSubclassOf<class UCAP_GameplayWidget> GameplayWidgetClass;
 	UPROPERTY()
 	class UCAP_GameplayWidget* GameplayWidget;
+	UPROPERTY()
+	class UCAP_MinimapWidget* MinimapWidget;
 	
 	void SpawnGameplayWidget();
 	

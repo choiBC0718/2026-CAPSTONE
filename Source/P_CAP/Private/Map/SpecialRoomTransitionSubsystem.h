@@ -35,6 +35,7 @@ struct FSpecialRoomReturnState
 	UPROPERTY()
 	TArray<TSubclassOf<ACharacter>> RecentMonsterClasses;
 
+	TSet<FIntPoint> VisitedRoomGridPositions;
 	TSet<FIntPoint> ClearedRoomGridPositions;
 	TMap<FIntPoint, ECombatRoomRewardType> CombatRewardTypesByRoom;
 };

@@ -14,6 +14,8 @@
 #include "Map/RoomActor/Interior/RoomInteriorTemplateActor.h"
 #include "Map/RoomActor/RoomSizeSettings.h"
 #include "Map/Debug/MapManager.h"
+#include "Widget/HUD/CAP_MinimapWidget.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Engine/World.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/Pawn.h"
@@ -234,6 +236,12 @@ void ARoomActor::ActivateRoom(AActor* TargetActor)
 
 	bRoomActivated = true;
 	CurrentCombatTarget = TargetActor;
+	TArray<UUserWidget*> MinimapWidgets;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(GetWorld(), MinimapWidgets, UCAP_MinimapWidget::StaticClass());
+	for (UUserWidget* Widget : MinimapWidgets)
+	{
+		Cast<UCAP_MinimapWidget>(Widget)->SetCurrentRoom(CachedRoomData.GridPos);
+	}
 
 	if (bRoomCleared)
 	{

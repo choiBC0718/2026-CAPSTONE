@@ -30,6 +30,9 @@ public:
 
 	/* 현재 생성된 맵 결과 반환 */
 	const FMapLayout& GetCurrentLayout() const { return CurrentLayout; }
+	bool HasRestoredSpecialRoomState() const { return bHasRestoredSpecialRoomState; }
+	const TSet<FIntPoint>& GetRestoredVisitedRoomGridPositions() const { return RestoredVisitedRoomGridPositions; }
+	FIntPoint GetRestoredCurrentRoomGridPos() const { return RestoredCurrentRoomGridPos; }
 
 	/* 현재 사용 중인 시드 반환 */
 	int32 GetCurrentSeed() const { return CurrentSeed; }
@@ -156,6 +159,10 @@ private:
 
 	UPROPERTY()
 	TArray<TSubclassOf<ACharacter>> RecentMonsterClasses;
+
+	TSet<FIntPoint> RestoredVisitedRoomGridPositions;
+	FIntPoint RestoredCurrentRoomGridPos = FIntPoint::ZeroValue;
+	bool bHasRestoredSpecialRoomState = false;
 
 	void BindInput();
 	void RegenerateWithRandomSeed();

@@ -3,6 +3,8 @@
 
 #include "Map/Debug/MapManager.h"
 #include "Map/Debug/MapDebugActor.h"
+#include "Widget/HUD/CAP_MinimapWidget.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Character.h"
@@ -179,6 +181,12 @@ void AMapManager::GenerateMapAndSpawnRooms()
 
 	CurrentLayout = MapGenerator->GenerateMap(Config);
 	CurrentSeed = CurrentLayout.UsedSeed;
+	TArray<UUserWidget*> MinimapWidgets;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(GetWorld(), MinimapWidgets, UCAP_MinimapWidget::StaticClass());
+	for (UUserWidget* Widget : MinimapWidgets)
+	{
+		Cast<UCAP_MinimapWidget>(Widget)->SetMapLayout(CurrentLayout);
+	}
 
 	ClearSpawnedRooms();
 	SpawnRooms(CurrentLayout);
@@ -514,6 +522,18 @@ void AMapManager::MovePlayerToRoom(ACharacter* PlayerCharacter, const FIntPoint&
 	FVector TargetLocation = TargetRoom->GetEntrancePoint(EntryDirection);
 	TargetLocation.Z += RoomEntryZOffset;
 	PlayerCharacter->SetActorLocation(TargetLocation);
+
+	// A cleared room stays activated, so its overlap callback may not fire again.
+	// Room transitions are authoritative: update minimap location from the target grid cell.
+	TArray<UUserWidget*> MinimapWidgets;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(GetWorld(), MinimapWidgets, UCAP_MinimapWidget::StaticClass());
+	for (UUserWidget* Widget : MinimapWidgets)
+	{
+		if (UCAP_MinimapWidget* Minimap = Cast<UCAP_MinimapWidget>(Widget))
+		{
+			Minimap->SetCurrentRoom(TargetRoomPos);
+		}
+	}
 }
 
 void AMapManager::RequestMovePlayer(ACharacter* PlayerCharacter, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
@@ -558,6 +578,20 @@ bool AMapManager::TryRestoreSpecialRoomReturn()
 
 void AMapManager::ApplySpecialRoomReturnState(const FSpecialRoomReturnState& ReturnState)
 {
+	RestoredVisitedRoomGridPositions = ReturnState.VisitedRoomGridPositions;
+	RestoredCurrentRoomGridPos = ReturnState.ReturnRoomGridPos;
+	bHasRestoredSpecialRoomState = true;
+
+	TArray<UUserWidget*> MinimapWidgets;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(GetWorld(), MinimapWidgets, UCAP_MinimapWidget::StaticClass());
+	for (UUserWidget* Widget : MinimapWidgets)
+	{
+		if (UCAP_MinimapWidget* Minimap = Cast<UCAP_MinimapWidget>(Widget))
+		{
+			Minimap->RestoreVisitedRooms(ReturnState.VisitedRoomGridPositions);
+		}
+	}
+
 	for (const TPair<FIntPoint, ECombatRoomRewardType>& Pair : ReturnState.CombatRewardTypesByRoom)
 	{
 		if (FRoomData* RoomData = FindRoomData(Pair.Key))
@@ -598,6 +632,15 @@ void AMapManager::MovePlayerToReturnRoom(const FSpecialRoomReturnState& ReturnSt
 	FVector ReturnLocation = ReturnRoom->GetEntrancePoint(ReturnState.ReturnEntryDirection);
 	ReturnLocation.Z += RoomEntryZOffset;
 	PlayerCharacter->SetActorLocation(ReturnLocation);
+	TArray<UUserWidget*> MinimapWidgets;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(GetWorld(), MinimapWidgets, UCAP_MinimapWidget::StaticClass());
+	for (UUserWidget* Widget : MinimapWidgets)
+	{
+		if (UCAP_MinimapWidget* Minimap = Cast<UCAP_MinimapWidget>(Widget))
+		{
+			Minimap->SetCurrentRoom(ReturnState.ReturnRoomGridPos);
+		}
+	}
 }
 
 bool AMapManager::TryOpenSpecialRoomLevel(const FRoomData& RoomData, const FIntPoint& TargetRoomPos, EDoorDirection ExitDirection)
@@ -674,6 +717,19 @@ void AMapManager::SaveSpecialRoomReturnState(const FIntPoint& TargetRoomPos, EDo
 	ReturnState.ReturnEntryDirection = ExitDirection;
 	ReturnState.MonsterSpawnDataAsset = CurrentMonsterSpawnDataAsset;
 	ReturnState.RecentMonsterClasses = RecentMonsterClasses;
+
+	TArray<UUserWidget*> MinimapWidgets;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(GetWorld(), MinimapWidgets, UCAP_MinimapWidget::StaticClass());
+	for (UUserWidget* Widget : MinimapWidgets)
+	{
+		if (const UCAP_MinimapWidget* Minimap = Cast<UCAP_MinimapWidget>(Widget))
+		{
+			ReturnState.VisitedRoomGridPositions = Minimap->GetVisitedRoomGridPositions();
+			break;
+		}
+	}
+	// This transition enters the special room; reveal it when the player returns.
+	ReturnState.VisitedRoomGridPositions.Add(TargetRoomPos);
 
 	for (const TPair<FIntPoint, FRoomData>& Pair : CurrentLayout.Rooms)
 	{
