@@ -19,6 +19,8 @@ UGameplayability_TargetingAoE::UGameplayability_TargetingAoE()
 	BlockAbilitiesWithTag.AddTag(UCAP_AbilitySystemStatics::GetBasicAttackTag());
 	ConfirmTag = FGameplayTag::RequestGameplayTag("Ability.Event.TargetConfirmed");
 	SpawnedRangeIndicator = nullptr;
+	
+	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 }
 
 void UGameplayability_TargetingAoE::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
@@ -26,6 +28,12 @@ void UGameplayability_TargetingAoE::ActivateAbility(const FGameplayAbilitySpecHa
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
+	if (SpawnedRangeIndicator)
+	{
+		SpawnedRangeIndicator->Destroy();
+		SpawnedRangeIndicator = nullptr;
+	}
+	
 	const FWeaponSkillData* SkillData = GetSkillDataFromContext(Handle, ActorInfo);
 	if (!SkillData || !TargetActorClass)
 	{
@@ -75,15 +83,25 @@ void UGameplayability_TargetingAoE::EndAbility(const FGameplayAbilitySpecHandle 
 	   const FGameplayAbilityActivationInfo ActivationInfo,bool bReplicateEndAbility, bool bWasCancelled)
 {
    	if (SpawnedRangeIndicator)
+   	{
    		SpawnedRangeIndicator->Destroy();
+   		SpawnedRangeIndicator = nullptr;
+   	}
+	if (RotToCursor)
+	{
+		RotToCursor->EndTask();
+		RotToCursor = nullptr;
+	}
    	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
    void UGameplayability_TargetingAoE::TargetConfirmed(const FGameplayAbilityTargetDataHandle& Data)
 {
-   	if (SpawnedRangeIndicator)
-   		SpawnedRangeIndicator->Destroy();
-	
+	if (SpawnedRangeIndicator)
+	{
+		SpawnedRangeIndicator->Destroy();
+		SpawnedRangeIndicator = nullptr;
+	}
 	if (RotToCursor)
 	{
 		RotToCursor->EndTask();
