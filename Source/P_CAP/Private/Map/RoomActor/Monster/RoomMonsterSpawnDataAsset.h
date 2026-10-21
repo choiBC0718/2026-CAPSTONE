@@ -73,6 +73,18 @@ struct FRoomReinforcementRule
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement|VFX", meta=(DisplayName="스폰 사운드", ToolTip="증원 몬스터가 스폰되는 위치에서 재생할 사운드입니다."))
 	TObjectPtr<class USoundBase> SpawnSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement|Telegraph", meta=(DisplayName="증원 예고 VFX", ToolTip="증원 몬스터가 등장하기 전에 스폰 위치에서 재생할 경고 이펙트입니다."))
+	TObjectPtr<class UNiagaraSystem> TelegraphVFX;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement|Telegraph", meta=(DisplayName="예고 VFX 크기"))
+	FVector TelegraphVFXScale = FVector::OneVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement|Telegraph", meta=(DisplayName="증원 예고 사운드", ToolTip="증원 몬스터가 등장하기 전에 재생할 경고 사운드입니다."))
+	TObjectPtr<class USoundBase> TelegraphSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Reinforcement|Telegraph", meta=(ClampMin="0.0", DisplayName="예고 지속 시간", ToolTip="예고 이펙트가 재생된 뒤 증원 몬스터가 등장하기까지 기다릴 시간입니다."))
+	float TelegraphDuration = 1.5f;
 };
 
 USTRUCT(BlueprintType)

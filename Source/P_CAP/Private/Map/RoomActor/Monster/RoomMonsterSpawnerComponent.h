@@ -43,6 +43,14 @@ public:
 		const FPlayerTendencyModifier& Tendency,
 		int32 ReinforcementIndex);
 
+	int32 PreviewReinforcement(
+		const FRoomData& RoomData,
+		const FRoomInteriorLayout& InteriorLayout,
+		int32 MapSeed,
+		const FTransform& RoomTransform,
+		const FPlayerTendencyModifier& Tendency,
+		int32 ReinforcementIndex);
+
 	void ClearSpawnedMonsters();
 
 	void ActivateSpawnedMonsters(AActor* TargetActor);
@@ -100,7 +108,8 @@ private:
 		int32 RandomSalt,
 		bool bClearExisting,
 		const TArray<TSubclassOf<ACharacter>>& RecentClasses,
-		const FRoomReinforcementRule* ReinforcementRule = nullptr);
+		const FRoomReinforcementRule* ReinforcementRule = nullptr,
+		bool bTelegraphOnly = false);
 
 	const FRoomMonsterSpawnEntry* PickMonsterEntry(
 		const FRoomMonsterSpawnRule& SpawnRule,

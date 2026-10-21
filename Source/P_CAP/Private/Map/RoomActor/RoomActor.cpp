@@ -731,8 +731,23 @@ bool ARoomActor::TryQueueReinforcement(int32 ReinforcementIndex)
 
 	const FRoomReinforcementRule& Reinforcement = SpawnRule->Reinforcements[ReinforcementIndex];
 	bReinforcementPending[ReinforcementIndex] = true;
+	const bool bHasTelegraph = Reinforcement.TelegraphVFX || Reinforcement.TelegraphSound;
+	const float SpawnDelay = FMath::Max(
+		Reinforcement.DelayAfterTriggered,
+		bHasTelegraph ? Reinforcement.TelegraphDuration : 0.f);
 
-	if (Reinforcement.DelayAfterTriggered <= 0.f)
+	if (bHasTelegraph && SpawnDelay > 0.f)
+	{
+		MonsterSpawnerComponent->PreviewReinforcement(
+			CachedRoomData,
+			CachedInteriorLayout,
+			CachedMapSeed,
+			GetActorTransform(),
+			CachedTendency,
+			ReinforcementIndex);
+	}
+
+	if (SpawnDelay <= 0.f)
 	{
 		SpawnQueuedReinforcement(ReinforcementIndex);
 		return true;
@@ -742,7 +757,7 @@ bool ARoomActor::TryQueueReinforcement(int32 ReinforcementIndex)
 	{
 		FTimerDelegate TimerDelegate;
 		TimerDelegate.BindUObject(this, &ARoomActor::SpawnQueuedReinforcement, ReinforcementIndex);
-		World->GetTimerManager().SetTimer(ReinforcementTimerHandles[ReinforcementIndex], TimerDelegate, Reinforcement.DelayAfterTriggered, false);
+		World->GetTimerManager().SetTimer(ReinforcementTimerHandles[ReinforcementIndex], TimerDelegate, SpawnDelay, false);
 		return true;
 	}
 
@@ -880,6 +895,13 @@ bool ARoomActor::AreRequiredReinforcementsResolved() const
 
 	for (int32 ReinforcementIndex = 0; ReinforcementIndex < SpawnRule->Reinforcements.Num(); ++ReinforcementIndex)
 	{
+		// Keep the encounter alive while a telegraphed wave is waiting to spawn,
+		// including optional waves that would not otherwise block room clear.
+		if (bReinforcementPending.IsValidIndex(ReinforcementIndex) && bReinforcementPending[ReinforcementIndex])
+		{
+			return false;
+		}
+
 		const FRoomReinforcementRule& Reinforcement = SpawnRule->Reinforcements[ReinforcementIndex];
 		if (!Reinforcement.bRequiredForRoomClear)
 		{

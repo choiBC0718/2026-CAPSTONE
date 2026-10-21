@@ -73,6 +73,26 @@ int32 URoomMonsterSpawnerComponent::SpawnReinforcement(
 	return SpawnMonstersFromRule(RoomData, InteriorLayout, MapSeed, RoomTransform, Tendency, ReinforcementSpawnRule, ReinforcementIndex + 1, false, RecentMonsterClassesForRoom, &ReinforcementRule);
 }
 
+int32 URoomMonsterSpawnerComponent::PreviewReinforcement(
+	const FRoomData& RoomData,
+	const FRoomInteriorLayout& InteriorLayout,
+	int32 MapSeed,
+	const FTransform& RoomTransform,
+	const FPlayerTendencyModifier& Tendency,
+	int32 ReinforcementIndex)
+{
+	const FRoomMonsterSpawnRule* SpawnRule = GetSpawnRule(RoomData.RoomType);
+	if (!SpawnRule || !SpawnRule->Reinforcements.IsValidIndex(ReinforcementIndex))
+	{
+		return 0;
+	}
+
+	FRoomMonsterSpawnRule ReinforcementSpawnRule = *SpawnRule;
+	const FRoomReinforcementRule& ReinforcementRule = SpawnRule->Reinforcements[ReinforcementIndex];
+	ReinforcementSpawnRule.ScoreRange = ReinforcementRule.ScoreRange;
+	return SpawnMonstersFromRule(RoomData, InteriorLayout, MapSeed, RoomTransform, Tendency, ReinforcementSpawnRule, ReinforcementIndex + 1, false, RecentMonsterClassesForRoom, &ReinforcementRule, true);
+}
+
 int32 URoomMonsterSpawnerComponent::SpawnMonstersFromRule(
 	const FRoomData& RoomData,
 	const FRoomInteriorLayout& InteriorLayout,
@@ -83,7 +103,8 @@ int32 URoomMonsterSpawnerComponent::SpawnMonstersFromRule(
 	int32 RandomSalt,
 	bool bClearExisting,
 	const TArray<TSubclassOf<ACharacter>>& RecentClasses,
-	const FRoomReinforcementRule* ReinforcementRule)
+	const FRoomReinforcementRule* ReinforcementRule,
+	bool bTelegraphOnly)
 {
 	if (bClearExisting)
 	{
@@ -198,6 +219,34 @@ int32 URoomMonsterSpawnerComponent::SpawnMonstersFromRule(
 			UE_LOG(LogTemp, Warning, TEXT("[Spawn] Failed to find free monster spawn location in Room(%d,%d). Monster skipped."),
 				RoomData.GridPos.X,
 				RoomData.GridPos.Y);
+			continue;
+		}
+
+		if (bTelegraphOnly)
+		{
+			if (ReinforcementRule && ReinforcementRule->TelegraphVFX)
+			{
+				const FVector SpawnFloorLocation = WorldLocation - RoomTransform.TransformVector(FVector(0.f, 0.f, SpawnZOffset));
+				UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+					World,
+					ReinforcementRule->TelegraphVFX,
+					SpawnFloorLocation + FVector(0.f, 0.f, 2.f),
+					FRotator::ZeroRotator,
+					ReinforcementRule->TelegraphVFXScale);
+			}
+
+			if (ReinforcementRule && ReinforcementRule->TelegraphSound && SpawnedCount == 0)
+			{
+				UGameplayStatics::PlaySoundAtLocation(
+					World,
+					ReinforcementRule->TelegraphSound,
+					WorldLocation);
+			}
+
+			// Keep the deterministic random stream aligned with the later spawn pass,
+			// which also rolls a facing direction for every valid location.
+			(void)RandomStream.FRandRange(0.f, 360.f);
+			++SpawnedCount;
 			continue;
 		}
 
