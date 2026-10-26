@@ -21,7 +21,7 @@ void UAN_PlayWeaponAnim::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequ
 	UCAP_WeaponComponent* WeaponComp = MeshComp->GetOwner()->FindComponentByClass<UCAP_WeaponComponent>();
 	if (!WeaponComp) return;
 
-	USkeletalMeshComponent* TargetWeaponMesh = WeaponComp->GetWeaponMesh(TargetHand);
+	/*USkeletalMeshComponent* TargetWeaponMesh = WeaponComp->GetWeaponMesh(TargetHand);
 	if (TargetWeaponMesh)
 	{
 		// 현재 무기에서 실행 중인 노티파이 개수를 get
@@ -50,13 +50,14 @@ void UAN_PlayWeaponAnim::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequ
 			TargetWeaponMesh->RefreshBoneTransforms();
 		}
 	}
+	*/
 }
 
 void UAN_PlayWeaponAnim::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
 	float FrameDeltaTime, const FAnimNotifyEventReference& EventReference)
 {
 	Super::NotifyTick(MeshComp, Animation, FrameDeltaTime, EventReference);
-
+/*
 	if (!MeshComp || !MeshComp->GetOwner()) return;
 	if (MeshComp->GetWorld()->IsPreviewWorld())
 		return;
@@ -76,7 +77,7 @@ void UAN_PlayWeaponAnim::NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSeque
 		FTransform FinalTransform = BoneTransform.Inverse() * GripOffsetTransform;
 		
 		TargetWeaponMesh->SetRelativeTransform(FinalTransform);
-	}
+	}*/
 }
 
 void UAN_PlayWeaponAnim::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
@@ -84,7 +85,7 @@ void UAN_PlayWeaponAnim::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequen
 {
 	Super::NotifyEnd(MeshComp, Animation, EventReference);
 	if (!MeshComp || !MeshComp->GetOwner()) return;
-
+/*
 	UCAP_WeaponComponent* WeaponComp = MeshComp->GetOwner()->FindComponentByClass<UCAP_WeaponComponent>();
 	if (!WeaponComp) return;
 
@@ -114,5 +115,5 @@ void UAN_PlayWeaponAnim::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequen
 				WeaponStateMap.Remove(TargetWeaponMesh);
 			}
 		}
-	}
+	}*/
 }

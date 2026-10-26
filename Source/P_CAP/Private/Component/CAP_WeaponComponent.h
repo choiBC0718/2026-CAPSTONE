@@ -32,7 +32,6 @@ public:
 	FOnWeaponSkillChanged OnWeaponSkillChanged;
 
 	const TArray<class UCAP_WeaponInstance*>& GetEquippedWeapons() const {return EquippedWeapons;}
-	class USkeletalMeshComponent* GetWeaponMesh(EEquipHand Hand) const;
 
 	// 특정 무기를 가지고 있는지 확인
 	bool HasWeapon(class UCAP_WeaponDataAsset* WeaponDA) const;
@@ -44,11 +43,6 @@ public:
 	struct FWeaponComponentSaveData CreateSaveData() const;
 private:
 	UPROPERTY()
-	class USkeletalMeshComponent* WeaponMesh_L;
-	UPROPERTY()
-	class USkeletalMeshComponent* WeaponMesh_R;
-
-	UPROPERTY()
 	TArray<class UCAP_WeaponInstance*> EquippedWeapons;
 	int32 CurrentWeaponIndex=0;
 	
@@ -56,7 +50,6 @@ private:
 	class UCAP_WeaponDataAsset* DefaultBasicWeapon;
 	
 	void ApplyWeaponData(class UCAP_WeaponInstance* WeaponInstance);
-	void AttachWeaponMesh(class UCAP_WeaponDataAsset* WeaponDA);
 	
 	UPROPERTY(EditDefaultsOnly, Category="Weapon")
 	int MaxWeaponCount = 2;
@@ -65,7 +58,6 @@ private:
 	class UCAP_AbilitySystemComponent* ASC;
 
 	void RestoreFromSaveData(const struct FWeaponComponentSaveData& InData);
-	void InitializeWeaponMeshes();
 	bool TryRestoreSavedWeapons();
 	void EquipDefaultWeapon();
 

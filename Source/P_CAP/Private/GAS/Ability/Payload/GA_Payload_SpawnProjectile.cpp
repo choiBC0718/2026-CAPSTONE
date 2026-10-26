@@ -115,17 +115,11 @@ bool UGA_Payload_SpawnProjectile::GetSpawnLocationFromNotify(const FGameplayEven
 	if (!NotifyData)
 		return false;
 
+	// 무기가 스켈레톤에 결합되어 있으므로 캐릭터 메쉬에서 소켓 위치 추출
 	USkeletalMeshComponent* TargetMesh = nullptr;
-	if (NotifyData->MeshTarget == ESpawnMeshTarget::Character)
+	if (ACharacter* Avatar = Cast<ACharacter>(OwnerActor))
 	{
-		if (ACharacter* Avatar = Cast<ACharacter>(OwnerActor))
-			TargetMesh = Avatar->GetMesh();
-	}
-	else if (NotifyData->MeshTarget == ESpawnMeshTarget::Weapon)
-	{
-		if (ACAP_PlayerCharacter* Player = Cast<ACAP_PlayerCharacter>(OwnerActor))
-			if (UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent())
-				TargetMesh = WeaponComp->GetWeaponMesh(NotifyData->SpawnHand);
+		TargetMesh = Avatar->GetMesh();
 	}
 
 	if (TargetMesh && TargetMesh->DoesSocketExist(NotifyData->SocketName))

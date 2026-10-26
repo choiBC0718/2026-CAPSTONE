@@ -68,16 +68,3 @@ void UCAP_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 void UCAP_AnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
 {
 }
-
-void UCAP_AnimInstance::UpdateWeaponAnimData(class UCAP_WeaponDataAsset* WeaponDA)
-{
-	if (WeaponDA)
-	{
-		CurrentIdleAnim = WeaponDA->IdleAnim;
-		CurrentJogStartAnim = WeaponDA->JogStartAnim;
-		CurrentJoggingAnim = WeaponDA->JoggingAnim;
-		CurrentJogEndAnim = WeaponDA->JogEndAnim;
-
-		CurrentJogEndStartTime = WeaponDA->JogEndStartTime;
-	}
-}
