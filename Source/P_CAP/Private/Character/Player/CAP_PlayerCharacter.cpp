@@ -359,3 +359,9 @@ void ACAP_PlayerCharacter::DeathMontageFinished()
 	if (ACAP_StageGameMode* StageGM = Cast<ACAP_StageGameMode>(UGameplayStatics::GetGameMode(this)))
 		StageGM->OnPlayerDeathAnimationFinished(PC);
 }
+
+void ACAP_PlayerCharacter::PlayDeathAnimation()
+{
+	float EstimatedDeathTime = 2.5f; 
+	GetWorldTimerManager().SetTimer(DeathMontageTimerHandle, this, &ACAP_PlayerCharacter::DeathMontageFinished, EstimatedDeathTime);
+}

@@ -33,6 +33,10 @@ public:
 	UFUNCTION(BlueprintCallable, meta=(BlueprintThreadSafe))
 	FORCEINLINE float GetAimYaw() const {return AimYaw;}
 
+protected:
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsDead = false;
+	
 private:
 	UPROPERTY()
 	class ACharacter* OwnerCharacter;

@@ -4,8 +4,8 @@
 #include "Animation/CAP_AnimInstance.h"
 
 #include "GameFramework/Character.h"
-#include "Interactables/Weapon/CAP_WeaponInstance.h"
-#include "Character/Player/CAP_PlayerCharacter.h"
+#include "GAS/CAP_AbilitySystemComponent.h"
+#include "GAS/Setting/CAP_AbilitySystemStatics.h"
 
 void UCAP_AnimInstance::NativeInitializeAnimation()
 {
@@ -60,6 +60,14 @@ void UCAP_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 					
 					AimYaw = FMath::RInterpTo(CurrentAimRot, TargetAimRot, DeltaSeconds, 15.f).Yaw;
 				}
+			}
+		}
+		if (OwnerCharacter)
+		{
+			if (UCAP_AbilitySystemComponent* ASC = OwnerCharacter->GetComponentByClass<UCAP_AbilitySystemComponent>())
+			{
+				// 체력이 0이 되어 빈사/사망 태그가 붙었는지 확인
+				bIsDead = ASC->HasMatchingGameplayTag(UCAP_AbilitySystemStatics::GetHealthEmptyStatTag());
 			}
 		}
 	}

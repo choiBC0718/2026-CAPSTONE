@@ -103,6 +103,7 @@ public:
 protected:
 	void TryLoadProgressionData();
 	virtual void DeathMontageFinished() override;
+	virtual void PlayDeathAnimation() override;
 
 	bool bIsTPSMode = false;
 };
