@@ -42,6 +42,7 @@ public:
 
 	/* 현재 스폰된 RoomActor 중에서 그 좌표에 해당하는 방 반환 */
 	ARoomActor* FindSpawnedRoomByGridPos(const FIntPoint& InGridPos) const;
+	void SetStageExitEnabledForRoom(const ARoomActor* RoomActor, bool bEnabled);
 
 	FRoomData* FindRoomData(const FIntPoint& InGridPos);
 	const FRoomData* FindRoomData(const FIntPoint& InGridPos) const;

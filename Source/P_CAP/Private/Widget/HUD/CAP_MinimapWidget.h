@@ -16,6 +16,7 @@ public:
 	void SetMapLayout(const FMapLayout& InLayout);
 	void SetCurrentRoom(const FIntPoint& InGridPos);
 	void RestoreVisitedRooms(const TSet<FIntPoint>& InVisitedRoomGridPositions);
+	void SetExpandedMap(bool bExpanded);
 	const TSet<FIntPoint>& GetVisitedRoomGridPositions() const { return VisitedRoomGridPositions; }
 
 protected:

@@ -13,6 +13,8 @@
 
 namespace
 {
+	constexpr int32 BossRoomMonsterScoreMultiplier = 2;
+
 	struct FRoomMonsterCellPlacement
 	{
 		FRoomMonsterSpawnPick SpawnPick;
@@ -45,8 +47,23 @@ void URoomMonsterSpawnerComponent::SpawnMonsters(
 {
 	RecentMonsterClassesForRoom = RecentMonsterClasses;
 	const FRoomMonsterSpawnRule* SpawnRule = GetSpawnRule(RoomData.RoomType);
+	if (RoomData.RoomType == ERoomType::Boss && (!SpawnRule || SpawnRule->MonsterPool.IsEmpty()))
+	{
+		// The current spawn data asset only defines a Normal rule; reuse its pool for boss rooms.
+		SpawnRule = GetSpawnRule(ERoomType::Normal);
+	}
 	if (!SpawnRule)
 	{
+		return;
+	}
+
+	if (RoomData.RoomType == ERoomType::Boss)
+	{
+		FRoomMonsterSpawnRule BossRoomSpawnRule = *SpawnRule;
+		BossRoomSpawnRule.ScoreRange.X *= BossRoomMonsterScoreMultiplier;
+		BossRoomSpawnRule.ScoreRange.Y *= BossRoomMonsterScoreMultiplier;
+		SpawnMonstersFromRule(RoomData, InteriorLayout, MapSeed, RoomTransform, Tendency,
+			BossRoomSpawnRule, 0, true, RecentMonsterClassesForRoom);
 		return;
 	}
 

@@ -11,6 +11,7 @@ namespace
 	constexpr float MapPadding = 18.f;
 	constexpr float HeaderHeight = 42.f;
 	constexpr float LegendHeight = 60.f;
+	constexpr float ExpandedMapScale = 1.5f;
 
 	FLinearColor GetRoomColor(ERoomType RoomType)
 	{
@@ -37,6 +38,7 @@ void UCAP_MinimapWidget::NativeConstruct()
 	}
 	SetPositionInViewport(FVector2D(ViewportSize.X - 24.f, 24.f));
 	SetDesiredSizeInViewport(FVector2D(MapPanelSize));
+	SetRenderTransformPivot(FVector2D(1.f, 0.f));
 	if (AMapManager* MapManager = Cast<AMapManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AMapManager::StaticClass())))
 	{
 		SetMapLayout(MapManager->GetCurrentLayout());
@@ -50,6 +52,12 @@ void UCAP_MinimapWidget::NativeConstruct()
 			SetCurrentRoom(MapManager->GetCurrentLayout().StartRoomPos);
 		}
 	}
+}
+
+void UCAP_MinimapWidget::SetExpandedMap(bool bExpanded)
+{
+	const float Scale = bExpanded ? ExpandedMapScale : 1.f;
+	SetRenderScale(FVector2D(Scale, Scale));
 }
 
 void UCAP_MinimapWidget::SetMapLayout(const FMapLayout& InLayout)

@@ -22,6 +22,9 @@ public:
 
 	FORCEINLINE UCAP_GameplayWidget* GetGameplayWidget() const { return GameplayWidget; }
 
+	UFUNCTION(Exec)
+	void TeleportToBossRoom();
+
 private:
 	UPROPERTY()
 	class ACAP_PlayerCharacter* PlayerCharacter;
@@ -34,6 +37,8 @@ private:
 	class UCAP_MinimapWidget* MinimapWidget;
 	
 	void SpawnGameplayWidget();
+	void ExpandMinimap();
+	void RestoreMinimapSize();
 	
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	class UInputMappingContext* UIInputMapping;

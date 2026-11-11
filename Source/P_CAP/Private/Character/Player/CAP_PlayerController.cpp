@@ -8,6 +8,8 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Blueprint/UserWidget.h"
+#include "Kismet/GameplayStatics.h"
+#include "Map/Debug/MapManager.h"
 
 void ACAP_PlayerController::OnPossess(APawn* InPawn)
 {
@@ -44,6 +46,42 @@ void ACAP_PlayerController::SetupInputComponent()
 		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Completed, this, &ACAP_PlayerController::HandleUIConfirmCompleted);
 		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Canceled, this, &ACAP_PlayerController::HandleUIConfirmCanceled);
 	}
+
+	if (InputComponent)
+	{
+		InputComponent->BindKey(EKeys::Z, IE_Pressed, this, &ACAP_PlayerController::ExpandMinimap);
+		InputComponent->BindKey(EKeys::Z, IE_Released, this, &ACAP_PlayerController::RestoreMinimapSize);
+	}
+}
+
+void ACAP_PlayerController::TeleportToBossRoom()
+{
+	AMapManager* MapManager = Cast<AMapManager>(
+		UGameplayStatics::GetActorOfClass(this, AMapManager::StaticClass()));
+	if (!MapManager)
+	{
+		ClientMessage(TEXT("TeleportToBossRoom: MapManager not found."));
+		return;
+	}
+
+	ARoomActor* BossRoom = MapManager->FindSpawnedRoomByGridPos(
+		MapManager->GetCurrentLayout().BossRoomPos);
+	if (!BossRoom)
+	{
+		ClientMessage(TEXT("TeleportToBossRoom: boss room has not been generated."));
+		return;
+	}
+
+	APawn* PlayerPawn = GetPawn();
+	if (!PlayerPawn)
+	{
+		ClientMessage(TEXT("TeleportToBossRoom: possessed pawn not found."));
+		return;
+	}
+
+	const FVector Destination = BossRoom->GetActorLocation() + FVector(0.f, 0.f, 150.f);
+	PlayerPawn->SetActorLocation(Destination, false, nullptr, ETeleportType::TeleportPhysics);
+	ClientMessage(TEXT("Teleported to the boss room."));
 }
 
 
@@ -67,6 +105,22 @@ void ACAP_PlayerController::ToggleCharacterMenu()
 	{
 		GameplayWidget->ToggleCharacterMenu();
 
+	}
+}
+
+void ACAP_PlayerController::ExpandMinimap()
+{
+	if (MinimapWidget)
+	{
+		MinimapWidget->SetExpandedMap(true);
+	}
+}
+
+void ACAP_PlayerController::RestoreMinimapSize()
+{
+	if (MinimapWidget)
+	{
+		MinimapWidget->SetExpandedMap(false);
 	}
 }
 

@@ -264,6 +264,10 @@ void ARoomActor::ActivateRoom(AActor* TargetActor)
 	else
 	{
 		bRoomCleared = true;
+		if (CachedRoomData.RoomType == ERoomType::Boss)
+		{
+			HandleCombatRoomCleared();
+		}
 		SetSpawnedDoorsPortalEnabled(true);
 	}
 }
@@ -451,7 +455,10 @@ void ARoomActor::CheckRoomClear()
 		HandleCombatRoomCleared();
 		SetSpawnedDoorsPortalEnabled(true);
 		SetActorTickEnabled(false);
-		SpawnRewardChest();
+		if (CachedRoomData.RoomType == ERoomType::Normal)
+		{
+			SpawnRewardChest();
+		}
 	}
 }
 
@@ -665,9 +672,11 @@ bool ARoomActor::IsLocalPointInsideInteriorTemplateExclusion(const FVector& Loca
 
 bool ARoomActor::ShouldLockPortalsForCombat() const
 {
-	return CachedRoomData.RoomType == ERoomType::Normal &&
+	const bool bIsCombatRoom = CachedRoomData.RoomType == ERoomType::Normal ||
+		CachedRoomData.RoomType == ERoomType::Boss;
+	return bIsCombatRoom &&
 		MonsterSpawnerComponent &&
-		(MonsterSpawnerComponent->HasSpawnedMonsters() || !AreRequiredReinforcementsResolved());
+		(MonsterSpawnerComponent->GetNumSpawnedMonsters() > 0 || !AreRequiredReinforcementsResolved());
 }
 
 void ARoomActor::InitializeReinforcementState()
@@ -924,6 +933,15 @@ int32 ARoomActor::GetEstimatedReinforcementScore(const FRoomReinforcementRule& R
 
 void ARoomActor::HandleCombatRoomCleared()
 {
+	if (CachedRoomData.RoomType == ERoomType::Boss)
+	{
+		if (AMapManager* MapManager = Cast<AMapManager>(GetOwner()))
+		{
+			MapManager->SetStageExitEnabledForRoom(this, true);
+		}
+		return;
+	}
+
 	if (CachedRoomData.RoomType != ERoomType::Normal)
 	{
 		return;

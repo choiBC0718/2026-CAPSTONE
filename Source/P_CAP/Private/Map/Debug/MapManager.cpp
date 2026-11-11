@@ -324,21 +324,15 @@ void AMapManager::SpawnRooms(const FMapLayout& Layout)
 
 		if (RoomData.RoomType == ERoomType::Boss)
 		{
-			if (bSpawnStageExitActor)
-			{
-				SpawnStageExitInRoom(SpawnedRoom, RoomData);
-			}
-			else
-			{
-				SpawnBossRoomTemporaryActor(SpawnedRoom);
-			}
+			// Replace the temporary boss-room prop with the real, combat-gated stage exit.
+			SpawnStageExitInRoom(SpawnedRoom, RoomData);
 		}
 	}
 }
 
 void AMapManager::SpawnStageExitInRoom(ARoomActor* RoomActor, const FRoomData& RoomData)
 {
-	if (!RoomActor || !StageExitActorClass)
+	if (!RoomActor)
 	{
 		return;
 	}
@@ -349,17 +343,19 @@ void AMapManager::SpawnStageExitInRoom(ARoomActor* RoomActor, const FRoomData& R
 		return;
 	}
 
+	TSubclassOf<AStageExitActor> ExitClass = StageExitActorClass;
+	if (!ExitClass)
+	{
+		ExitClass = AStageExitActor::StaticClass();
+	}
 	const FTransform SpawnTransform = RoomActor->GetStageExitSpawnTransform();
 
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = RoomActor;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	AStageExitActor* SpawnedStageExit = World->SpawnActor<AStageExitActor>(
-		StageExitActorClass,
-		SpawnTransform.GetLocation(),
-		SpawnTransform.GetRotation().Rotator(),
-		SpawnParams
+	AStageExitActor* SpawnedStageExit = World->SpawnActorDeferred<AStageExitActor>(
+		ExitClass,
+		SpawnTransform,
+		RoomActor,
+		nullptr,
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn
 	);
 
 	if (!SpawnedStageExit)
@@ -367,8 +363,32 @@ void AMapManager::SpawnStageExitInRoom(ARoomActor* RoomActor, const FRoomData& R
 		return;
 	}
 
+	SpawnedStageExit->SetExitEnabled(false);
+	SpawnedStageExit->FinishSpawning(SpawnTransform);
 	SpawnedStageExit->AttachToActor(RoomActor, FAttachmentTransformRules::KeepWorldTransform);
 	SpawnedStageExits.Add(SpawnedStageExit);
+}
+
+void AMapManager::SetStageExitEnabledForRoom(const ARoomActor* RoomActor, bool bEnabled)
+{
+	if (!RoomActor)
+	{
+		return;
+	}
+
+	for (AStageExitActor* StageExit : SpawnedStageExits)
+	{
+		if (IsValid(StageExit) && StageExit->GetOwner() == RoomActor)
+		{
+			StageExit->SetExitEnabled(bEnabled);
+			UE_LOG(LogTemp, Log, TEXT("MapManager: stage exit for boss room %s %s."),
+				*GetNameSafe(RoomActor), bEnabled ? TEXT("enabled") : TEXT("disabled"));
+			return;
+		}
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("MapManager: no stage exit registered for boss room %s."),
+		*GetNameSafe(RoomActor));
 }
 
 void AMapManager::SpawnBossRoomTemporaryActor(ARoomActor* RoomActor)
