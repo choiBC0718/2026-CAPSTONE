@@ -118,6 +118,14 @@ void ACAP_PlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 void ACAP_PlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// TestMap camera should follow without spring-arm lag while preserving its framing.
+	if (UWorld* World = GetWorld(); World && World->GetMapName().Contains(TEXT("TestMap"), ESearchCase::IgnoreCase))
+	{
+		SpringArm->bDoCollisionTest = false;
+		SpringArm->bEnableCameraLag = false;
+		SpringArm->bEnableCameraRotationLag = false;
+	}
 	
 	TryLoadProgressionData();
 }

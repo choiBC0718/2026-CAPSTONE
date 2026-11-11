@@ -6,11 +6,11 @@
 
 namespace
 {
-	constexpr float MapPanelSize = 248.f;
-	constexpr float MaxRoomTileSize = 22.f;
-	constexpr float MapPadding = 14.f;
-	constexpr float HeaderHeight = 34.f;
-	constexpr float LegendHeight = 38.f;
+	constexpr float MapPanelSize = 360.f;
+	constexpr float MaxRoomTileSize = 30.f;
+	constexpr float MapPadding = 18.f;
+	constexpr float HeaderHeight = 42.f;
+	constexpr float LegendHeight = 60.f;
 
 	FLinearColor GetRoomColor(ERoomType RoomType)
 	{
@@ -88,7 +88,7 @@ int32 UCAP_MinimapWidget::NativePaint(const FPaintArgs& Args, const FGeometry& A
 		PanelSize - FVector2D(2.f), FSlateLayoutTransform(FVector2D(1.f))), WhiteBrush,
 		ESlateDrawEffect::None, FLinearColor(0.025f, 0.035f, 0.05f, 0.92f));
 
-	const FSlateFontInfo HeaderFont = FCoreStyle::GetDefaultFontStyle("Bold", 12);
+	const FSlateFontInfo HeaderFont = FCoreStyle::GetDefaultFontStyle("Bold", 19);
 	FSlateDrawElement::MakeText(OutDrawElements, LayerId + 2,
 		AllottedGeometry.ToPaintGeometry(FVector2D(60.f, 18.f), FSlateLayoutTransform(FVector2D(14.f, 8.f))),
 		FText::FromString(TEXT("MAP")), HeaderFont, ESlateDrawEffect::None,
@@ -151,14 +151,13 @@ int32 UCAP_MinimapWidget::NativePaint(const FPaintArgs& Args, const FGeometry& A
 	{
 		const FRoomData& Room = Pair.Value;
 		const FVector2D TopLeft = RoomCenter(Room.GridPos) - FVector2D(RoomTileSize * 0.5f);
-		FLinearColor Color = GetRoomColor(Room.RoomType);
 		const bool bIsCurrentRoom = bHasCurrentRoom && CurrentRoomGridPos == Room.GridPos;
-		if (!VisitedRoomGridPositions.Contains(Room.GridPos) && !bIsCurrentRoom)
-		{
-			Color.R *= 0.32f;
-			Color.G *= 0.32f;
-			Color.B *= 0.32f;
-		}
+		const bool bIsVisited = VisitedRoomGridPositions.Contains(Room.GridPos) || bIsCurrentRoom;
+		const bool bIsGoalRoom = Room.GridPos == MapLayout.BossRoomPos && !bIsVisited;
+		FLinearColor Color = bIsVisited
+			? GetRoomColor(Room.RoomType)
+			: (bIsGoalRoom ? FLinearColor(0.95f, 0.62f, 0.08f, 1.f)
+				: FLinearColor(0.32f, 0.37f, 0.44f, 1.f));
 		if (bIsCurrentRoom)
 		{
 			const FVector2D GlowSize(RoomTileSize + 10.f);
@@ -173,22 +172,62 @@ int32 UCAP_MinimapWidget::NativePaint(const FPaintArgs& Args, const FGeometry& A
 		FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 6,
 			AllottedGeometry.ToPaintGeometry(FVector2D(RoomTileSize), FSlateLayoutTransform(TopLeft)),
 			WhiteBrush, ESlateDrawEffect::None, Color);
+
+		const TCHAR* RoomMarker = nullptr;
+		if (bIsVisited)
+		{
+			switch (Room.RoomType)
+			{
+			case ERoomType::Start: RoomMarker = TEXT("S"); break;
+			case ERoomType::Boss: RoomMarker = TEXT("B"); break;
+			case ERoomType::Reward: RoomMarker = TEXT("R"); break;
+			case ERoomType::Shop: RoomMarker = TEXT("$"); break;
+			case ERoomType::Event: RoomMarker = TEXT("!"); break;
+			default: break;
+			}
+		}
+
+		if (RoomMarker)
+		{
+			const FSlateFontInfo MarkerFont = FCoreStyle::GetDefaultFontStyle("Bold", 15);
+			const FVector2D MarkerSize(RoomTileSize, RoomTileSize);
+			FSlateDrawElement::MakeText(OutDrawElements, LayerId + 7,
+				AllottedGeometry.ToPaintGeometry(MarkerSize, FSlateLayoutTransform(TopLeft)),
+				FText::FromString(RoomMarker), MarkerFont, ESlateDrawEffect::None,
+				FLinearColor::White);
+		}
 	}
-	const FSlateFontInfo LegendFont = FCoreStyle::GetDefaultFontStyle("Regular", 8);
+	const FSlateFontInfo LegendFont = FCoreStyle::GetDefaultFontStyle("Regular", 13);
 	auto DrawLegendItem = [&](const TCHAR* Label, ERoomType RoomType, const FVector2D& Position)
 	{
 		FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 7,
 			AllottedGeometry.ToPaintGeometry(FVector2D(8.f), FSlateLayoutTransform(Position)),
 			WhiteBrush, ESlateDrawEffect::None, GetRoomColor(RoomType));
 		FSlateDrawElement::MakeText(OutDrawElements, LayerId + 7,
-			AllottedGeometry.ToPaintGeometry(FVector2D(68.f, 12.f), FSlateLayoutTransform(Position + FVector2D(12.f, -2.f))),
+			AllottedGeometry.ToPaintGeometry(FVector2D(92.f, 14.f), FSlateLayoutTransform(Position + FVector2D(14.f, -2.f))),
 			FText::FromString(Label), LegendFont, ESlateDrawEffect::None,
 			FLinearColor(0.76f, 0.8f, 0.86f, 0.95f));
 	};
 	const float LegendTop = MapPanelSize - LegendHeight + 4.f;
-	DrawLegendItem(TEXT("START"), ERoomType::Start, FVector2D(14.f, LegendTop));
-	DrawLegendItem(TEXT("SHOP"), ERoomType::Shop, FVector2D(128.f, LegendTop));
-	DrawLegendItem(TEXT("REWARD"), ERoomType::Reward, FVector2D(14.f, LegendTop + 15.f));
-	DrawLegendItem(TEXT("BOSS"), ERoomType::Boss, FVector2D(128.f, LegendTop + 15.f));
+	DrawLegendItem(TEXT("START"), ERoomType::Start, FVector2D(18.f, LegendTop));
+	DrawLegendItem(TEXT("SHOP"), ERoomType::Shop, FVector2D(190.f, LegendTop));
+	DrawLegendItem(TEXT("REWARD"), ERoomType::Reward, FVector2D(18.f, LegendTop + 17.f));
+	DrawLegendItem(TEXT("BOSS"), ERoomType::Boss, FVector2D(190.f, LegendTop + 17.f));
+	FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 7,
+		AllottedGeometry.ToPaintGeometry(FVector2D(10.f), FSlateLayoutTransform(FVector2D(18.f, LegendTop + 38.f))),
+		WhiteBrush, ESlateDrawEffect::None, FLinearColor(0.32f, 0.37f, 0.44f, 1.f));
+	FSlateDrawElement::MakeText(OutDrawElements, LayerId + 7,
+		AllottedGeometry.ToPaintGeometry(FVector2D(108.f, 14.f),
+			FSlateLayoutTransform(FVector2D(34.f, LegendTop + 36.f))),
+		FText::FromString(TEXT("UNEXPLORED")), LegendFont,
+		ESlateDrawEffect::None, FLinearColor(0.76f, 0.8f, 0.86f, 0.95f));
+	FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 7,
+		AllottedGeometry.ToPaintGeometry(FVector2D(10.f), FSlateLayoutTransform(FVector2D(190.f, LegendTop + 38.f))),
+		WhiteBrush, ESlateDrawEffect::None, FLinearColor(0.95f, 0.62f, 0.08f, 1.f));
+	FSlateDrawElement::MakeText(OutDrawElements, LayerId + 7,
+		AllottedGeometry.ToPaintGeometry(FVector2D(92.f, 14.f),
+			FSlateLayoutTransform(FVector2D(206.f, LegendTop + 36.f))),
+		FText::FromString(TEXT("GOAL")), LegendFont,
+		ESlateDrawEffect::None, FLinearColor(0.76f, 0.8f, 0.86f, 0.95f));
 	return LayerId + 8;
 }
