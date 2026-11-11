@@ -21,6 +21,9 @@ public:
 	virtual void ApplyCooldown(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const override;
 
 protected:
+	UPROPERTY(EditDefaultsOnly, Category = "VFX")
+	class UNiagaraSystem* SwapVFX;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Cooldown")
 	FGameplayTag SwapCooldownTag;
 	UPROPERTY(EditDefaultsOnly, Category = "Cooldown")

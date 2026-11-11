@@ -66,7 +66,6 @@ void UCAP_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		{
 			if (UCAP_AbilitySystemComponent* ASC = OwnerCharacter->GetComponentByClass<UCAP_AbilitySystemComponent>())
 			{
-				// 체력이 0이 되어 빈사/사망 태그가 붙었는지 확인
 				bIsDead = ASC->HasMatchingGameplayTag(UCAP_AbilitySystemStatics::GetHealthEmptyStatTag());
 			}
 		}

@@ -4,6 +4,7 @@
 #include "Component/CAP_InteractionComponent.h"
 
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "Character/Player/CAP_PlayerController.h"
 #include "Interface/CAP_InteractInterface.h"
 
 UCAP_InteractionComponent::UCAP_InteractionComponent()
@@ -84,6 +85,11 @@ void UCAP_InteractionComponent::BeginDialogue(const struct FNPCData& InNPCData)
 			DialogueComp->BeginDialogue(Cast<ACAP_PlayerCharacter>(GetOwner()));
 			// 대화 시작 방송 -> Dialogue Widget이 구독하여 대화 시작 이벤트 준비
 			OnDialogueTriggered.Broadcast(InNPCData);
+			
+			if (ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(Cast<ACAP_PlayerCharacter>(GetOwner())->GetController()))
+			{
+				PC->SetUIInputEnabled(true);
+			}
 		}
 	}
 }
@@ -123,9 +129,10 @@ void UCAP_InteractionComponent::EndDialogueCamera()
 	bIsInDialogue = false;
 	SetNearbyInteractable(nullptr);
 	UpdateNearbyInteractable();
-	if (ACAP_PlayerCharacter* PlayerChar = Cast<ACAP_PlayerCharacter>(GetOwner()))
+	
+	if (ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(Cast<ACAP_PlayerCharacter>(GetOwner())->GetController()))
 	{
-		PlayerChar->RestoreGameplayInputState();
+		PC->SetUIInputEnabled(false);
 	}
 }
 

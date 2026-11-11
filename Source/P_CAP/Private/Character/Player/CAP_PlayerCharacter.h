@@ -43,11 +43,6 @@ public:
 	UFUNCTION(Exec)
 	void ShowMeTheMoney();
 	
-	UFUNCTION(BlueprintCallable)
-	void SetCameraMode(bool bIsTPS);
-	UFUNCTION(BlueprintCallable)
-	void RestoreGameplayInputState();
-
 	virtual void UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack) override;
 	
 	UPROPERTY(VisibleAnywhere, Category="View", BlueprintReadOnly)
@@ -77,8 +72,6 @@ private:
 	class UInputAction* MoveIA;
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	class UInputAction* InteractIA;
-	UPROPERTY(EditDefaultsOnly, Category="Input")
-	class UInputAction* LookIA;
 
 	UPROPERTY(EditDefaultsOnly, Category="Input|Ability")
 	TMap<EAbilityInputID, class UInputAction*> AbilityInputActions;
@@ -104,6 +97,4 @@ protected:
 	void TryLoadProgressionData();
 	virtual void DeathMontageFinished() override;
 	virtual void PlayDeathAnimation() override;
-
-	bool bIsTPSMode = false;
 };
