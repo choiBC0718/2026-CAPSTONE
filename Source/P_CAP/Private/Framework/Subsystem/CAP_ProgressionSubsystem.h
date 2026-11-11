@@ -131,9 +131,15 @@ public:
 	void AddCurrencyCnt(ECurrencyType Type, int32 Amount);
 	// 통계 데이터 초기화 (마을로 돌아가는 경우에 호출)
 	void ClearRunStats();
+	
+	void SetIsRestoringData(bool bIsRestoring) { bIsRestoringData = bIsRestoring; }
+	bool IsRestoringData() const { return bIsRestoringData; }
+
 private:
 	UPROPERTY()
 	FPlayerProgressionData CurrentRunData;
 	UPROPERTY()
 	FRunStatistics CurrentRunStats;
+	
+	bool bIsRestoringData = false;
 };

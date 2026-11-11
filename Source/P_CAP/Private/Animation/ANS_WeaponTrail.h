@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimNotifies/AnimNotifyState.h"
-#include "Data/CAP_WeaponDataAsset.h"
 #include "ANS_WeaponTrail.generated.h"
 
 /**
@@ -22,10 +21,7 @@ public:
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trail")
 	TObjectPtr<UParticleSystem> TrailSystem;
-
-	UPROPERTY(EditAnywhere, Category="Trail")
-	EEquipHand WeaponHand = EEquipHand::Right;
-
+	
 	UPROPERTY(EditAnywhere, Category="Trail")
 	FName BaseSocketName = TEXT("FX_WeaponBase_R");
 	
@@ -36,5 +32,4 @@ protected:
 	float TrailWidth = 1.0f;
 private:
 	TMap<USkeletalMeshComponent*, UParticleSystemComponent*> SpawnedTrails;
-	class USkeletalMeshComponent* GetWeaponMesh(USkeletalMeshComponent* CharacterMesh) const;
 };

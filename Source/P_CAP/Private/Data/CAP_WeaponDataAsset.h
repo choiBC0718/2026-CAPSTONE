@@ -67,40 +67,6 @@ struct FWeaponSkillData : public FTableRowBase
 	TSoftObjectPtr<class UTexture2D> SkillIcon = nullptr;
 };
 
-UENUM(BlueprintType)
-enum class EEquipHand : uint8
-{
-	Right			UMETA(DisplayName = "오른손 장착"),
-	Left			UMETA(DisplayName = "왼손 장착")
-};
-
-USTRUCT(BlueprintType)
-struct FWeaponVisualInfo
-{
-	GENERATED_BODY()
-
-	/** 어느 손에 장착시킬지*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	EEquipHand EquipHand = EEquipHand::Right;
-	/** 캐릭터에 부착시킬 무기 스켈레탈 메시*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSoftObjectPtr<class USkeletalMesh> WeaponMesh = nullptr;
-	/** 캐릭터 쪽 부착 지점 (본 이름 or 소켓 이름)
-	 * 기본적으로 hand_l / hand_r 사용
-	 * (특수 위치인 경우 전용 소켓 이름 입력)
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName CharacterBoneName = FName("hand_r");
-	/** 무기 스켈레탈 메시의 뼈 이름 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName AlignBoneName = FName("hand_r");
-	/** 최종 미세 보정값 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FTransform GripOffsetTransform = FTransform();
-	/** 월드 스폰 시 적용시킬 위치+회전+스케일 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FTransform ConstructionOffset = FTransform();
-};
 
 /**
  * 
@@ -119,9 +85,16 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Data")
 	int32 MaxDodgeCount = 2;
-	
+
+	// 무기 주인 캐릭터 메쉬
 	UPROPERTY(EditDefaultsOnly, Category="Visual")
-	TArray<FWeaponVisualInfo> WeaponVisualInfos;
+	TSoftObjectPtr<class USkeletalMesh> CharacterMesh = nullptr;
+	// 무기 주인 Anim Blueprint
+	UPROPERTY(EditDefaultsOnly, Category="Visual")
+	TSoftClassPtr<class UAnimInstance> CharacterAnimClass = nullptr;
+	// 땅에 떨어져있는 무기 메쉬
+	UPROPERTY(EditDefaultsOnly, Category="Visual")
+	TSoftObjectPtr<class UStaticMesh> WorldDisplayMesh = nullptr;
 	
 	/** 무기의 기본 공격 */
 	UPROPERTY(EditDefaultsOnly, Category="Ability", meta=(RowType="/Script/P_CAP.WeaponSkillData"))
@@ -129,15 +102,4 @@ public:
 	/** 무기의 고유 스킬 배열 */
 	UPROPERTY(EditDefaultsOnly, Category="Ability", meta=(RowType="/Script/P_CAP.WeaponSkillData"))
 	TArray<FDataTableRowHandle> ActiveAbilityArray;
-	
-	UPROPERTY(EditDefaultsOnly, Category="Animtaion")
-	class UAnimSequence* IdleAnim = nullptr;
-	UPROPERTY(EditDefaultsOnly, Category="Animtaion")
-	class UAnimSequence* JogStartAnim = nullptr;
-	UPROPERTY(EditDefaultsOnly, Category="Animtaion")
-	class UAnimSequence* JoggingAnim = nullptr;
-	UPROPERTY(EditDefaultsOnly, Category="Animtaion")
-	class UAnimSequence* JogEndAnim = nullptr;
-	UPROPERTY(EditDefaultsOnly, Category="Animtaion")
-	float JogEndStartTime = 0.f;
 };

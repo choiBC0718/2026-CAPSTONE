@@ -99,7 +99,6 @@ void ACAP_PlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 		EnhancedInputComp->BindAction(MoveIA, ETriggerEvent::Triggered, this, &ACAP_PlayerCharacter::MoveInputHandle);
 		EnhancedInputComp->BindAction(MoveIA, ETriggerEvent::Completed, this, &ACAP_PlayerCharacter::MoveInputHandle);
 		EnhancedInputComp->BindAction(MoveIA, ETriggerEvent::Canceled, this, &ACAP_PlayerCharacter::MoveInputHandle);
-		EnhancedInputComp->BindAction(LookIA, ETriggerEvent::Triggered, this, &ACAP_PlayerCharacter::LookInputHandle);
 		
 		EnhancedInputComp->BindAction(InteractIA, ETriggerEvent::Ongoing, this, &ACAP_PlayerCharacter::InteractInputHandle);
 		EnhancedInputComp->BindAction(InteractIA, ETriggerEvent::Triggered, this, &ACAP_PlayerCharacter::InteractInputHandle);
@@ -165,46 +164,6 @@ void ACAP_PlayerCharacter::ShowMeTheMoney()
 	CurrencyComponent->AddCurrency(ECurrencyType::WeaponMaterial, 50000);
 }
 
-void ACAP_PlayerCharacter::SetCameraMode(bool bIsTPS)
-{
-	bIsTPSMode = bIsTPS;
-	if (bIsTPS)
-	{
-		SpringArm->bUsePawnControlRotation=true;
-		SpringArm->bInheritYaw=true;
-		SpringArm->bInheritPitch=true;
-		SpringArm->TargetArmLength=300.f;
-	}
-	else
-	{
-		SpringArm->bUsePawnControlRotation = false;
-		SpringArm->bInheritYaw = false;
-		SpringArm->bInheritPitch = false;
-		SpringArm->SetRelativeRotation(FRotator(-45.f, 0.f, 0.f)); 
-		SpringArm->TargetArmLength = 750.f;
-	}
-	RestoreGameplayInputState();
-}
-
-void ACAP_PlayerCharacter::RestoreGameplayInputState()
-{
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (!PC) return;
-
-	if (bIsTPSMode)
-	{
-		PC->bShowMouseCursor = false;
-		PC->SetInputMode(FInputModeGameOnly());
-	}
-	else
-	{
-		PC->bShowMouseCursor = true;
-		FInputModeGameAndUI InputMode;
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		InputMode.SetHideCursorDuringCapture(false);
-		PC->SetInputMode(InputMode);
-	}
-}
 
 void ACAP_PlayerCharacter::UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack)
 {
@@ -331,6 +290,8 @@ void ACAP_PlayerCharacter::TryLoadProgressionData()
 	{
 		if (Data.bIsValid)
 		{
+			Subsys->SetIsRestoringData(true);
+			
 			if (UCAP_AbilitySystemComponent* ASC = Cast<UCAP_AbilitySystemComponent>(GetAbilitySystemComponent()))
 			{
 				if (Data.BonusMaxHealth > 0.f)
@@ -343,6 +304,7 @@ void ACAP_PlayerCharacter::TryLoadProgressionData()
 
 				ASC->RestoreHealthFromSave(Data.CurrentHealth);
 			}
+			Subsys->SetIsRestoringData(false);
 		}
 	}
 }
@@ -355,4 +317,10 @@ void ACAP_PlayerCharacter::DeathMontageFinished()
 		return;
 	if (ACAP_StageGameMode* StageGM = Cast<ACAP_StageGameMode>(UGameplayStatics::GetGameMode(this)))
 		StageGM->OnPlayerDeathAnimationFinished(PC);
+}
+
+void ACAP_PlayerCharacter::PlayDeathAnimation()
+{
+	float EstimatedDeathTime = 2.5f; 
+	GetWorldTimerManager().SetTimer(DeathMontageTimerHandle, this, &ACAP_PlayerCharacter::DeathMontageFinished, EstimatedDeathTime);
 }

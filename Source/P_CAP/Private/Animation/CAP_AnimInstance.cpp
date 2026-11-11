@@ -4,8 +4,8 @@
 #include "Animation/CAP_AnimInstance.h"
 
 #include "GameFramework/Character.h"
-#include "Interactables/Weapon/CAP_WeaponInstance.h"
-#include "Character/Player/CAP_PlayerCharacter.h"
+#include "GAS/CAP_AbilitySystemComponent.h"
+#include "GAS/Setting/CAP_AbilitySystemStatics.h"
 
 void UCAP_AnimInstance::NativeInitializeAnimation()
 {
@@ -62,22 +62,16 @@ void UCAP_AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 				}
 			}
 		}
+		if (OwnerCharacter)
+		{
+			if (UCAP_AbilitySystemComponent* ASC = OwnerCharacter->GetComponentByClass<UCAP_AbilitySystemComponent>())
+			{
+				bIsDead = ASC->HasMatchingGameplayTag(UCAP_AbilitySystemStatics::GetHealthEmptyStatTag());
+			}
+		}
 	}
 }
 
 void UCAP_AnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
 {
-}
-
-void UCAP_AnimInstance::UpdateWeaponAnimData(class UCAP_WeaponDataAsset* WeaponDA)
-{
-	if (WeaponDA)
-	{
-		CurrentIdleAnim = WeaponDA->IdleAnim;
-		CurrentJogStartAnim = WeaponDA->JogStartAnim;
-		CurrentJoggingAnim = WeaponDA->JoggingAnim;
-		CurrentJogEndAnim = WeaponDA->JogEndAnim;
-
-		CurrentJogEndStartTime = WeaponDA->JogEndStartTime;
-	}
 }

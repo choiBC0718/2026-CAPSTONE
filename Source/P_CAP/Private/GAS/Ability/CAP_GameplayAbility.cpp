@@ -76,28 +76,16 @@ UAnimInstance* UCAP_GameplayAbility::GetOwnerAnimInstance() const
 
 FVector UCAP_GameplayAbility::GetMuzzleSocketLocation(FName SocketName)
 {
-	FVector SocketLoc = GetAvatarActorFromActorInfo()->GetActorLocation();
-	ACAP_PlayerCharacter* Player = GetPlayerCharacterFromActorInfo();
-	
-	if (Player)
+	USkeletalMeshComponent* MeshComp = GetOwningComponentFromActorInfo();
+	if (MeshComp)
 	{
-		if (UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent())
-		{
-			USkeletalMeshComponent* R_Weapon = WeaponComp->GetWeaponMesh(EEquipHand::Right);
-			USkeletalMeshComponent* L_Weapon = WeaponComp->GetWeaponMesh(EEquipHand::Left);
-
-			if (R_Weapon && R_Weapon->DoesSocketExist(SocketName))
-				SocketLoc = R_Weapon->GetSocketLocation(SocketName);
-			else if (L_Weapon && L_Weapon->DoesSocketExist(SocketName))
-				SocketLoc = L_Weapon->GetSocketLocation(SocketName);
-			else
-			{
-				if (R_Weapon)		SocketLoc = R_Weapon->GetComponentLocation();
-				else if (L_Weapon)	SocketLoc = L_Weapon->GetComponentLocation();
-			}
-		}
+		if (MeshComp->DoesSocketExist(SocketName))
+			return MeshComp->GetSocketLocation(SocketName);
+		
+		return MeshComp->GetComponentLocation();
 	}
-	return SocketLoc;
+	
+	return GetAvatarActorFromActorInfo()->GetActorLocation();
 }
 
 void UCAP_GameplayAbility::SendGameplayCueEvent(FHitResult HitResult, const struct FWeaponSkillData* InSkillData)

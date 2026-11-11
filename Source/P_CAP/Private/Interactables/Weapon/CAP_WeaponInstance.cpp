@@ -49,13 +49,16 @@ void UCAP_WeaponInstance::LoadWeaponAssets(FStreamableDelegate OnLoaded)
 {
 	// 무기가 부여할 능력들의 주소 수집할 Array
 	TArray<FSoftObjectPath> AssetsToLoad;
-
-	for (const FWeaponVisualInfo& VisualInfo : GetWeaponDA()->WeaponVisualInfos)
-	{
-		if (!VisualInfo.WeaponMesh.IsNull())
-			AssetsToLoad.AddUnique(VisualInfo.WeaponMesh.ToSoftObjectPath());
-	}
-
+	
+	
+	if (!GetWeaponDA()->CharacterMesh.IsNull())
+		AssetsToLoad.AddUnique(GetWeaponDA()->CharacterMesh.ToSoftObjectPath());
+	if (!GetWeaponDA()->CharacterAnimClass.IsNull())
+		AssetsToLoad.AddUnique(GetWeaponDA()->CharacterAnimClass.ToSoftObjectPath());
+	if (!GetWeaponDA()->WorldDisplayMesh.IsNull())
+		AssetsToLoad.AddUnique(GetWeaponDA()->WorldDisplayMesh.ToSoftObjectPath());
+	
+	
 	auto ExtractAssetsFromSkill = [&](const FWeaponSkillData& SkillData)
 	{
 		if (!SkillData.AbilityMontage.IsNull())

@@ -38,18 +38,15 @@ void UGA_Dodge::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const F
 	UAbilityTask_RotateToCursor* RotToCursor = UAbilityTask_RotateToCursor::SmoothRotateToMouse(this, 2000.f);
 	RotToCursor->ReadyForActivation();
 
-	FVector DashDirection = Character->GetActorForwardVector();
+	FVector DashDirection = Character->GetLastMovementInputVector();
+	DashDirection.Z = 0.f;
 	
-	if (APlayerController* PC = Cast<APlayerController>(Character->GetController()))
+	if (DashDirection.IsNearlyZero())
 	{
-		FHitResult HitResult;
-		if (PC->GetHitResultUnderCursor(ECC_TargetGround, false, HitResult))
-		{
-			DashDirection = HitResult.ImpactPoint - Character->GetActorLocation();
-			DashDirection.Z = 0.f;
-			DashDirection.Normalize();
-		}
+		DashDirection = Character->GetActorForwardVector();
+		DashDirection.Z = 0.f;
 	}
+	DashDirection.Normalize();
 
 	UAbilityTask_ApplyRootMotionConstantForce* ForceTask = UAbilityTask_ApplyRootMotionConstantForce::ApplyRootMotionConstantForce(
 		this, NAME_None, DashDirection, DodgeSpeed, DodgeDuration, false, nullptr,

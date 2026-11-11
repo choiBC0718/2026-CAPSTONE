@@ -16,25 +16,22 @@ void UANS_WeaponTrail::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequen
 	if (!MeshComp || !TrailSystem) 
 		return;
 
-	USkeletalMeshComponent* WeaponMesh = GetWeaponMesh(MeshComp);
-	if (WeaponMesh)
-	{
-		UParticleSystemComponent* ParticleComp = UGameplayStatics::SpawnEmitterAttached(
-			TrailSystem,
-			WeaponMesh,
-			NAME_None,
-			FVector::ZeroVector,
-			FRotator::ZeroRotator,
-			EAttachLocation::KeepRelativeOffset,
-			true
-		);
+	// 일체형 스켈레톤이므로 MeshComp에 직접 파티클을 부착합니다.
+	UParticleSystemComponent* ParticleComp = UGameplayStatics::SpawnEmitterAttached(
+		TrailSystem,
+		MeshComp,
+		NAME_None,
+		FVector::ZeroVector,
+		FRotator::ZeroRotator,
+		EAttachLocation::KeepRelativeOffset,
+		true
+	);
 
-		if (ParticleComp)
-		{
-			// 두 소켓 사이를 연결하는 트레일 생성 시작
-			ParticleComp->BeginTrails(BaseSocketName, TipSocketName, ETrailWidthMode_FromCentre, TrailWidth);
-			SpawnedTrails.Add(MeshComp, ParticleComp);
-		}
+	if (ParticleComp)
+	{
+		// 두 소켓 사이를 연결하는 트레일 생성 시작
+		ParticleComp->BeginTrails(BaseSocketName, TipSocketName, ETrailWidthMode_FromCentre, TrailWidth);
+		SpawnedTrails.Add(MeshComp, ParticleComp);
 	}
 }
 
@@ -55,23 +52,4 @@ void UANS_WeaponTrail::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequence
 		(*FoundComp)->DeactivateSystem();
 		SpawnedTrails.Remove(MeshComp);
 	}
-}
-
-class USkeletalMeshComponent* UANS_WeaponTrail::GetWeaponMesh(USkeletalMeshComponent* CharacterMesh) const
-{
-	if (!CharacterMesh || !CharacterMesh->GetOwner())
-		return nullptr;
-
-	TArray<USkeletalMeshComponent*> WeaponMeshes;
-	CharacterMesh->GetOwner()->GetComponents<USkeletalMeshComponent>(WeaponMeshes);
-	
-	FName TagToFind = (WeaponHand == EEquipHand::Right) ? TEXT("RightHand") : TEXT("LeftHand");
-	for (USkeletalMeshComponent* Mesh : WeaponMeshes)
-	{
-		if (Mesh->ComponentHasTag(TagToFind))
-		{
-			return Mesh;
-		}
-	}
-	return nullptr;
 }

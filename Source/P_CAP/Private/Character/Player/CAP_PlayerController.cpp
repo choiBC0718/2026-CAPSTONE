@@ -23,13 +23,6 @@ void ACAP_PlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	UEnhancedInputLocalPlayerSubsystem* InputSubsystem = GetLocalPlayer()->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
-	if (InputSubsystem)
-	{
-		InputSubsystem->RemoveMappingContext(UIInputMapping);
-		InputSubsystem->AddMappingContext(UIInputMapping, 1);
-	}
-
 	UEnhancedInputComponent* EnhancedInputComp = Cast<UEnhancedInputComponent>(InputComponent);
 	if (EnhancedInputComp)
 	{
@@ -42,6 +35,22 @@ void ACAP_PlayerController::SetupInputComponent()
 		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Triggered, this, &ACAP_PlayerController::HandleUIConfirmTriggered);
 		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Completed, this, &ACAP_PlayerController::HandleUIConfirmCompleted);
 		EnhancedInputComp->BindAction(UIConfirm, ETriggerEvent::Canceled, this, &ACAP_PlayerController::HandleUIConfirmCanceled);
+	}
+}
+
+void ACAP_PlayerController::SetUIInputEnabled(bool bEnable)
+{
+	UEnhancedInputLocalPlayerSubsystem* InputSubsystem = GetLocalPlayer()->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	if (!InputSubsystem) return;
+
+	if (bEnable)
+	{
+		InputSubsystem->AddMappingContext(UIInputMapping, 1);
+	}
+	else
+	{
+		InputSubsystem->RemoveMappingContext(UIInputMapping);
+		FSlateApplication::Get().SetAllUserFocusToGameViewport();
 	}
 }
 

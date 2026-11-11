@@ -2,7 +2,6 @@
 
 
 #include "Component/CAP_WeaponComponent.h"
-#include "Animation/CAP_AnimInstance.h"
 #include "Interactables/Weapon/CAP_WorldWeapon.h"
 #include "Interactables/Weapon/CAP_WeaponInstance.h"
 #include "GameplayAbilitySpec.h"
@@ -21,9 +20,7 @@ UCAP_WeaponComponent::UCAP_WeaponComponent()
 void UCAP_WeaponComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	InitializeWeaponMeshes();
-
+	
 	MaxWeaponCount = FMath::Max(1, MaxWeaponCount);
 	EquippedWeapons.SetNum(MaxWeaponCount);
 	CurrentWeaponIndex =0;
@@ -112,29 +109,29 @@ bool UCAP_WeaponComponent::HasWeapon(class UCAP_WeaponDataAsset* WeaponDA) const
 	return false;
 }
 
-class USkeletalMeshComponent* UCAP_WeaponComponent::GetWeaponMesh(EEquipHand Hand) const
-{
-	return Hand == EEquipHand::Left ? WeaponMesh_L : WeaponMesh_R; 
-}
 
 void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInstance)
 {
-	if (!WeaponInstance)
+	if (!WeaponInstance || !WeaponInstance->GetWeaponDA())
 		return;
 
 	UCAP_WeaponDataAsset* WeaponDA = WeaponInstance->GetWeaponDA();
-	if (!WeaponDA)
-		return;
-
 	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
 	if (!OwnerCharacter || !OwnerCharacter->GetMesh())
 		return;
 	
-	if (UCAP_AnimInstance* AnimInst = Cast<UCAP_AnimInstance>(OwnerCharacter->GetMesh()->GetAnimInstance()))
+	// 캐릭터 스켈레탈 메쉬 스왑
+	if (USkeletalMesh* LoadedCharMesh = WeaponDA->CharacterMesh.Get())
 	{
-		AnimInst->UpdateWeaponAnimData(WeaponDA);
+		OwnerCharacter->GetMesh()->SetSkeletalMesh(LoadedCharMesh);
 	}
-	AttachWeaponMesh(WeaponDA);
+
+	// 캐릭터 전용 애니메이션 블루프린트 스왑
+	if (UClass* LoadedAnimClass = WeaponDA->CharacterAnimClass.Get())
+	{
+		OwnerCharacter->GetMesh()->SetAnimInstanceClass(LoadedAnimClass);
+	}
+	
 	SetDodgeAbility(WeaponDA);
 	GrantAbilities(WeaponInstance);
 
@@ -150,64 +147,6 @@ void UCAP_WeaponComponent::ApplyWeaponData(class UCAP_WeaponInstance* WeaponInst
 	}
 }
 
-void UCAP_WeaponComponent::AttachWeaponMesh(class UCAP_WeaponDataAsset* WeaponDA)
-{
-	if (!WeaponDA)
-		return;
-
-	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
-	if (!OwnerCharacter || !OwnerCharacter->GetMesh())
-		return;
-	
-	if (WeaponMesh_R)
-		WeaponMesh_R->SetSkeletalMesh(nullptr);
-	if (WeaponMesh_L)
-		WeaponMesh_L->SetSkeletalMesh(nullptr);
-	
-	// DA에 설정한 메시, 위치로 설정
-	for (const FWeaponVisualInfo& VisualInfo :WeaponDA->WeaponVisualInfos)
-	{
-		USkeletalMeshComponent* TargetMesh = (VisualInfo.EquipHand == EEquipHand::Left) ? WeaponMesh_L : WeaponMesh_R;
-		if (TargetMesh)
-		{
-			// 무기 스켈레탈 메시 설정
-			TargetMesh->SetSkeletalMesh(VisualInfo.WeaponMesh.Get());
-			TargetMesh->EmptyOverrideMaterials();
-			
-			FTransform FinalTransform = VisualInfo.GripOffsetTransform;
-			if (VisualInfo.AlignBoneName != NAME_None)
-			{
-				FTransform BoneTransform = TargetMesh->GetSocketTransform(VisualInfo.AlignBoneName, RTS_Component);
-				FinalTransform = BoneTransform.Inverse() * VisualInfo.GripOffsetTransform;
-			}
-			
-			// 캐릭터에 부착시킬 뼈 이름
-			FName TargetCharacterBone = (VisualInfo.CharacterBoneName != NAME_None) ? VisualInfo.CharacterBoneName : FName("hand_r");
-			// 무기 메시를 AttachPoint에 부착 후 위치 조정
-			TargetMesh->AttachToComponent(OwnerCharacter->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TargetCharacterBone);
-			TargetMesh->SetRelativeTransform(FinalTransform);
-		}
-	}
-}
-
-void UCAP_WeaponComponent::InitializeWeaponMeshes()
-{
-	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
-	if (OwnerCharacter && OwnerCharacter->GetMesh())
-	{
-		WeaponMesh_R = NewObject<USkeletalMeshComponent>(OwnerCharacter, TEXT("WeaponMesh_R"));
-		WeaponMesh_R->SetupAttachment(OwnerCharacter->GetMesh());
-		WeaponMesh_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		WeaponMesh_R->ComponentTags.Add("RightHand");
-		WeaponMesh_R->RegisterComponent();
-
-		WeaponMesh_L = NewObject<USkeletalMeshComponent>(OwnerCharacter, TEXT("WeaponMesh_L"));
-		WeaponMesh_L->SetupAttachment(OwnerCharacter->GetMesh());
-		WeaponMesh_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		WeaponMesh_L->ComponentTags.Add("LeftHand");
-		WeaponMesh_L->RegisterComponent();
-	}
-}
 
 bool UCAP_WeaponComponent::TryRestoreSavedWeapons()
 {
