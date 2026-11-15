@@ -40,11 +40,15 @@ void ACAP_PlayerController::SetupInputComponent()
 
 void ACAP_PlayerController::SetUIInputEnabled(bool bEnable)
 {
-	UEnhancedInputLocalPlayerSubsystem* InputSubsystem = GetLocalPlayer()->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	ULocalPlayer* LocalPlayer = GetLocalPlayer();
+	if (!LocalPlayer) return;
+
+	UEnhancedInputLocalPlayerSubsystem* InputSubsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
 	if (!InputSubsystem) return;
 
 	if (bEnable)
 	{
+		InputSubsystem->RemoveMappingContext(UIInputMapping);
 		InputSubsystem->AddMappingContext(UIInputMapping, 1);
 	}
 	else
@@ -85,7 +89,7 @@ void ACAP_PlayerController::UICloseHandle(const FInputActionValue& InputActionVa
 {
 	if (GameplayWidget)
 	{
-		GameplayWidget->HideMenu();
+		GameplayWidget->HandleEscapeInput();
 	}
 }
 
