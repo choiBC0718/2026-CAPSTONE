@@ -47,44 +47,72 @@ UCAP_WeaponDataAsset* UCAP_WeaponInstance::GetWeaponDA() const
 
 void UCAP_WeaponInstance::LoadWeaponAssets(FStreamableDelegate OnLoaded)
 {
-	// 무기가 부여할 능력들의 주소 수집할 Array
+	if (!GetWeaponDA())
+	{
+		OnLoaded.ExecuteIfBound();
+		return;
+	}
+
 	TArray<FSoftObjectPath> AssetsToLoad;
-	
-	
+
 	if (!GetWeaponDA()->CharacterMesh.IsNull())
 		AssetsToLoad.AddUnique(GetWeaponDA()->CharacterMesh.ToSoftObjectPath());
 	if (!GetWeaponDA()->CharacterAnimClass.IsNull())
 		AssetsToLoad.AddUnique(GetWeaponDA()->CharacterAnimClass.ToSoftObjectPath());
 	if (!GetWeaponDA()->WorldDisplayMesh.IsNull())
 		AssetsToLoad.AddUnique(GetWeaponDA()->WorldDisplayMesh.ToSoftObjectPath());
-	
-	
+
 	auto ExtractAssetsFromSkill = [&](const FWeaponSkillData& SkillData)
 	{
 		if (!SkillData.AbilityMontage.IsNull())
 			AssetsToLoad.AddUnique(SkillData.AbilityMontage.ToSoftObjectPath());
 		if (!SkillData.SkillIcon.IsNull())
-		{
 			AssetsToLoad.AddUnique(SkillData.SkillIcon.ToSoftObjectPath());
-		}
 	};
-	
+
 	ExtractAssetsFromSkill(BasicAttackData);
 	for (const FWeaponSkillData& Skill : GrantedActiveSkills)
 	{
 		ExtractAssetsFromSkill(Skill);
 	}
 
-	// 수집한 주소들에 핸들 붙여주기
-	if (AssetsToLoad.Num() > 0)
-	{
-		UAssetManager& AssetManager = UAssetManager::Get();
-		AssetLoadHandle = AssetManager.GetStreamableManager().RequestAsyncLoad(AssetsToLoad, OnLoaded);
-	}
-	else
+	if (AssetsToLoad.Num() == 0)
 	{
 		OnLoaded.ExecuteIfBound();
+		return;
 	}
+
+	// 모든 에셋이 이미 메모리에 로드되어 있다면 비동기 대기 없이 즉시 실행
+	bool bAllAlreadyLoaded = true;
+	for (const FSoftObjectPath& Path : AssetsToLoad)
+	{
+		if (Path.ResolveObject() == nullptr)
+		{
+			bAllAlreadyLoaded = false;
+			break;
+		}
+	}
+
+	if (bAllAlreadyLoaded && AssetLoadHandle.IsValid())
+	{
+		OnLoaded.ExecuteIfBound();
+		return;
+	}
+
+	TSharedPtr<FStreamableHandle> PreviousHandle = AssetLoadHandle;
+	UAssetManager& AssetManager = UAssetManager::Get();
+	AssetLoadHandle = AssetManager.GetStreamableManager().RequestAsyncLoad(
+		AssetsToLoad,
+		FStreamableDelegate::CreateWeakLambda(this, [PreviousHandle, OnLoaded]() mutable
+		{
+			if (PreviousHandle.IsValid())
+			{
+				PreviousHandle->ReleaseHandle();
+				PreviousHandle.Reset();
+			}
+			OnLoaded.ExecuteIfBound();
+		})
+	);
 }
 
 void UCAP_WeaponInstance::UnloadWeaponAssets()
@@ -179,15 +207,16 @@ bool UCAP_WeaponInstance::RerollRandomSkill()
 	TArray<FDataTableRowHandle> AvailableHandles = GetWeaponDA()->ActiveAbilityArray;
 	if (AvailableHandles.Num() <= 0)
 		return false;
-	
+
 	ActiveSkillRowNames.Empty();
 	GrantedActiveSkills.Empty();
+
 	const int32 SkillsToGrant = GetSkillCountByGrade(GetCurrentGrade());
-	for (int32 i=0 ; i<SkillsToGrant ; i++)
+	for (int32 i = 0; i < SkillsToGrant; i++)
 	{
-		if (AvailableHandles.Num() <= 0)
-			break;
-		int32 RandIdx = FMath::RandRange(0, AvailableHandles.Num()-1);
+		if (AvailableHandles.Num() <= 0) break;
+
+		int32 RandIdx = FMath::RandRange(0, AvailableHandles.Num() - 1);
 		if (FWeaponSkillData* SkillRow = AvailableHandles[RandIdx].GetRow<FWeaponSkillData>(""))
 		{
 			GrantedActiveSkills.Add(*SkillRow);
@@ -195,6 +224,9 @@ bool UCAP_WeaponInstance::RerollRandomSkill()
 		}
 		AvailableHandles.RemoveAt(RandIdx);
 	}
+
+	// 새로 뽑힌 스킬의 몽타주/아이콘 메모리 로드 보장
+	LoadWeaponAssets(FStreamableDelegate());
 	return true;
 }
 
@@ -217,13 +249,12 @@ bool UCAP_WeaponInstance::TryAppendRandomNewSkill()
 {
 	if (!GetWeaponDA())
 		return false;
+
 	TArray<FDataTableRowHandle> AvailableHandles = GetWeaponDA()->ActiveAbilityArray;
-	for (int32 i= AvailableHandles.Num()-1; i >= 0; --i)
+	for (int32 i = AvailableHandles.Num() - 1; i >= 0; --i)
 	{
 		if (ActiveSkillRowNames.Contains(AvailableHandles[i].RowName))
-		{
 			AvailableHandles.RemoveAt(i);
-		}
 	}
 	if (AvailableHandles.Num() <= 0)
 		return false;
@@ -233,6 +264,9 @@ bool UCAP_WeaponInstance::TryAppendRandomNewSkill()
 	{
 		GrantedActiveSkills.Add(*NewSkill);
 		ActiveSkillRowNames.Add(AvailableHandles[RandIdx].RowName);
+
+		// 추가된 스킬의 몽타주/아이콘 메모리 로드 보장
+		LoadWeaponAssets(FStreamableDelegate());
 		return true;
 	}
 	return false;

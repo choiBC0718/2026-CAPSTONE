@@ -81,4 +81,6 @@ private:
 	// 콤보시간 만료
 	void OnComboWindowExpired();
 	void OnCooldownFinished();
+	
+	void DeactivateAndClearWeapon(class UCAP_WeaponInstance* WeaponInst);
 };

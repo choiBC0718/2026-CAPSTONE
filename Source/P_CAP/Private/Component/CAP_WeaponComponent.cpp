@@ -34,26 +34,33 @@ void UCAP_WeaponComponent::BeginPlay()
 
 void UCAP_WeaponComponent::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst)
 {
-	if (!NewWeaponInst)
+	if (!NewWeaponInst || !NewWeaponInst->GetWeaponDA())
+		return;
+
+	// 동일 무기 중복 장착 차단
+	if (HasWeapon(NewWeaponInst->GetWeaponDA()))
 		return;
 
 	int32 EmptySlotIndex = INDEX_NONE;
-	for (int32 i=0; i<EquippedWeapons.Num() ; ++i)
-	{	//빈 무기 슬롯이 있다면 그 슬롯의 인덱스 가져와 
-		if (EquippedWeapons[i]==nullptr)
+	for (int32 i = 0; i < EquippedWeapons.Num(); ++i)
+	{
+		if (EquippedWeapons[i] == nullptr)
 		{
 			EmptySlotIndex = i;
 			break;
 		}
 	}
-	// 빈칸 없다면 현재 들고있는 무기 버림
+
+	UCAP_WeaponInstance* WeaponToDrop = nullptr;
+
+	// 빈칸이 없다면 현재 들고 있는 무기를 드랍 (에셋 언로드는 새 무기 로드 완료 후 처리)
 	if (EmptySlotIndex == INDEX_NONE)
 	{
 		EmptySlotIndex = CurrentWeaponIndex;
-		UCAP_WeaponInstance* WeaponToDrop = EquippedWeapons[EmptySlotIndex];
+		WeaponToDrop = EquippedWeapons[EmptySlotIndex];
 		if (WeaponToDrop)
 		{
-			FVector DropLocation = GetOwner()->GetActorLocation() + FVector::UpVector*10.f;
+			FVector DropLocation = GetOwner()->GetActorLocation() + FVector::UpVector * 10.f;
 			FTransform SpawnTransform(FRotator::ZeroRotator, DropLocation);
 
 			ACAP_WorldWeapon* DroppedWeapon = GetWorld()->SpawnActorDeferred<ACAP_WorldWeapon>(ACAP_WorldWeapon::StaticClass(), SpawnTransform);
@@ -63,40 +70,53 @@ void UCAP_WeaponComponent::PickupWeapon(class UCAP_WeaponInstance* NewWeaponInst
 				DroppedWeapon->FinishSpawning(SpawnTransform);
 				DroppedWeapon->DropItem();
 			}
-			WeaponToDrop->UnloadWeaponAssets();
 		}
 	}
+
 	if (EquippedWeapons.IsValidIndex(CurrentWeaponIndex))
-		ClearAbilities(EquippedWeapons[CurrentWeaponIndex]);
-	// 무기 장착
+	{
+		DeactivateAndClearWeapon(EquippedWeapons[CurrentWeaponIndex]);
+	}
+
 	EquippedWeapons[EmptySlotIndex] = NewWeaponInst;
 	CurrentWeaponIndex = EmptySlotIndex;
-	
-	// 즉시 ApplyWeaponData가 아닌, 메모리에 로딩 후에 Apply ** 무기 획득이 처음인 경우에만 해당 (무기 교체시엔 적용 x)
-	NewWeaponInst->LoadWeaponAssets(FStreamableDelegate::CreateWeakLambda(this,[this, NewWeaponInst]()
+
+	NewWeaponInst->LoadWeaponAssets(FStreamableDelegate::CreateWeakLambda(this, [this, NewWeaponInst, WeaponToDrop]()
 	{
-		ApplyWeaponData(NewWeaponInst);
+		if (WeaponToDrop)
+		{
+			WeaponToDrop->UnloadWeaponAssets();
+		}
+
+		// 비동기 로딩 도중 다른 슬롯으로 스왑한 경우 덮어쓰기 방지
+		if (EquippedWeapons.IsValidIndex(CurrentWeaponIndex) && EquippedWeapons[CurrentWeaponIndex] == NewWeaponInst)
+		{
+			ApplyWeaponData(NewWeaponInst);
+		}
 	}));
 }
 
 void UCAP_WeaponComponent::SwapWeapon()
 {
-	int32 NextIndex = (CurrentWeaponIndex ==0) ? 1:0;
-	if (EquippedWeapons[NextIndex] == nullptr)
+	int32 NextIndex = (CurrentWeaponIndex == 0) ? 1 : 0;
+	if (!EquippedWeapons.IsValidIndex(NextIndex) || EquippedWeapons[NextIndex] == nullptr)
 		return;
-	ClearAbilities(EquippedWeapons[CurrentWeaponIndex]);
 
-	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
-	if (OwnerCharacter && OwnerCharacter->GetMesh())
-	{
-		if (UAnimInstance* AnimInst = OwnerCharacter->GetMesh()->GetAnimInstance())
-		{
-			AnimInst->Montage_Stop(0.0f, nullptr);
-		}
-	}
-	
+	UCAP_WeaponInstance* OldWeapon = EquippedWeapons.IsValidIndex(CurrentWeaponIndex) ? EquippedWeapons[CurrentWeaponIndex] : nullptr;
+	UCAP_WeaponInstance* NextWeapon = EquippedWeapons[NextIndex];
+
+	DeactivateAndClearWeapon(OldWeapon);
+
 	CurrentWeaponIndex = NextIndex;
-	ApplyWeaponData(EquippedWeapons[CurrentWeaponIndex]);
+
+	// 다음 무기의 에셋이 메모리에 로드된 상태임을 보장한 뒤 메시/ABP/어빌리티 적용
+	NextWeapon->LoadWeaponAssets(FStreamableDelegate::CreateWeakLambda(this, [this, NextWeapon]()
+	{
+		if (EquippedWeapons.IsValidIndex(CurrentWeaponIndex) && EquippedWeapons[CurrentWeaponIndex] == NextWeapon)
+		{
+			ApplyWeaponData(NextWeapon);
+		}
+	}));
 }
 
 bool UCAP_WeaponComponent::HasWeapon(class UCAP_WeaponDataAsset* WeaponDA) const
@@ -172,10 +192,13 @@ void UCAP_WeaponComponent::EquipDefaultWeapon()
 		UCAP_WeaponInstance* BasicWeapon = NewObject<UCAP_WeaponInstance>(this);
 		BasicWeapon->Initialize(DefaultBasicWeapon);
 		EquippedWeapons[0] = BasicWeapon;
-		
-		BasicWeapon->LoadWeaponAssets(FStreamableDelegate::CreateWeakLambda(this,[this, BasicWeapon]()
+
+		BasicWeapon->LoadWeaponAssets(FStreamableDelegate::CreateWeakLambda(this, [this, BasicWeapon]()
 		{
-			ApplyWeaponData(BasicWeapon);
+			if (EquippedWeapons.IsValidIndex(CurrentWeaponIndex) && EquippedWeapons[CurrentWeaponIndex] == BasicWeapon)
+			{
+				ApplyWeaponData(BasicWeapon);
+			}
 		}));
 	}
 }
@@ -245,19 +268,17 @@ struct FWeaponComponentSaveData UCAP_WeaponComponent::CreateSaveData() const
 
 void UCAP_WeaponComponent::RestoreFromSaveData(const struct FWeaponComponentSaveData& InData)
 {
-	// 기존 무기 메모리 해제 & 능력 제거
-	for (int32 i=0; i<EquippedWeapons.Num(); ++i)
+	for (int32 i = 0; i < EquippedWeapons.Num(); ++i)
 	{
 		if (EquippedWeapons[i])
 		{
-			ClearAbilities(EquippedWeapons[i]);
+			DeactivateAndClearWeapon(EquippedWeapons[i]);
 			EquippedWeapons[i]->UnloadWeaponAssets();
-			EquippedWeapons[i]=nullptr;
+			EquippedWeapons[i] = nullptr;
 		}
 	}
 
-	// 무기 데이터 백업
-	for (int32 i=0;i<InData.HeldWeapons.Num() && i<MaxWeaponCount ; ++i)
+	for (int32 i = 0; i < InData.HeldWeapons.Num() && i < MaxWeaponCount; ++i)
 	{
 		const FWeaponSaveData& Data = InData.HeldWeapons[i];
 		if (Data.WeaponDA)
@@ -268,14 +289,17 @@ void UCAP_WeaponComponent::RestoreFromSaveData(const struct FWeaponComponentSave
 			EquippedWeapons[i] = NewWeapon;
 		}
 	}
-	// 들고있는 무기 백업
-	CurrentWeaponIndex = FMath::Clamp(InData.EquippedWeaponIdx,0,MaxWeaponCount-1);
+
+	CurrentWeaponIndex = FMath::Clamp(InData.EquippedWeaponIdx, 0, MaxWeaponCount - 1);
 	if (EquippedWeapons.IsValidIndex(CurrentWeaponIndex) && EquippedWeapons[CurrentWeaponIndex])
 	{
 		UCAP_WeaponInstance* ActiveWeapon = EquippedWeapons[CurrentWeaponIndex];
 		ActiveWeapon->LoadWeaponAssets(FStreamableDelegate::CreateWeakLambda(this, [this, ActiveWeapon]()
-		{	// 메쉬 & 능력 부여
-			ApplyWeaponData(ActiveWeapon);
+		{
+			if (EquippedWeapons.IsValidIndex(CurrentWeaponIndex) && EquippedWeapons[CurrentWeaponIndex] == ActiveWeapon)
+			{
+				ApplyWeaponData(ActiveWeapon);
+			}
 		}));
 	}
 }
@@ -321,4 +345,40 @@ void UCAP_WeaponComponent::OnComboWindowExpired()
 void UCAP_WeaponComponent::OnCooldownFinished()
 {
 	CurrentDodgeCount = MaxDodgeCount;
+}
+
+void UCAP_WeaponComponent::DeactivateAndClearWeapon(class UCAP_WeaponInstance* WeaponInst)
+{
+	if (!WeaponInst)
+		return;
+
+	if (ASC)
+	{
+		// 1. 타겟팅 어빌리티(AoE 등)가 대기 중이면 먼저 취소하여 TargetActor/인디케이터 정리
+		ASC->TargetCancel();
+
+		// 2. ClearAbility 전에 CancelAbilityHandle을 먼저 호출해야 EndAbility가 실행되어
+		//    BlockAbilitiesWithTag(BasicAttackTag) 및 콜리전 무시 상태가 정상 복구됨
+		TArray<FGameplayAbilitySpecHandle> HandlesCopy = WeaponInst->GrantedAbilityHandles;
+		for (const FGameplayAbilitySpecHandle& Handle : HandlesCopy)
+		{
+			if (Handle.IsValid())
+			{
+				ASC->CancelAbilityHandle(Handle);
+				ASC->ClearAbility(Handle);
+			}
+		}
+		WeaponInst->GrantedAbilityHandles.Empty();
+	}
+
+	if (ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner()))
+	{
+		if (OwnerCharacter->GetMesh())
+		{
+			if (UAnimInstance* AnimInst = OwnerCharacter->GetMesh()->GetAnimInstance())
+			{
+				AnimInst->Montage_Stop(0.0f, nullptr);
+			}
+		}
+	}
 }
