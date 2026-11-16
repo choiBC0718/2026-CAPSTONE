@@ -4,6 +4,7 @@
 #include "Component/CAP_InteractionComponent.h"
 
 #include "Character/Player/CAP_PlayerCharacter.h"
+#include "Character/Player/CAP_PlayerController.h"
 #include "Interface/CAP_InteractInterface.h"
 
 UCAP_InteractionComponent::UCAP_InteractionComponent()
@@ -80,10 +81,16 @@ void UCAP_InteractionComponent::BeginDialogue(const struct FNPCData& InNPCData)
 		if (UCAP_DialogueComponent* DialogueComp = NearbyInteractable->FindComponentByClass<UCAP_DialogueComponent>())
 		{
 			bIsInDialogue = true;
-			// NPC의 Dialogue Component를 통해 카메라 시점 전환
 			DialogueComp->BeginDialogue(Cast<ACAP_PlayerCharacter>(GetOwner()));
-			// 대화 시작 방송 -> Dialogue Widget이 구독하여 대화 시작 이벤트 준비
 			OnDialogueTriggered.Broadcast(InNPCData);
+
+			if (ACAP_PlayerCharacter* PlayerChar = Cast<ACAP_PlayerCharacter>(GetOwner()))
+			{
+				if (ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(PlayerChar->GetController()))
+				{
+					PC->SetUIInputEnabled(true);
+				}
+			}
 		}
 	}
 }
@@ -123,9 +130,10 @@ void UCAP_InteractionComponent::EndDialogueCamera()
 	bIsInDialogue = false;
 	SetNearbyInteractable(nullptr);
 	UpdateNearbyInteractable();
-	if (ACAP_PlayerCharacter* PlayerChar = Cast<ACAP_PlayerCharacter>(GetOwner()))
+	
+	if (ACAP_PlayerController* PC = Cast<ACAP_PlayerController>(Cast<ACAP_PlayerCharacter>(GetOwner())->GetController()))
 	{
-		PlayerChar->RestoreGameplayInputState();
+		PC->SetUIInputEnabled(false);
 	}
 }
 

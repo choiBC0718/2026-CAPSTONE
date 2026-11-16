@@ -106,13 +106,17 @@ void UCAP_AttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectMo
 		if (DeltaValue > 0.f)
 		{
 			bool bIsSystemHeal = Data.EffectSpec.Def->GetAssetTags().HasTag(FGameplayTag::RequestGameplayTag("Effect.IgnoreStatistic"));
+			
+			if (CachedProgressionSubsystem && CachedProgressionSubsystem->IsRestoringData())
+				bIsSystemHeal = true;
+			
 			if (!bIsSystemHeal)
 			{
 				if (CachedProgressionSubsystem && bIsTargetPlayer)
 					CachedProgressionSubsystem->AddHealing(DeltaValue);
 				
 				FGameplayEventData HealPayload;
-				HealPayload.EventTag = FGameplayTag::RequestGameplayTag(FName("Event.Status.Healed"));
+				HealPayload.EventTag = HealTag;
 				HealPayload.Instigator = Instigator;
 				HealPayload.Target = Target;
 				HealPayload.EventMagnitude = DeltaValue;

@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Animation/AnimNotifies/AnimNotifyState.h"
-#include "Data/CAP_WeaponDataAsset.h"
 #include "ANS_MeleeHitCheck.generated.h"
 
 /**
@@ -24,12 +23,6 @@ public:
 	virtual void NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float FrameDeltaTime, const FAnimNotifyEventReference& EventReference) override;
 
 protected:
-	/** 무기가 아닌 캐릭터 본 소켓 이용 할건지 (주먹용도) */
-	UPROPERTY(EditAnywhere, Category="Hit Check")
-	bool bUseCharacterBones = false;
-	/** 들고 있는 무기의 손 위치*/
-	UPROPERTY(EditAnywhere, Category="Hit Check")
-	EEquipHand WeaponHand = EEquipHand::Right;
 	/** 무기 메쉬에 추가되있는 소켓 이름 (시작점~끝점) */
 	UPROPERTY(EditAnywhere, Category="Hit Check")
 	TArray<FName> TargetSocketNames;
@@ -50,8 +43,5 @@ private:
 	TMap<USkeletalMeshComponent*, TSet<AActor*>> HitActorsMap;
 	// 이전 프레임 위치 기록 Map <Key = 공격 캐릭터, value = 위치>
 	TMap<USkeletalMeshComponent*, TArray<FVector>> PrevSocketLocationMap;
-
-	// 캐릭터에 설정된 무기 메쉬 Get
-	class USkeletalMeshComponent* GetWeaponMesh(USkeletalMeshComponent* CharacterMesh) const;
 	TMap<USkeletalMeshComponent*, ECollisionChannel> TargetChannelMap;
 };

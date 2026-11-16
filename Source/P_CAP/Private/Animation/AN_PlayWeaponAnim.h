@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimNotifies/AnimNotifyState.h"
-#include "Data/CAP_WeaponDataAsset.h"
 #include "AN_PlayWeaponAnim.generated.h"
 
 struct FSavedWeaponState
@@ -26,8 +25,6 @@ public:
 	virtual void NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float FrameDeltaTime, const FAnimNotifyEventReference& EventReference) override;
 	virtual void NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
 	
-	UPROPERTY(EditAnywhere, Category = "Weapon")
-	EEquipHand TargetHand = EEquipHand::Left;
 
 	UPROPERTY(EditAnywhere, Category = "Weapon")
 	class UAnimSequence* WeaponAnim;

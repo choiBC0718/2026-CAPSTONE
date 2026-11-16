@@ -30,7 +30,7 @@ public:
 	void UINavigationHandle(FVector2D InputVal);	// UI 내부 WASD로 슬롯 포커스 변경
 	void RouteUIConfirmInput(ETriggerEvent TriggerEvent, float ElapsedTime);
 	void ShowStatisticDashboard();
-
+	void HandleEscapeInput();
 protected:
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_WeaponSwapWidget* WeaponSwapWidget;
@@ -66,6 +66,8 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	class UCAP_DialogueWidget* DialogueWidget;
 	
+	UPROPERTY(meta = (BindWidget))
+	class UCAP_PauseMenuWidget* PauseMenuWidget;
 private:
 	UPROPERTY()
 	ACAP_PlayerCharacter* Player;

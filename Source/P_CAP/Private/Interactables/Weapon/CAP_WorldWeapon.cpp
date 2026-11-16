@@ -19,13 +19,9 @@ ACAP_WorldWeapon::ACAP_WorldWeapon()
 	MeshContainer=CreateDefaultSubobject<USceneComponent>("MeshContainer");
 	MeshContainer->SetupAttachment(InteractionSphere);
 	
-	WeaponMesh_R = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Skeletal Mesh R");
-	WeaponMesh_R->SetupAttachment(MeshContainer);
-	WeaponMesh_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	WeaponMesh_L = CreateDefaultSubobject<USkeletalMeshComponent>("Weapon Skeletal Mesh L");
-	WeaponMesh_L->SetupAttachment(MeshContainer);
-	WeaponMesh_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	WorldWeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>("World Weapon Mesh");
+	WorldWeaponMesh->SetupAttachment(MeshContainer);
+	WorldWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 	RotatingMovement=CreateDefaultSubobject<URotatingMovementComponent>("RotatingMovement");
 	RotatingMovement->SetUpdatedComponent(MeshContainer);
@@ -50,23 +46,9 @@ void ACAP_WorldWeapon::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
-	if (!WeaponMesh_L || !WeaponMesh_R)	return;
-
-	if (WeaponDA && !WeaponDA->WeaponVisualInfos.IsEmpty())
+	if (WeaponDA && !WeaponDA->WorldDisplayMesh.IsNull() && WorldWeaponMesh)
 	{
-		for (const FWeaponVisualInfo& VisualInfo : WeaponDA->WeaponVisualInfos)
-		{
-			if (VisualInfo.EquipHand == EEquipHand::Left)
-			{
-				WeaponMesh_L->SetSkeletalMesh(VisualInfo.WeaponMesh.LoadSynchronous());
-				WeaponMesh_L->SetRelativeTransform(VisualInfo.ConstructionOffset);
-			}
-			else
-			{
-				WeaponMesh_R->SetSkeletalMesh(VisualInfo.WeaponMesh.LoadSynchronous());
-				WeaponMesh_R->SetRelativeTransform(VisualInfo.ConstructionOffset);
-			}
-		}
+		WorldWeaponMesh->SetStaticMesh(WeaponDA->WorldDisplayMesh.LoadSynchronous());
 	}
 }
 
@@ -137,20 +119,12 @@ void ACAP_WorldWeapon::DropItem()
 
 void ACAP_WorldWeapon::SetWeaponSkeletalMesh()
 {
-	if (WeaponInstance && WeaponInstance->GetWeaponDA())
+	if (WeaponInstance && WeaponInstance->GetWeaponDA() && WorldWeaponMesh)
 	{
-		for (const FWeaponVisualInfo& VisualInfo : WeaponInstance->GetWeaponDA()->WeaponVisualInfos)
+		// 비동기 로딩이 끝난 상태이므로 Get()으로 즉시 적용
+		if (UStaticMesh* LoadedMesh = WeaponInstance->GetWeaponDA()->WorldDisplayMesh.Get())
 		{
-			if (VisualInfo.EquipHand == EEquipHand::Left)
-			{
-				WeaponMesh_L->SetSkeletalMesh(VisualInfo.WeaponMesh.LoadSynchronous());
-				WeaponMesh_L->SetRelativeTransform(VisualInfo.ConstructionOffset);
-			}
-			else
-			{
-				WeaponMesh_R->SetSkeletalMesh(VisualInfo.WeaponMesh.LoadSynchronous());
-				WeaponMesh_R->SetRelativeTransform(VisualInfo.ConstructionOffset);
-			}
+			WorldWeaponMesh->SetStaticMesh(LoadedMesh);
 		}
 	}
 }

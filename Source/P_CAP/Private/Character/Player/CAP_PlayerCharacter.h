@@ -43,18 +43,14 @@ public:
 	UFUNCTION(Exec)
 	void ShowMeTheMoney();
 	
-	UFUNCTION(BlueprintCallable)
-	void SetCameraMode(bool bIsTPS);
-	UFUNCTION(BlueprintCallable)
-	void RestoreGameplayInputState();
-
 	virtual void UpdateStackUI(const FGameplayTag& BehaviorTag, int32 CurrentStack, int32 MaxStack) override;
+	
+	UPROPERTY(VisibleAnywhere, Category="View", BlueprintReadOnly)
+	class UCameraComponent* Camera;
 private:
 	/**		Components		**/
 	UPROPERTY(VisibleAnywhere, Category="View")
 	class USpringArmComponent* SpringArm;
-	UPROPERTY(VisibleAnywhere, Category="View")
-	class UCameraComponent* Camera;
 	UPROPERTY(VisibleAnywhere, Category="Weapon")
 	class UCAP_WeaponComponent* WeaponComponent;
 	UPROPERTY(VisibleAnywhere, Category="Inventory")
@@ -76,8 +72,6 @@ private:
 	class UInputAction* MoveIA;
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	class UInputAction* InteractIA;
-	UPROPERTY(EditDefaultsOnly, Category="Input")
-	class UInputAction* LookIA;
 
 	UPROPERTY(EditDefaultsOnly, Category="Input|Ability")
 	TMap<EAbilityInputID, class UInputAction*> AbilityInputActions;
@@ -102,6 +96,5 @@ public:
 protected:
 	void TryLoadProgressionData();
 	virtual void DeathMontageFinished() override;
-
-	bool bIsTPSMode = false;
+	virtual void PlayDeathAnimation() override;
 };

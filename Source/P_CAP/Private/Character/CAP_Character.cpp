@@ -170,7 +170,7 @@ void ACAP_Character::StartDeathSequence()
 void ACAP_Character::Respawn()
 {
 	OnRespawn();
-	SetRagdollEnabled(false);
+	//SetRagdollEnabled(false);
 	GetCharacterMovement() -> SetMovementMode(EMovementMode::MOVE_Walking);
 	GetCapsuleComponent() -> SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	SetAIPerceptionStimuliSourceEnabled(true);
@@ -195,7 +195,7 @@ void ACAP_Character::DeathMontageFinished()
 {
 	if (IsDead())
 	{
-		SetRagdollEnabled(true);
+		//SetRagdollEnabled(true);
 		OnDeathMontageFinished();
 	}
 }

@@ -3,6 +3,7 @@
 
 #include "GAS/Ability/GA_WeaponSwap.h"
 
+#include "NiagaraFunctionLibrary.h"
 #include "Character/Player/CAP_PlayerCharacter.h"
 #include "Data/CAP_AbilitySystemGenerics.h"
 #include "GAS/Setting/CAP_AbilitySystemStatics.h"
@@ -27,6 +28,19 @@ void UGA_WeaponSwap::ActivateAbility(const FGameplayAbilitySpecHandle Handle, co
 	{
 		if (UCAP_WeaponComponent* WeaponComp = Player->GetWeaponComponent())
 		{
+			if (SwapVFX)
+			{
+				UNiagaraFunctionLibrary::SpawnSystemAttached(
+					SwapVFX,
+					Player->GetMesh(),
+					NAME_None, // 특정 뼈가 아닌 메쉬 중앙(루트) 기준
+					FVector(0.f, 0.f, 90.f),
+					FRotator::ZeroRotator,
+					EAttachLocation::KeepRelativeOffset,
+					true
+				);
+			}
+			
 			WeaponComp->SwapWeapon();
 			ApplySwapCooldown();
 			BroadcastTriggerEvent(FGameplayTag::RequestGameplayTag("Item.Trigger.Cast.Swap"));

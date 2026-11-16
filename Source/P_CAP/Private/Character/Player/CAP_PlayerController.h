@@ -25,6 +25,7 @@ public:
 	UFUNCTION(Exec)
 	void TeleportToBossRoom();
 
+	void SetUIInputEnabled(bool bEnable);
 private:
 	UPROPERTY()
 	class ACAP_PlayerCharacter* PlayerCharacter;

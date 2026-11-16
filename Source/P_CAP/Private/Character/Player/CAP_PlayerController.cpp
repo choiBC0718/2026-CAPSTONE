@@ -26,13 +26,6 @@ void ACAP_PlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	UEnhancedInputLocalPlayerSubsystem* InputSubsystem = GetLocalPlayer()->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
-	if (InputSubsystem)
-	{
-		InputSubsystem->RemoveMappingContext(UIInputMapping);
-		InputSubsystem->AddMappingContext(UIInputMapping, 1);
-	}
-
 	UEnhancedInputComponent* EnhancedInputComp = Cast<UEnhancedInputComponent>(InputComponent);
 	if (EnhancedInputComp)
 	{
@@ -82,6 +75,26 @@ void ACAP_PlayerController::TeleportToBossRoom()
 	const FVector Destination = BossRoom->GetActorLocation() + FVector(0.f, 0.f, 150.f);
 	PlayerPawn->SetActorLocation(Destination, false, nullptr, ETeleportType::TeleportPhysics);
 	ClientMessage(TEXT("Teleported to the boss room."));
+}
+
+void ACAP_PlayerController::SetUIInputEnabled(bool bEnable)
+{
+	ULocalPlayer* LocalPlayer = GetLocalPlayer();
+	if (!LocalPlayer) return;
+
+	UEnhancedInputLocalPlayerSubsystem* InputSubsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	if (!InputSubsystem) return;
+
+	if (bEnable)
+	{
+		InputSubsystem->RemoveMappingContext(UIInputMapping);
+		InputSubsystem->AddMappingContext(UIInputMapping, 1);
+	}
+	else
+	{
+		InputSubsystem->RemoveMappingContext(UIInputMapping);
+		FSlateApplication::Get().SetAllUserFocusToGameViewport();
+	}
 }
 
 
@@ -136,7 +149,7 @@ void ACAP_PlayerController::UICloseHandle(const FInputActionValue& InputActionVa
 {
 	if (GameplayWidget)
 	{
-		GameplayWidget->HideMenu();
+		GameplayWidget->HandleEscapeInput();
 	}
 }
 

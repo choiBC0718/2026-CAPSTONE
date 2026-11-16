@@ -63,7 +63,11 @@ void UCAP_ProgressionSubsystem::AddDamageTaken(float Damage)
 void UCAP_ProgressionSubsystem::AddHealing(float Healing)
 {
 	if (Healing>0)
+	{
 		CurrentRunStats.TotalHealing += Healing;
+		
+		UE_LOG(LogTemp,Warning,TEXT("체력 %f 만큼 회복됨"),Healing);
+	}
 }
 
 void UCAP_ProgressionSubsystem::AddEnemyDefeated()
