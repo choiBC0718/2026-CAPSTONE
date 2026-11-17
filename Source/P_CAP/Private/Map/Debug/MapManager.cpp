@@ -28,7 +28,16 @@
 AMapManager::AMapManager()
 {
 	PrimaryActorTick.bCanEverTick = false;
-	StageExitActorClass = AStageExitActor::StaticClass();
+	static ConstructorHelpers::FClassFinder<AStageExitActor> StageExitClassFinder(
+		TEXT("/Game/_Workspace/StageExit/BP_StageExitPortal"));
+	if (StageExitClassFinder.Succeeded())
+	{
+		StageExitActorClass = StageExitClassFinder.Class;
+	}
+	else
+	{
+		StageExitActorClass = AStageExitActor::StaticClass();
+	}
 
 	static ConstructorHelpers::FClassFinder<ANextRoomChoiceManager> ChoiceManagerClassFinder(
 		TEXT("/Game/_Workspace/6_Room/ChoiceWidget/BP_NextRoomChoiceManager"));
@@ -344,6 +353,11 @@ void AMapManager::SpawnStageExitInRoom(ARoomActor* RoomActor, const FRoomData& R
 	}
 
 	TSubclassOf<AStageExitActor> ExitClass = StageExitActorClass;
+	if (!ExitClass)
+	{
+		const AMapManager* ClassDefaults = GetClass()->GetDefaultObject<AMapManager>();
+		ExitClass = ClassDefaults ? ClassDefaults->StageExitActorClass : nullptr;
+	}
 	if (!ExitClass)
 	{
 		ExitClass = AStageExitActor::StaticClass();

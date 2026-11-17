@@ -4,13 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "Components/BoxComponent.h"
-#include "Components/ChildActorComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Actor.h"
 #include "Stage/StageManager.h"
 #include "StageExitActor.generated.h"
+
+class UNiagaraComponent;
 
 UCLASS()
 class AStageExitActor : public AActor
@@ -37,13 +38,10 @@ private:
 	TObjectPtr<UStaticMeshComponent> PortalMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Stage Exit|Visual", meta=(AllowPrivateAccess="true"))
-	TObjectPtr<UChildActorComponent> PortalVisual;
+	TObjectPtr<UNiagaraComponent> PortalEffect;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage Exit|Visual", meta=(AllowPrivateAccess="true"))
-	TSubclassOf<AActor> PortalVisualClass;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage Exit|Visual", meta=(AllowPrivateAccess="true"))
-	bool bUseDefaultPortalMesh = true;
+	bool bUseDefaultPortalMesh = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage Exit|Trigger", meta=(AllowPrivateAccess="true", ClampMin="0.0"))
 	FVector TriggerExtent = FVector(120.f, 120.f, 120.f);
@@ -56,6 +54,18 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Stage Exit", meta=(AllowPrivateAccess="true"))
 	bool bIsProcessingExit = false;
+
+	bool bIsTriggerArming = false;
+	TSet<TWeakObjectPtr<AActor>> ActorsToIgnoreUntilExit;
+
+	void FinishTriggerArming();
+
+	UFUNCTION()
+	void OnTriggerEndOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex);
 
 	UFUNCTION()
 	void OnTriggerBeginOverlap(

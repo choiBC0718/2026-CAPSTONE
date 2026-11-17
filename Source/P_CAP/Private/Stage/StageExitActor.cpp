@@ -3,9 +3,10 @@
 #include "Stage/StageExitActor.h"
 
 #include "Components/BoxComponent.h"
-#include "Components/ChildActorComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "NiagaraComponent.h"
+#include "NiagaraSystem.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Engine/Engine.h"
 #include "GameFramework/Pawn.h"
@@ -34,13 +35,21 @@ AStageExitActor::AStageExitActor()
 	PortalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	PortalMesh->SetRelativeScale3D(FVector(1.5f, 1.5f, 0.25f));
 
-	PortalVisual = CreateDefaultSubobject<UChildActorComponent>(TEXT("PortalVisual"));
-	PortalVisual->SetupAttachment(Root);
+	PortalEffect = CreateDefaultSubobject<UNiagaraComponent>(TEXT("PortalEffect"));
+	PortalEffect->SetupAttachment(Root);
+	PortalEffect->SetAutoActivate(false);
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> DefaultPortalMesh(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	if (DefaultPortalMesh.Succeeded())
 	{
 		PortalMesh->SetStaticMesh(DefaultPortalMesh.Object);
+	}
+
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> DefaultPortalEffect(
+		TEXT("/Game/PortalSystem/FX/NS_Portal_02.NS_Portal_02"));
+	if (DefaultPortalEffect.Succeeded())
+	{
+		PortalEffect->SetAsset(DefaultPortalEffect.Object);
 	}
 }
 
@@ -57,13 +66,7 @@ void AStageExitActor::BeginPlay()
 	{
 		TriggerBox->SetBoxExtent(TriggerExtent);
 		TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &AStageExitActor::OnTriggerBeginOverlap);
-	}
-
-	if (PortalVisual)
-	{
-		PortalVisual->SetChildActorClass(PortalVisualClass);
-		PortalVisual->SetVisibility(bEnabled, true);
-		PortalVisual->SetHiddenInGame(!bEnabled, true);
+		TriggerBox->OnComponentEndOverlap.AddDynamic(this, &AStageExitActor::OnTriggerEndOverlap);
 	}
 
 	SetExitEnabled(bEnabled);
@@ -71,12 +74,37 @@ void AStageExitActor::BeginPlay()
 
 void AStageExitActor::SetExitEnabled(bool bNewEnabled)
 {
+	const bool bWasEnabled = bEnabled;
 	bEnabled = bNewEnabled;
 
 	if (TriggerBox)
 	{
+		if (bEnabled && !bWasEnabled)
+		{
+			// Ignore overlap events caused by enabling the trigger around a player
+			// who is already standing at the exit. They can leave and re-enter to use it.
+			bIsTriggerArming = true;
+		}
+		else if (!bEnabled)
+		{
+			bIsTriggerArming = false;
+			ActorsToIgnoreUntilExit.Empty();
+		}
+
 		TriggerBox->SetCollisionEnabled(bEnabled ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
 		TriggerBox->SetGenerateOverlapEvents(bEnabled);
+
+		if (bEnabled && !bWasEnabled)
+		{
+			TArray<AActor*> OverlappingPawns;
+			TriggerBox->GetOverlappingActors(OverlappingPawns, APawn::StaticClass());
+			for (AActor* OverlappingPawn : OverlappingPawns)
+			{
+				ActorsToIgnoreUntilExit.Add(OverlappingPawn);
+			}
+
+			GetWorldTimerManager().SetTimerForNextTick(this, &AStageExitActor::FinishTriggerArming);
+		}
 	}
 
 	if (PortalMesh)
@@ -86,11 +114,36 @@ void AStageExitActor::SetExitEnabled(bool bNewEnabled)
 		PortalMesh->SetHiddenInGame(!bShowDefaultMesh, true);
 	}
 
-	if (PortalVisual)
+	if (PortalEffect)
 	{
-		const bool bShowVisual = bEnabled && PortalVisualClass != nullptr;
-		PortalVisual->SetVisibility(bShowVisual, true);
-		PortalVisual->SetHiddenInGame(!bShowVisual, true);
+		const bool bShowEffect = bEnabled && PortalEffect->GetAsset() != nullptr;
+		PortalEffect->SetVisibility(bShowEffect, true);
+		PortalEffect->SetHiddenInGame(!bShowEffect, true);
+		if (bShowEffect)
+		{
+			PortalEffect->Activate(true);
+		}
+		else
+		{
+			PortalEffect->Deactivate();
+		}
+	}
+}
+
+void AStageExitActor::FinishTriggerArming()
+{
+	bIsTriggerArming = false;
+}
+
+void AStageExitActor::OnTriggerEndOverlap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex)
+{
+	if (OtherActor && !TriggerBox->IsOverlappingActor(OtherActor))
+	{
+		ActorsToIgnoreUntilExit.Remove(OtherActor);
 	}
 }
 
@@ -103,6 +156,17 @@ void AStageExitActor::OnTriggerBeginOverlap(
 	const FHitResult& SweepResult)
 {
 	if (!bEnabled || bIsProcessingExit || !Cast<APawn>(OtherActor))
+	{
+		return;
+	}
+
+	if (bIsTriggerArming)
+	{
+		ActorsToIgnoreUntilExit.Add(OtherActor);
+		return;
+	}
+
+	if (ActorsToIgnoreUntilExit.Contains(OtherActor))
 	{
 		return;
 	}
