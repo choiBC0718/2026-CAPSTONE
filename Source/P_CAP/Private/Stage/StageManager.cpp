@@ -10,11 +10,19 @@
 #include "Map/SpecialRoomTransitionSubsystem.h"
 #include "Stage/StageDataAsset.h"
 #include "Stage/StageLoadingWidget.h"
+#include "UObject/ConstructorHelpers.h"
 
 AStageManager::AStageManager()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	SetActorTickEnabled(false);
+
+	static ConstructorHelpers::FClassFinder<UStageLoadingWidget> StageVideoWidgetFinder(
+		TEXT("/Game/_Workspace/5_Widget/WBP_StageVideoLoadingScreen"));
+	if (StageVideoWidgetFinder.Succeeded())
+	{
+		StageTransitionLoadingWidgetClass = StageVideoWidgetFinder.Class;
+	}
 }
 
 void AStageManager::BeginPlay()
@@ -87,6 +95,11 @@ void AStageManager::StartStage(int32 StageIndex)
 
 void AStageManager::AdvanceToNextStage()
 {
+	if (StageTransitionLoadingWidgetClass)
+	{
+		LoadingWidgetClass = StageTransitionLoadingWidgetClass;
+	}
+
 	StartStageWithLoading(CurrentStageIndex + 1);
 }
 
@@ -101,7 +114,7 @@ void AStageManager::Tick(float DeltaSeconds)
 
 	LoadingElapsedTime += DeltaSeconds;
 
-	const float SafeTotalDuration = FMath::Max(0.1f, LoadingTotalDuration);
+	const float SafeTotalDuration = FMath::Max3(0.1f, LoadingTotalDuration, MinimumStageTransitionDisplayDuration);
 	const float Progress = FMath::Clamp(LoadingElapsedTime / SafeTotalDuration, 0.f, 1.f);
 	SetLoadingProgress(Progress);
 

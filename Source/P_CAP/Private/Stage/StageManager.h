@@ -47,8 +47,14 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage|Loading", meta=(AllowPrivateAccess="true"))
 	TSubclassOf<UStageLoadingWidget> LoadingWidgetClass;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage|Loading", meta=(AllowPrivateAccess="true"))
+	TSubclassOf<UStageLoadingWidget> StageTransitionLoadingWidgetClass;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage|Loading", meta=(AllowPrivateAccess="true", ClampMin="0.1"))
 	float LoadingTotalDuration = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage|Loading", meta=(AllowPrivateAccess="true", ClampMin="0.1", DisplayName="Minimum Stage Transition Display Duration"))
+	float MinimumStageTransitionDisplayDuration = 2.5f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stage|Loading", meta=(AllowPrivateAccess="true", ClampMin="0.0", ClampMax="1.0"))
 	float StageGenerateProgressRatio = 0.4f;
