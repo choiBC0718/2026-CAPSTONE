@@ -105,8 +105,20 @@ void ACAP_PlayerController::SpawnGameplayWidget()
 	{
 		GameplayWidget->AddToViewport();
 	}
-	MinimapWidget = CreateWidget<UCAP_MinimapWidget>(this, UCAP_MinimapWidget::StaticClass());
-	if (MinimapWidget)
+	const UWorld* World = GetWorld();
+	const bool bShouldShowMinimap = World &&
+		World->GetMapName().Contains(TEXT("TestMap"), ESearchCase::IgnoreCase);
+	if (bShouldShowMinimap && !MinimapWidget)
+	{
+		MinimapWidget = CreateWidget<UCAP_MinimapWidget>(this, UCAP_MinimapWidget::StaticClass());
+	}
+	else if (!bShouldShowMinimap && MinimapWidget)
+	{
+		MinimapWidget->RemoveFromParent();
+		MinimapWidget = nullptr;
+	}
+
+	if (MinimapWidget && !MinimapWidget->IsInViewport())
 	{
 		MinimapWidget->AddToViewport(5);
 	}
